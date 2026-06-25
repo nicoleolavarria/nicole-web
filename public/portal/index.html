@@ -1,0 +1,527 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta name="robots" content="noindex, nofollow" />
+<title>Portal de alumno · Nicole Olavarría</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:ital,wght@0,300;0,400;0,500;1,300;1,400&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#fafaf8; --panel:#f0ede6; --panel2:#e8e5de;
+    --accent:#0a0a0a; --fg:#0a0a0a; --muted:#777770; --line:#d4d1ca;
+    --green:#2d6a2d; --amber:#8a6800; --red:#8a1a1a;
+    --mono:'DM Mono','Courier New',ui-monospace,monospace;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0}
+  body{background:var(--bg);color:var(--fg);font-family:var(--mono);font-size:14px;line-height:1.65;-webkit-font-smoothing:antialiased;}
+  .wrap{max-width:640px;margin:0 auto;padding:40px 24px 80px;}
+  a{color:var(--accent);text-decoration:underline}
+  a:hover{opacity:.55}
+  button{cursor:pointer;font-family:var(--mono);}
+  .hidden{display:none!important}
+
+  .eyebrow{text-transform:uppercase;letter-spacing:.16em;font-size:11px;color:var(--muted);font-weight:500;}
+  h1{font-weight:300;font-size:clamp(28px,7vw,40px);margin:.18em 0 .08em;line-height:1.08;letter-spacing:-.01em;}
+  .sub{text-transform:uppercase;letter-spacing:.12em;font-size:11px;color:var(--muted);}
+  .rule{height:1px;background:var(--line);border:0;margin:18px 0 28px;}
+
+  .auth-card{max-width:420px;margin:6vh auto 0;}
+  .authtabs{display:flex;gap:6px;margin-bottom:20px;}
+  .atab{flex:1;text-transform:uppercase;letter-spacing:.09em;font-size:11.5px;font-weight:500;
+    color:var(--muted);background:transparent;border:1px solid var(--line);padding:11px 10px;transition:all .12s;}
+  .atab.active{color:var(--bg);background:var(--accent);border-color:var(--accent);font-weight:700;}
+  .field{margin-bottom:14px;}
+  .field label{display:block;text-transform:uppercase;letter-spacing:.08em;font-size:10px;color:var(--muted);margin-bottom:6px;}
+  .field input,.field select{width:100%;background:#fff;border:1px solid var(--line);color:var(--fg);
+    font-family:var(--mono);font-size:13.5px;padding:10px 12px;}
+  .field input:focus,.field select:focus{outline:1px solid var(--accent);outline-offset:1px;border-color:var(--accent);}
+  .check{display:flex;gap:10px;align-items:flex-start;font-size:12.5px;color:var(--muted);margin:14px 0 4px;line-height:1.5;}
+  .check input{width:15px;height:15px;margin-top:2px;accent-color:var(--accent);flex:0 0 auto;}
+  .btn{text-transform:uppercase;letter-spacing:.09em;font-size:12px;font-weight:700;
+    padding:12px 18px;border:1px solid var(--accent);background:var(--accent);color:var(--bg);
+    width:100%;margin-top:14px;transition:opacity .12s;}
+  .btn:hover{opacity:.8;}
+  .btn[disabled]{opacity:.45;cursor:wait;}
+  .btn.ghost{background:transparent;color:var(--fg);border-color:var(--line);font-weight:500;width:auto;}
+  .btn.ghost:hover{border-color:var(--accent);}
+  .err{color:var(--red);font-size:12.5px;margin-top:12px;min-height:1.2em;}
+  .auth-hint{margin-top:18px;font-size:12.5px;color:var(--muted);line-height:1.55;}
+
+  .topbar{display:flex;justify-content:space-between;align-items:center;gap:12px;}
+  .linkbtn{background:none;border:none;color:var(--muted);font-size:11px;
+    text-transform:uppercase;letter-spacing:.09em;padding:6px 0;}
+  .linkbtn:hover{color:var(--accent);}
+  .lab{text-transform:uppercase;letter-spacing:.1em;font-size:11px;color:var(--muted);}
+
+  .pill{font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;
+    padding:4px 10px;display:inline-block;}
+  .pill.green{background:rgba(45,106,45,.1);color:var(--green);border:1px solid var(--green);}
+  .pill.amber{background:rgba(138,104,0,.1);color:var(--amber);border:1px solid var(--amber);}
+  .pill.gray{background:transparent;color:var(--muted);border:1px solid var(--line);}
+  .pill.red{background:rgba(138,26,26,.1);color:var(--red);border:1px solid var(--red);}
+
+  .hero{margin:6px 0 4px;}
+  .hero .big{font-weight:300;font-size:clamp(64px,19vw,100px);line-height:.9;}
+  .hero .of{font-size:clamp(18px,4vw,24px);color:var(--muted);margin-left:6px;}
+
+  .stubs{display:flex;gap:6px;flex-wrap:wrap;margin:16px 0 6px;}
+  .stub{width:26px;height:40px;background:var(--accent);position:relative;flex:0 0 auto;}
+  .stub::before,.stub::after{content:"";position:absolute;top:50%;width:10px;height:10px;background:var(--bg);border-radius:50%;transform:translateY(-50%);}
+  .stub::before{left:-5px} .stub::after{right:-5px}
+  .stub:nth-child(3n){transform:rotate(-2deg);}
+  .stub:nth-child(3n+1){transform:rotate(1.5deg);}
+  .stub.used{background:var(--line);}
+  .stubcap{font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:24px;}
+
+  .card{background:var(--panel);border:1px solid var(--line);padding:16px 18px;margin-bottom:12px;}
+  .card h3{text-transform:uppercase;letter-spacing:.12em;font-size:11px;color:var(--muted);font-weight:700;margin:0 0 10px;}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+  @media(max-width:520px){.grid2{grid-template-columns:1fr;}}
+  .kv .v{font-size:20px;margin-top:2px;font-weight:400;}
+  .kv .v small{font-size:12.5px;color:var(--muted);}
+  .note{font-size:12px;color:var(--muted);margin-top:6px;line-height:1.5;}
+  .warn{color:var(--amber);}
+
+  .accentcard{border:1px solid var(--accent);border-left:3px solid var(--accent);}
+  .accentcard h2{font-weight:400;font-size:22px;margin:2px 0 8px;}
+  .accentcard p{margin:0 0 12px;font-size:13.5px;}
+  .wa{display:inline-block;text-transform:uppercase;letter-spacing:.08em;font-size:12px;font-weight:700;
+    background:var(--accent);color:var(--bg);padding:11px 16px;border:1px solid var(--accent);text-decoration:none;}
+  .wa:hover{opacity:.8;}
+  .wa.ghost{background:transparent;color:var(--fg);border-color:var(--line);font-weight:500;}
+  .wa.ghost:hover{border-color:var(--accent);}
+  .ctas{display:flex;gap:8px;flex-wrap:wrap;margin-top:4px;}
+
+  .banner{border:1px dashed var(--amber);padding:12px 14px;margin-bottom:12px;
+    font-size:13px;color:var(--amber);background:rgba(138,104,0,.05);}
+  .banner strong{font-size:11px;text-transform:uppercase;letter-spacing:.06em;}
+
+  .tarea{border-left:3px solid var(--accent);}
+  .tarea .t{font-size:18px;line-height:1.35;font-weight:400;}
+  .tarea .meta{font-size:10.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.07em;margin-top:8px;}
+
+  .hist{list-style:none;margin:0;padding:0;}
+  .hist li{display:grid;grid-template-columns:88px 1fr;gap:10px;padding:10px 0;border-bottom:1px solid var(--line);}
+  .hist li:last-child{border-bottom:0;}
+  .hist .f{font-size:11px;color:var(--muted);padding-top:3px;}
+  .hist .pill{margin:0 0 4px;}
+  .hist .w{font-size:13.5px;}
+  .hist .tk{font-size:12px;color:var(--muted);}
+  @media(max-width:430px){.hist li{grid-template-columns:1fr;gap:4px;}}
+
+  .overlay{position:fixed;inset:0;background:rgba(0,0,0,.55);display:none;align-items:flex-start;justify-content:center;padding:30px 16px;z-index:50;overflow-y:auto;}
+  .overlay.open{display:flex;}
+  .modal{background:var(--bg);border:1px solid var(--accent);max-width:460px;width:100%;padding:28px;}
+  .modal h3{font-size:22px;font-weight:400;margin:0 0 4px;}
+  .mlab{text-transform:uppercase;letter-spacing:.1em;font-size:10.5px;color:var(--muted);margin-bottom:16px;}
+  .paybox{background:var(--panel);border:1px solid var(--line);padding:14px;margin:12px 0;}
+  .paybox .num{font-size:22px;letter-spacing:.12em;font-weight:700;margin-top:4px;}
+  .steps{font-size:13px;margin:10px 0 0;padding-left:18px;line-height:1.7;}
+  .modal-actions{display:flex;gap:10px;justify-content:flex-end;margin-top:18px;flex-wrap:wrap;}
+  .montoview{font-size:28px;font-weight:300;}
+
+  .empty{color:var(--muted);font-size:11.5px;text-transform:uppercase;letter-spacing:.08em;padding:8px 0;}
+  .loading{font-size:11.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);padding:40px 0;text-align:center;}
+  .footnote{margin-top:32px;font-size:11.5px;color:var(--muted);border-top:1px solid var(--line);padding-top:14px;text-transform:uppercase;letter-spacing:.08em;}
+  .footnote a{color:var(--muted);}
+  .footnote a:hover{color:var(--accent);}
+  .toast{position:fixed;bottom:22px;left:50%;transform:translateX(-50%) translateY(20px);background:var(--accent);color:var(--bg);
+    font-size:11.5px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;
+    padding:10px 16px;opacity:0;transition:all .2s;pointer-events:none;z-index:99;}
+  .toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <!-- AUTH -->
+  <section id="viewAuth" class="auth-card hidden">
+    <div class="eyebrow">nicoleolavarria.com</div>
+    <h1>Portal de alumno</h1>
+    <div class="sub">tus clases · tu avance · tu horario</div>
+    <hr class="rule" />
+    <div class="authtabs">
+      <button class="atab active" id="tabLogin">Ingresar</button>
+      <button class="atab" id="tabReg">Crear cuenta</button>
+    </div>
+
+    <div id="formLogin">
+      <div class="field"><label for="l_email">Correo</label><input id="l_email" type="email" autocomplete="email" /></div>
+      <div class="field"><label for="l_pass">Contraseña</label><input id="l_pass" type="password" autocomplete="current-password" /></div>
+      <button class="btn" id="btnLogin">Ingresar</button>
+      <div class="err" id="loginErr"></div>
+      <p class="auth-hint">¿Olvidaste tu contraseña? <a href="https://wa.me/51955127656?text=Hola%20Nicole%2C%20olvid%C3%A9%20mi%20contrase%C3%B1a%20del%20portal" target="_blank" rel="noopener">Escríbele a Nicole por WhatsApp</a> y te la restablece.</p>
+    </div>
+
+    <div id="formReg" class="hidden">
+      <div class="field"><label for="r_nombre">Nombre y apellido</label><input id="r_nombre" type="text" autocomplete="name" /></div>
+      <div class="field"><label for="r_email">Correo</label><input id="r_email" type="email" autocomplete="email" /></div>
+      <div class="field"><label for="r_whats">WhatsApp (opcional)</label><input id="r_whats" type="tel" placeholder="955 127 656" /></div>
+      <div class="field"><label for="r_pass">Contraseña (mínimo 8 caracteres)</label><input id="r_pass" type="password" autocomplete="new-password" /></div>
+      <label class="check"><input type="checkbox" id="r_mkt" />
+        <span>Quiero recibir novedades y tips de Nicole Olavarría por correo. (Opcional)</span></label>
+      <button class="btn" id="btnReg">Crear mi cuenta</button>
+      <div class="err" id="regErr"></div>
+    </div>
+  </section>
+
+  <!-- DASHBOARD -->
+  <section id="viewDash" class="hidden">
+    <div class="topbar">
+      <div class="eyebrow">nicole olavarría — portal de alumno</div>
+      <button class="linkbtn" id="btnSalir">Salir</button>
+    </div>
+    <h1 id="dNombre"></h1>
+    <div class="sub" id="dPlan"></div>
+    <hr class="rule" />
+
+    <span class="pill" id="dEstado"></span>
+
+    <div class="banner hidden" id="banPendiente"></div>
+
+    <!-- Con paquete -->
+    <div id="zonaPaquete" class="hidden">
+      <div class="lab" style="margin-top:18px;">Clases restantes</div>
+      <div class="hero"><span class="big" id="dRestantes">0</span><span class="of" id="dDe"></span></div>
+      <div class="stubs" id="dStubs"></div>
+      <div class="stubcap">Cada ticket = una clase · los apagados ya se usaron</div>
+
+      <div class="card accentcard hidden" id="cardRenew">
+        <h3>renovación</h3>
+        <h2 id="rTitulo"></h2>
+        <p id="rTexto"></p>
+        <div class="ctas">
+          <button class="wa" id="rComprar">Renovar mi paquete</button>
+          <a class="wa ghost" id="rWa" target="_blank" rel="noopener">Hablar con Nicole</a>
+        </div>
+      </div>
+
+      <div class="card accentcard hidden" id="cardCalendly">
+        <h3>tus horarios</h3>
+        <h2>Reserva tus clases</h2>
+        <p>Elige tus horarios de preferencia según tu paquete. Si necesitas mover alguno, avísame con 24h y no consume clase.</p>
+        <a class="wa" id="btnCalendly" target="_blank" rel="noopener">Elegir mis horarios →</a>
+      </div>
+
+      <div class="card tarea hidden" id="cardTarea">
+        <h3>tu tarea de esta semana</h3>
+        <div class="t" id="tTexto"></div>
+        <div class="meta" id="tMeta"></div>
+      </div>
+
+      <div class="card">
+        <h3>tu plan</h3>
+        <div class="grid2">
+          <div class="kv"><div class="lab">Reprogramaciones disponibles</div><div class="v" id="dReprog"></div>
+            <div class="note">Avísame con 24h de anticipación y la reprogramación no consume clase.</div></div>
+          <div class="kv"><div class="lab">Horario fijo</div><div class="v" id="dHorario"></div></div>
+          <div class="kv"><div class="lab">Sesiones</div><div class="v" id="dPaquete"></div></div>
+          <div class="kv"><div class="lab">Pago</div><div class="v" id="dPago"></div>
+            <div class="note warn hidden" id="dPagoNote">Tienes un pago pendiente — coordinémoslo por WhatsApp.</div></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3>historial de clases</h3>
+        <ul class="hist" id="dHist"></ul>
+        <div class="empty hidden" id="dHistEmpty">Aún no hay clases registradas</div>
+      </div>
+    </div>
+
+    <!-- Sin paquete -->
+    <div id="zonaInactivo" class="hidden">
+      <div class="card accentcard" style="margin-top:18px;">
+        <h3>empieza aquí</h3>
+        <h2>Aún no tienes sesiones activas</h2>
+        <p>Elige tu modalidad de sesiones 1:1 (Descubrir mi voz, Cantores o Lenguaje musical) y empezamos esta semana.</p>
+        <div class="ctas">
+          <button class="wa" id="iComprar">Comprar sesiones</button>
+          <a class="wa ghost" id="iPrueba" target="_blank" rel="noopener">Agenda tu primera sesión</a>
+        </div>
+      </div>
+    </div>
+
+    <div class="footnote">
+      ¿Algo no cuadra? <a href="https://wa.me/51955127656" target="_blank" rel="noopener">Escríbele a Nicole</a> ·
+      NICOLEOLAVARRIA.COM
+    </div>
+  </section>
+
+  <div class="loading hidden" id="viewLoading">cargando tu avance…</div>
+</div>
+
+<!-- MODAL COMPRA -->
+<div class="overlay" id="ovCompra">
+  <div class="modal">
+    <div id="compraPaso1">
+      <h3>Comprar sesiones</h3>
+      <div class="mlab">pago por yape / plin</div>
+      <div class="field"><label for="c_curso">Modalidad</label>
+        <select id="c_curso">
+          <option>Descubrir mi voz</option>
+          <option>Cantores</option>
+          <option>Lenguaje musical</option>
+        </select>
+      </div>
+      <div class="field"><label for="c_paquete">Paquete</label><select id="c_paquete"></select></div>
+      <div class="lab">Total a pagar</div>
+      <div class="montoview" id="c_monto">S/ 0</div>
+
+      <div class="paybox" id="payboxOk">
+        <div class="lab">Yapea o Plinea a</div>
+        <div class="num" id="payNumero"></div>
+        <div class="note" id="payTitular"></div>
+        <ol class="steps">
+          <li>Paga el monto exacto desde tu app.</li>
+          <li>En el mensaje del pago pon tu correo.</li>
+          <li>Vuelve aquí y toca <strong>"Ya pagué"</strong>.</li>
+        </ol>
+      </div>
+      <div class="paybox hidden" id="payboxNo">
+        <div class="note">Para coordinar el pago, escríbele a Nicole directo por WhatsApp.</div>
+      </div>
+
+      <div class="field" style="margin-top:12px;"><label for="c_op">N° de operación (opcional, ayuda a confirmar más rápido)</label>
+        <input id="c_op" type="text" maxlength="40" /></div>
+      <div class="err" id="compraErr"></div>
+      <div class="modal-actions">
+        <button class="btn ghost" data-close style="width:auto;margin-top:0;">Cancelar</button>
+        <button class="btn" id="btnYaPague" style="width:auto;margin-top:0;">Ya pagué ✓</button>
+      </div>
+    </div>
+    <div id="compraPaso2" class="hidden">
+      <h3>Pago registrado</h3>
+      <div class="mlab">en verificación</div>
+      <p style="font-size:13.5px;">Nicole activará tu paquete apenas vea el pago — suele ser el mismo día. Te aparecerá aquí en tu dashboard.</p>
+      <p style="font-size:12.5px;color:var(--muted);">¿Quieres confirmar más rápido? Avísale por WhatsApp.</p>
+      <div class="modal-actions">
+        <a class="wa ghost" id="btnAvisar" target="_blank" rel="noopener">Avisar por WhatsApp</a>
+        <button class="btn" data-close style="width:auto;margin-top:0;">Listo</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+"use strict";
+var KEY = "nicole_sesion";
+var WA_PROFE = "51955127656";
+var ME = null;
+
+function $(id){ return document.getElementById(id); }
+function esc(s){ return String(s==null?"":s).replace(/[&<>"]/g,function(m){return{"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;"}[m];}); }
+function show(id){ $(id).classList.remove("hidden"); }
+function hide(id){ $(id).classList.add("hidden"); }
+function setView(v){ ["viewAuth","viewDash","viewLoading"].forEach(hide); show(v); }
+function getTok(){ try{ return localStorage.getItem(KEY); }catch(e){ return null; } }
+function setTok(t){ try{ if(t) localStorage.setItem(KEY,t); else localStorage.removeItem(KEY); }catch(e){} }
+var toastT;
+function toast(msg){ var t=$("toast"); t.textContent=msg; t.classList.add("show"); clearTimeout(toastT); toastT=setTimeout(function(){t.classList.remove("show");},2400); }
+
+function api(path,opts){
+  opts=opts||{}; opts.headers=opts.headers||{};
+  var tok=getTok(); if(tok) opts.headers["authorization"]="Bearer "+tok;
+  if(opts.body&&!opts.headers["content-type"]) opts.headers["content-type"]="application/json";
+  return fetch(path,opts).then(function(res){
+    return res.json().catch(function(){return{};}).then(function(data){
+      if(!res.ok){var e=new Error(data.error||"Error");e.status=res.status;e.data=data;throw e;}
+      return data;
+    });
+  });
+}
+
+function setAuthTab(which){
+  var login=which==="login";
+  $("tabLogin").classList.toggle("active",login); $("tabReg").classList.toggle("active",!login);
+  $("formLogin").classList.toggle("hidden",!login); $("formReg").classList.toggle("hidden",login);
+}
+$("tabLogin").addEventListener("click",function(){setAuthTab("login");});
+$("tabReg").addEventListener("click",function(){setAuthTab("reg");});
+
+$("btnLogin").addEventListener("click",function(){
+  $("loginErr").textContent="";
+  var email=$("l_email").value.trim(),pass=$("l_pass").value;
+  if(!email||!pass){$("loginErr").textContent="Completa correo y contraseña.";return;}
+  $("btnLogin").disabled=true;
+  api("/api/login",{method:"POST",body:JSON.stringify({email:email,password:pass})})
+    .then(function(d){setTok(d.token);cargarMe();})
+    .catch(function(e){$("loginErr").textContent=e.message||"No se pudo ingresar.";})
+    .finally(function(){$("btnLogin").disabled=false;});
+});
+$("l_pass").addEventListener("keydown",function(e){if(e.key==="Enter")$("btnLogin").click();});
+
+$("btnReg").addEventListener("click",function(){
+  $("regErr").textContent="";
+  var nombre=$("r_nombre").value.trim(),email=$("r_email").value.trim(),
+      pass=$("r_pass").value,whats=$("r_whats").value.trim(),mkt=$("r_mkt").checked;
+  if(!nombre||!email||!pass){$("regErr").textContent="Completa nombre, correo y contraseña.";return;}
+  if(pass.length<8){$("regErr").textContent="La contraseña necesita mínimo 8 caracteres.";return;}
+  $("btnReg").disabled=true;
+  api("/api/registro",{method:"POST",body:JSON.stringify({nombre:nombre,email:email,password:pass,whatsapp:whats,marketing:mkt})})
+    .then(function(d){setTok(d.token);cargarMe();})
+    .catch(function(e){
+      $("regErr").textContent=e.message||"No se pudo crear la cuenta.";
+      if(e.status===409){setAuthTab("login");$("l_email").value=email;$("loginErr").textContent=e.message;}
+    })
+    .finally(function(){$("btnReg").disabled=false;});
+});
+
+$("btnSalir").addEventListener("click",function(){
+  api("/api/logout",{method:"POST"}).catch(function(){});
+  setTok(null);ME=null;setAuthTab("login");setView("viewAuth");
+});
+
+function pillEstado(e){
+  if(e==="Activo")return"green";
+  if(e==="Renovar pronto")return"amber";
+  return"gray";
+}
+
+function render(d){
+  ME=d;
+  $("dNombre").textContent="Hola, "+(d.cuenta.nombre||"").split(" ")[0];
+  var est=$("dEstado");
+  est.textContent=d.estado; est.className="pill "+pillEstado(d.estado);
+
+  if(d.compraPendiente){
+    $("banPendiente").innerHTML='<strong>// pago en verificación</strong><br>Tu '+
+      esc(d.compraPendiente.paquete)+' de '+esc(d.compraPendiente.curso||"")+
+      ' (S/ '+(d.compraPendiente.monto||0)+', '+esc(d.compraPendiente.fecha||"")+
+      ') está siendo verificado. Nicole te lo activa cuando vea el pago.';
+    show("banPendiente");
+  } else {hide("banPendiente");}
+
+  if(d.alumno){
+    show("zonaPaquete");hide("zonaInactivo");
+    var a=d.alumno;
+    $("dPlan").textContent=(a.curso||"")+" · "+(a.paquete||"");
+    $("dRestantes").textContent=a.restantes;
+    $("dDe").textContent="de "+a.compradas;
+
+    var stubs="";
+    for(var i=0;i<a.compradas;i++) stubs+='<div class="stub'+(i<a.usadas?" used":"")+'"></div>';
+    $("dStubs").innerHTML=stubs;
+
+    if(d.estado==="Renovar pronto"&&!d.compraPendiente){
+      var ultima=a.restantes===1;
+      $("rTitulo").textContent=ultima?"Te queda 1 sesión":"Paquete completado";
+      $("rTexto").textContent=ultima
+        ?"Para no cortar el ritmo, deja tu renovación lista antes de la próxima sesión."
+        :"Tu paquete llegó a su fin — renueva hoy y seguimos exactamente donde quedamos.";
+      var msg="Hola Nicole, soy "+d.cuenta.nombre+" — quiero renovar mis sesiones de "+(a.curso||"canto")+". ¿Me cuentas las opciones?";
+      $("rWa").href="https://wa.me/"+WA_PROFE+"?text="+encodeURIComponent(msg);
+      show("cardRenew");
+    } else {hide("cardRenew");}
+
+    if(ME.config&&ME.config.calendly_url){
+      $("btnCalendly").href=ME.config.calendly_url;show("cardCalendly");
+    } else {hide("cardCalendly");}
+
+    var conTarea=(a.historial||[]).find(function(r){return r.tarea&&r.tarea.trim();});
+    if(conTarea){
+      $("tTexto").textContent=conTarea.tarea;
+      $("tMeta").textContent="De tu clase del "+(conTarea.fecha||"—");
+      show("cardTarea");
+    } else {hide("cardTarea");}
+
+    $("dReprog").innerHTML=a.reprogRestantes+' <small>de '+a.reprogPermitidas+'</small>';
+    $("dHorario").textContent=a.horario||"Por definir";
+    $("dPaquete").innerHTML=esc(a.paquete||"—")+(a.monto?' <small>· S/ '+a.monto+'</small>':'');
+    $("dPago").textContent=a.pago||"—";
+    if(a.pago&&a.pago!=="Pagado")show("dPagoNote"); else hide("dPagoNote");
+
+    var h=a.historial||[];
+    if(h.length===0){$("dHist").innerHTML="";show("dHistEmpty");}
+    else{
+      hide("dHistEmpty");
+      $("dHist").innerHTML=h.map(function(r){
+        var pc=r.estado==="Asistió"?"green":(r.estado==="Reprogramó"?"amber":"red");
+        return'<li><div class="f">'+esc(r.fecha||"")+'</div><div>'+
+          '<span class="pill '+pc+'">'+esc(r.estado||"")+'</span>'+
+          (r.trabajo?'<div class="w">'+esc(r.trabajo)+'</div>':'')+
+          (r.tarea?'<div class="tk">Tarea: '+esc(r.tarea)+'</div>':'')+
+          '</div></li>';
+      }).join("");
+    }
+  } else {
+    hide("zonaPaquete");show("zonaInactivo");
+    $("dPlan").textContent="Sin sesiones activas";
+    var msgP="Hola Nicole, quiero agendar mi primera sesión. Soy "+d.cuenta.nombre+", acabo de registrarme en el portal.";
+    $("iPrueba").href="https://wa.me/"+WA_PROFE+"?text="+encodeURIComponent(msgP);
+    if(d.compraPendiente){$("iComprar").disabled=true;$("iComprar").style.opacity=.6;}
+    else{$("iComprar").disabled=false;$("iComprar").style.opacity=1;}
+  }
+  setView("viewDash");
+}
+
+function cargarMe(){
+  setView("viewLoading");
+  api("/api/me").then(render).catch(function(e){
+    setTok(null);setAuthTab("login");setView("viewAuth");
+    if(e.status!==401)$("loginErr").textContent="No se pudo conectar. Intenta de nuevo.";
+  });
+}
+
+function abrirCompra(){
+  if(!ME)return;
+  if(ME.compraPendiente){toast("Ya tienes un pago en verificación");return;}
+  var orden=["Paquete 4","Paquete 8","Paquete 12"];
+  var labels={"Paquete 4":"Paquete 4 — 4 sesiones","Paquete 8":"Paquete 8 — 8 sesiones","Paquete 12":"Paquete 12 — 12 sesiones"};
+  $("c_paquete").innerHTML=orden.filter(function(p){return ME.precios&&(p in ME.precios);})
+    .map(function(p){return'<option value="'+p+'">'+labels[p]+' · S/ '+ME.precios[p]+'</option>';}).join("");
+  if(ME.alumno&&ME.alumno.curso)$("c_curso").value=ME.alumno.curso;
+  actualizaMonto();
+
+  if(ME.config&&ME.config.pago_numero){
+    $("payNumero").textContent=ME.config.pago_numero;
+    $("payTitular").textContent=ME.config.pago_titular?"A nombre de: "+ME.config.pago_titular:"";
+    show("payboxOk");hide("payboxNo");
+  } else {hide("payboxOk");show("payboxNo");}
+  $("c_op").value="";$("compraErr").textContent="";
+  show("compraPaso1");hide("compraPaso2");
+  $("ovCompra").classList.add("open");
+}
+function actualizaMonto(){
+  var p=$("c_paquete").value;
+  var m=(ME&&ME.precios&&ME.precios[p])||0;
+  $("c_monto").textContent="S/ "+m;
+}
+$("c_paquete").addEventListener("change",actualizaMonto);
+$("iComprar").addEventListener("click",abrirCompra);
+$("rComprar").addEventListener("click",abrirCompra);
+
+$("btnYaPague").addEventListener("click",function(){
+  $("compraErr").textContent="";
+  var paquete=$("c_paquete").value,curso=$("c_curso").value,op=$("c_op").value.trim();
+  if(!paquete){$("compraErr").textContent="Elige un paquete.";return;}
+  $("btnYaPague").disabled=true;
+  api("/api/comprar",{method:"POST",body:JSON.stringify({paquete:paquete,curso:curso,op_numero:op})})
+    .then(function(){
+      var m=(ME&&ME.precios&&ME.precios[paquete])||0;
+      var aviso="Hola Nicole, acabo de yapear S/ "+m+" por el "+paquete+" ("+curso+"). Soy "+ME.cuenta.nombre+" — "+ME.cuenta.email;
+      $("btnAvisar").href="https://wa.me/"+WA_PROFE+"?text="+encodeURIComponent(aviso);
+      hide("compraPaso1");show("compraPaso2");
+      api("/api/me").then(function(d){ME=d;render(d);}).catch(function(){});
+    })
+    .catch(function(e){$("compraErr").textContent=e.message||"No se pudo registrar.";})
+    .finally(function(){$("btnYaPague").disabled=false;});
+});
+
+document.querySelectorAll("[data-close]").forEach(function(b){
+  b.addEventListener("click",function(){$("ovCompra").classList.remove("open");});
+});
+$("ovCompra").addEventListener("click",function(e){if(e.target===$("ovCompra"))$("ovCompra").classList.remove("open");});
+
+(function init(){
+  if(getTok()){cargarMe();}
+  else{setAuthTab("login");setView("viewAuth");}
+})();
+</script>
+</body>
+</html>

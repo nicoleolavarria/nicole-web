@@ -183,7 +183,7 @@ p { margin: 0 0 18px; }
 
 .home-nav-overlay a {
   font-family: var(--mono);
-  font-size: 13px;
+  font-size: 13.7px;
   font-weight: 400;
   color: var(--fg);
   text-decoration: underline;
@@ -200,6 +200,7 @@ p { margin: 0 0 18px; }
   align-items: center;
   justify-content: center;
   margin-top: 20px;
+  margin-bottom: 52px;
 }
 
 .home-icons a {
@@ -307,17 +308,9 @@ footer {
   border-top: 1px solid var(--line);
   padding: 28px 40px;
   display: flex;
-  justify-content: space-between;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 12px;
-}
-
-.footer-left {
-  display: flex;
+  flex-direction: row;
   align-items: center;
   gap: 20px;
-  flex-wrap: wrap;
 }
 
 .footer-thanks {
@@ -339,6 +332,7 @@ footer {
   color: var(--muted);
   margin: 0;
   white-space: nowrap;
+  margin-left: auto;
 }
 
 /* ---------- RESPONSIVE ---------- */
@@ -379,5 +373,9 @@ footer {
   .sesiones-hero { grid-template-columns: 1fr; gap: 40px; }
   .contacto-grid { grid-template-columns: 1fr; gap: 40px; }
 
-  footer { padding: 24px; flex-direction: column; align-items: flex-start; gap: 14px; }
+  footer { padding: 20px 24px; flex-wrap: wrap; gap: 8px; }
+  .footer-thanks { width: 100%; }
+  .footer-copy { margin-left: auto; }
+  .home-nav-overlay a { font-size: 13.1px; }
+  .home-icons { margin-bottom: 32px; }
 }

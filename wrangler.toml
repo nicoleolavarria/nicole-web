@@ -1,8 +1,9 @@
 name = "nicole-crm-worker"
 main = "worker/index.js"
 compatibility_date = "2024-01-01"
+account_id = "75cb4a4b2c79cc325e43d7ce7192fb28"
 
 [[d1_databases]]
 binding = "DB"
 database_name = "nicole-crm"
-database_id = "PENDIENTE"   # Reemplazar tras: wrangler d1 create nicole-crm
+database_id = "82c357c2-bd64-4046-b75f-5f2a25184073"

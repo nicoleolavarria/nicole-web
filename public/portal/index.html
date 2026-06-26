@@ -312,6 +312,7 @@
 "use strict";
 var KEY = "nicole_sesion";
 var WA_PROFE = "51955127656";
+var API_BASE = "https://nicole-crm-worker.nicoleolavarria.workers.dev";
 var ME = null;
 
 function $(id){ return document.getElementById(id); }
@@ -328,7 +329,7 @@ function api(path,opts){
   opts=opts||{}; opts.headers=opts.headers||{};
   var tok=getTok(); if(tok) opts.headers["authorization"]="Bearer "+tok;
   if(opts.body&&!opts.headers["content-type"]) opts.headers["content-type"]="application/json";
-  return fetch(path,opts).then(function(res){
+  return fetch(API_BASE+path,opts).then(function(res){
     return res.json().catch(function(){return{};}).then(function(data){
       if(!res.ok){var e=new Error(data.error||"Error");e.status=res.status;e.data=data;throw e;}
       return data;

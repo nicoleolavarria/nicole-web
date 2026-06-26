@@ -316,6 +316,7 @@ var PAQUETES={
 };
 var PRECIOS_DEFAULT={"Paquete 4":250,"Paquete 8":450,"Paquete 12":600,"Clase suelta":70};
 var TOKEN_KEY="nicole_admin_token";
+var API_BASE="https://nicole-crm-worker.nicoleolavarria.workers.dev";
 var db={alumnos:[],registro:[],precios:Object.assign({},PRECIOS_DEFAULT),cuentas:[],compras:[],config:{}};
 var token=null,cuentaModo=null;
 
@@ -328,7 +329,7 @@ function toast(msg){var t=el("toast");t.textContent=msg;t.classList.add("show");
 
 function hdr(){return{"authorization":"Bearer "+token,"content-type":"application/json"};}
 function apiGet(){
-  return fetch("/api/admin/data",{headers:hdr()}).then(function(r){
+  return fetch(API_BASE+"/api/admin/data",{headers:hdr()}).then(function(r){
     if(r.status===401)throw{auth:true};
     if(!r.ok)throw new Error("HTTP "+r.status);
     return r.json();
@@ -336,7 +337,7 @@ function apiGet(){
 }
 function apiPut(){
   setSync("Guardando…","");
-  return fetch("/api/admin/data",{method:"PUT",headers:hdr(),
+  return fetch(API_BASE+"/api/admin/data",{method:"PUT",headers:hdr(),
     body:JSON.stringify({alumnos:db.alumnos,registro:db.registro,precios:db.precios})})
     .then(function(r){
       if(r.status===401)throw{auth:true};
@@ -349,7 +350,7 @@ function apiPut(){
     });
 }
 function apiPost(path,body){
-  return fetch(path,{method:"POST",headers:hdr(),body:JSON.stringify(body)}).then(function(r){
+  return fetch(API_BASE+path,{method:"POST",headers:hdr(),body:JSON.stringify(body)}).then(function(r){
     return r.json().catch(function(){return{};}).then(function(d){
       if(r.status===401)throw{auth:true};
       if(!r.ok){var e=new Error(d.error||("HTTP "+r.status));throw e;}

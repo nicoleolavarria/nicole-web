@@ -20,12 +20,9 @@ binding = "DB"
 database_name = "nicole-crm"
 database_id = "82c357c2-bd64-4046-b75f-5f2a25184073"
 
-# R2 PENDIENTE: la cuenta de Nicole aún no tiene R2 activado (dash → R2 → Activar).
-# Al activarlo: crear el bucket nicole-recursos y descomentar este bloque + redeploy.
-# Mientras tanto la subida de archivos (capturas, ejercicios, foto) degrada con gracia.
-# [[r2_buckets]]
-# binding = "RECURSOS_R2"
-# bucket_name = "nicole-recursos"
+[[r2_buckets]]
+binding = "RECURSOS_R2"
+bucket_name = "nicole-recursos"
 
 # Workers AI (Llama) para el chatbot/asistente. Gratis a este volumen.
 [ai]

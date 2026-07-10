@@ -1,9 +1,36 @@
+# Panel de Nicole Olavarría — rebase al sistema de MVT (white-label), 10-jul-2026.
+# Worker + D1 + R2 en la cuenta de Cloudflare de Nicole. Paneles servidos como assets:
+#   Portal del alumno: /alumnos/   ·   CRM del profesor: /admin/crm/
 name = "nicole-crm-worker"
 main = "worker/index.js"
-compatibility_date = "2024-01-01"
+compatibility_date = "2026-05-06"
+compatibility_flags = ["nodejs_compat"]
 account_id = "75cb4a4b2c79cc325e43d7ce7192fb28"
+
+[vars]
+VAPID_PUBLIC_KEY = ""
+
+[assets]
+directory = "./panel"
+binding = "ASSETS"
+run_worker_first = ["/api/*"]
 
 [[d1_databases]]
 binding = "DB"
 database_name = "nicole-crm"
 database_id = "82c357c2-bd64-4046-b75f-5f2a25184073"
+
+# R2 PENDIENTE: la cuenta de Nicole aún no tiene R2 activado (dash → R2 → Activar).
+# Al activarlo: crear el bucket nicole-recursos y descomentar este bloque + redeploy.
+# Mientras tanto la subida de archivos (capturas, ejercicios, foto) degrada con gracia.
+# [[r2_buckets]]
+# binding = "RECURSOS_R2"
+# bucket_name = "nicole-recursos"
+
+# Workers AI (Llama) para el chatbot/asistente. Gratis a este volumen.
+[ai]
+binding = "AI"
+
+[triggers]
+# Cada hora: recordatorios de clase (T-24h/T-2h); renovaciones y demás filtran por hora adentro.
+crons = ["0 * * * *"]

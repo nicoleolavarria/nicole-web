@@ -1,44 +1,39 @@
--- Nicole Olavarría — CRM portal schema
--- D1 (SQLite). Correr una sola vez: wrangler d1 execute nicole-crm --file=db/schema.sql
+-- Esquema D1 · CRM ProfesorMVT — destino en el repo: db/schema.sql
+-- Aplicar con: npx wrangler d1 execute profesormvt-crm --remote --file=db/schema.sql
 
-CREATE TABLE IF NOT EXISTS cuentas (
-  id         TEXT PRIMARY KEY,
-  nombre     TEXT NOT NULL,
-  email      TEXT UNIQUE NOT NULL,
-  whatsapp   TEXT,
-  password   TEXT NOT NULL,   -- PBKDF2-SHA256, hex
-  salt       TEXT NOT NULL,
-  alumno_id  TEXT,            -- FK a alumnos.id (guardados en KV/D1 por admin)
-  marketing  INTEGER DEFAULT 0,
-  creada     TEXT DEFAULT (datetime('now'))
+CREATE TABLE IF NOT EXISTS alumnos (
+  id       TEXT PRIMARY KEY,
+  codigo   TEXT NOT NULL UNIQUE,
+  nombre   TEXT NOT NULL,
+  whatsapp TEXT DEFAULT '',
+  curso    TEXT DEFAULT '',
+  paquete  TEXT DEFAULT '',
+  fecha    TEXT DEFAULT '',
+  pago     TEXT DEFAULT '',
+  horario  TEXT DEFAULT '',
+  notas    TEXT DEFAULT ''
 );
 
-CREATE TABLE IF NOT EXISTS sesiones (
-  token      TEXT PRIMARY KEY,
-  cuenta_id  TEXT NOT NULL,
-  creada     TEXT DEFAULT (datetime('now')),
-  FOREIGN KEY (cuenta_id) REFERENCES cuentas(id) ON DELETE CASCADE
+CREATE TABLE IF NOT EXISTS registro (
+  id        TEXT PRIMARY KEY,
+  fecha     TEXT DEFAULT '',
+  alumno_id TEXT NOT NULL,
+  curso     TEXT DEFAULT '',
+  estado    TEXT DEFAULT '',
+  trabajo   TEXT DEFAULT '',
+  tarea     TEXT DEFAULT ''
 );
 
-CREATE TABLE IF NOT EXISTS compras (
-  id         TEXT PRIMARY KEY,
-  cuenta_id  TEXT NOT NULL,
-  curso      TEXT NOT NULL,
-  paquete    TEXT NOT NULL,
-  monto      REAL NOT NULL,
-  op_numero  TEXT,
-  estado     TEXT DEFAULT 'pendiente',  -- pendiente | confirmada | rechazada
-  fecha      TEXT DEFAULT (datetime('now')),
-  FOREIGN KEY (cuenta_id) REFERENCES cuentas(id) ON DELETE CASCADE
+CREATE INDEX IF NOT EXISTS idx_registro_alumno ON registro (alumno_id);
+CREATE INDEX IF NOT EXISTS idx_alumnos_codigo  ON alumnos (codigo);
+
+CREATE TABLE IF NOT EXISTS precios (
+  paquete TEXT PRIMARY KEY,
+  precio  REAL NOT NULL DEFAULT 0
 );
 
-CREATE TABLE IF NOT EXISTS config (
-  key        TEXT PRIMARY KEY,
-  value      TEXT NOT NULL
-);
-
--- Datos iniciales de config
-INSERT OR IGNORE INTO config (key, value) VALUES
-  ('alumnos',   '[]'),
-  ('registro',  '[]'),
-  ('precios',   '{"Paquete 4":250,"Paquete 8":450,"Paquete 12":600,"Clase suelta":70}');
+INSERT OR IGNORE INTO precios (paquete, precio) VALUES
+  ('Paquete 4', 250),
+  ('Paquete 8', 450),
+  ('Paquete 12', 600),
+  ('Clase suelta', 70);

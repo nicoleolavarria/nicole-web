@@ -1576,25 +1576,37 @@ function onboardingSystemAlumno(){
 }
 
 async function llamarClaudeOnboarding(env, system, mensajes){
-  if (!env.ANTHROPIC_API_KEY) return null;
-  const resp = await fetch("https://api.anthropic.com/v1/messages", {
-    method: "POST",
-    headers: {
-      "x-api-key": env.ANTHROPIC_API_KEY,
-      "anthropic-version": "2023-06-01",
-      "content-type": "application/json"
-    },
-    body: JSON.stringify({
-      model: ONBOARDING_MODELO,
-      max_tokens: 400,
-      system: system,
-      messages: mensajes
-    })
-  });
-  if (!resp.ok) return null;
-  const data = await resp.json().catch(() => null);
-  const bloque = data && Array.isArray(data.content) ? data.content.find(c => c.type === "text") : null;
-  return bloque ? sanearRespuestaIA(String(bloque.text || "").trim()) : null;
+  if (env.ANTHROPIC_API_KEY){
+    try {
+      const resp = await fetch("https://api.anthropic.com/v1/messages", {
+        method: "POST",
+        headers: {
+          "x-api-key": env.ANTHROPIC_API_KEY,
+          "anthropic-version": "2023-06-01",
+          "content-type": "application/json"
+        },
+        body: JSON.stringify({ model: ONBOARDING_MODELO, max_tokens: 400, system: system, messages: mensajes })
+      });
+      if (resp.ok){
+        const data = await resp.json().catch(() => null);
+        const bloque = data && Array.isArray(data.content) ? data.content.find(c => c.type === "text") : null;
+        const t = bloque ? String(bloque.text || "").trim() : "";
+        if (t) return sanearRespuestaIA(t);
+      }
+    } catch (e) { /* cae al binding AI */ }
+  }
+  // Fallback gratis (portado de Batuta): Workers AI (Llama), para instancias sin API key de Claude.
+  if (env.AI){
+    try {
+      const r = await env.AI.run("@cf/meta/llama-3.3-70b-instruct-fp8-fast", {
+        messages: [{ role: "system", content: system }].concat(mensajes),
+        max_tokens: 400
+      });
+      const t = (r && (r.response || "")).trim();
+      if (t) return sanearRespuestaIA(t);
+    } catch (e) { /* sin IA disponible */ }
+  }
+  return null;
 }
 /* clave = "admin:andres" o "alumno:<cuenta_id>". Incrementa y devuelve {usados, restantes}.
    Si ya estaba en el tope, NO vuelve a incrementar (para no seguir descontando de un contador ya frenado). */
@@ -2669,6 +2681,7 @@ export default {
             bcp_cuenta: config.bcp_cuenta, bcp_cci: config.bcp_cci,
             scotia_cuenta: config.scotia_cuenta, scotia_cci: config.scotia_cci,
             crypto_moneda: config.crypto_moneda, crypto_red: config.crypto_red, crypto_wallet: config.crypto_wallet,
+            mp_on: !!env.MP_ACCESS_TOKEN,
             vapid_public: env.VAPID_PUBLIC_KEY || ""
           }
         });

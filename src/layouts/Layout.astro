@@ -1,18 +1,35 @@
 ---
+/* Cascarón de nicoleolavarria.com.
+
+   El contenido y el diseño ya NO viven aquí: los arma src/lib/web-render.mjs a
+   partir de lo que Nicole publica desde su CRM ("Mi web"). Este layout hace tres
+   cosas: renderiza ese HTML en el build (SEO), aplica su estilo, y deja un
+   script que re-renderiza al vuelo si ella publicó algo después del último
+   deploy de Vercel — así ve su cambio al instante, sin esperar un rebuild. */
+import { obtenerWeb, ORIGEN } from '../lib/web-data.mjs';
+import { htmlPagina, headerHtml, pieHtml, anuncioHtml, estiloCss, fuentesHref, mezclar } from '../lib/web-render.mjs';
+
 interface Props {
+  pagina: 'inicio' | 'acerca' | 'sesiones' | 'contacto';
   title: string;
   description?: string;
   image?: string;
-  noHeader?: boolean;
 }
 const {
+  pagina,
   title,
   description = 'Clases de canto, técnica vocal y lenguaje musical en Lima. Sesiones 1:1 con Nicole Olavarría, soprano y artista escénica.',
   image,
-  noHeader = false,
 } = Astro.props;
+
+const { web, version } = await obtenerWeb();
+const data = mezclar(web);
+const conHeader = pagina !== 'inicio';
+
 const ogImage = image ?? 'https://nicoleolavarria.com/images/sesiones.jpg';
 const canonicalURL = new URL(Astro.url.pathname, Astro.site);
+const cssExtra = estiloCss(data);
+const hrefFuentes = fuentesHref(data);
 ---
 <!doctype html>
 <html lang="es">
@@ -30,90 +47,97 @@ const canonicalURL = new URL(Astro.url.pathname, Astro.site);
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=DM+Mono:ital,wght@0,300;0,400;0,500;1,300;1,400&display=swap" rel="stylesheet" />
+  {hrefFuentes && <link href={hrefFuentes} rel="stylesheet" id="fuentesNicole" />}
   <link rel="stylesheet" href="/styles/global.css" />
+  {cssExtra && <style id="estiloNicole" set:html={cssExtra} />}
 </head>
-<body>
-  {!noHeader && (
-    <header>
-      <a href="/" class="site-name">Nicole Olavarría</a>
-      <nav>
-        <a href="/">inicio</a>
-        <a href="/acerca-de">acerca de</a>
-        <a href="/sesiones">sesiones 1:1</a>
-        <a href="/contacto">contacto</a>
-        <a href="/portal/index.html" class="nav-portal">portal alumno</a>
-      </nav>
-      <button class="menu-toggle" aria-label="menú" aria-expanded="false">
-        <span></span><span></span>
-      </button>
-    </header>
-  )}
+<body data-pagina={pagina} data-webver={version}>
+  <Fragment set:html={anuncioHtml(data)} />
+  {conHeader && <Fragment set:html={headerHtml(data)} />}
 
   <main>
-    <slot />
+    <Fragment set:html={htmlPagina(pagina, data)} />
   </main>
 
-  <footer>
-    <span class="footer-thanks">Gracias por visitar nicoleolavarria.com</span>
-    <a href="/blog" class="footer-blog">blog →</a>
-    <p class="footer-copy">© 2025 Nicole Olavarría</p>
-  </footer>
+  <Fragment set:html={pieHtml(data)} />
 
-  <script is:inline>
-    /* Apariencia editable desde el panel de Nicole (CRM → Ajustes → "Tu página web y tu marca").
-       Lee /api/publico del worker (CORS abierto ahí) y aplica colores, tipografía y textos.
-       Si el worker no responde o no hay nada configurado, la web queda EXACTAMENTE como el diseño
-       original — este script jamás debe romper la página. */
+  <script is:inline define:vars={{ ORIGEN }}>
+    /* Menú móvil. Se re-engancha después de cada render. */
+    window.engancharMenu = function () {
+      var toggle = document.querySelector('.menu-toggle');
+      var nav = document.querySelector('header nav');
+      if (!toggle || !nav || toggle.dataset.on) return;
+      toggle.dataset.on = '1';
+      toggle.addEventListener('click', function () {
+        var open = toggle.getAttribute('aria-expanded') === 'true';
+        toggle.setAttribute('aria-expanded', String(!open));
+        nav.classList.toggle('open', !open);
+      });
+      nav.querySelectorAll('a').forEach(function (a) {
+        a.addEventListener('click', function () {
+          nav.classList.remove('open');
+          toggle.setAttribute('aria-expanded', 'false');
+        });
+      });
+    };
+    window.engancharMenu();
+
+    /* Puesta al día: si Nicole publicó después del último build de Vercel, el
+       HTML estático está viejo. Se re-renderiza en el navegador con el MISMO
+       módulo que usó el build, así lo que ve es exactamente lo que publicó.
+       Cualquier falla se traga: la página ya está pintada y no debe romperse. */
     (function () {
-      fetch('https://nicole-crm-worker.nicoleolavarria.workers.dev/api/publico')
+      var body = document.body;
+      fetch(ORIGEN + '/api/publico')
         .then(function (r) { return r.json(); })
         .then(function (d) {
-          var a = d && d.apariencia; if (!a) return;
-          var rs = document.documentElement.style;
-          var hex = /^#[0-9a-fA-F]{6}$/;
-          if (a.bg_web && hex.test(a.bg_web)) rs.setProperty('--bg', a.bg_web);
-          if (a.acento && hex.test(a.acento)) rs.setProperty('--accent', a.acento);
-          var FL = { 'Bebas Neue': 'family=Bebas+Neue', 'Bricolage Grotesque': 'family=Bricolage+Grotesque:wght@500;700',
-                     'Playfair Display': 'family=Playfair+Display:wght@500;700', 'Space Grotesk': 'family=Space+Grotesk:wght@500;700',
-                     'Space Mono': 'family=Space+Mono:wght@400;700' };
-          if (a.font && FL[a.font]) {
-            var l = document.createElement('link'); l.rel = 'stylesheet';
-            l.href = 'https://fonts.googleapis.com/css2?' + FL[a.font] + '&display=swap';
-            document.head.appendChild(l);
-            var st = document.createElement('style');
-            st.textContent = "h1,h2,h3,.site-name{font-family:'" + a.font + "', var(--mono);}";
-            document.head.appendChild(st);
-          }
-          var t = a.textos || {};
-          var put = function (sel, val) { if (!val) return; document.querySelectorAll(sel).forEach(function (n) { n.textContent = val; }); };
-          put('[data-edit="hero-titulo"]', t.hero_titulo);
-          put('[data-edit="hero-sub"]', t.hero_sub);
-          put('[data-edit="acerca-intro"]', t.acerca_intro);
-          if (t.anuncio) {
-            var b = document.createElement('div');
-            b.style.cssText = 'background:var(--accent);color:var(--bg);font-family:var(--mono);font-size:12px;letter-spacing:.06em;text-align:center;padding:9px 14px;';
-            b.textContent = t.anuncio;
-            document.body.insertBefore(b, document.body.firstChild);
-          }
+          if (!d || !d.web) return;
+          if ((d.web_version || '') === (body.dataset.webver || '')) return; // el build ya está al día
+          var s = document.createElement('script');
+          s.src = '/js/web-render.js';
+          s.onload = function () {
+            try { repintar(d.web); } catch (e) {}
+          };
+          document.head.appendChild(s);
         })
         .catch(function () {});
+
+      function repintar(web) {
+        var W = window.WebRender;
+        if (!W) return;
+        var data = W.mezclar(web);
+        var pagina = document.body.dataset.pagina || 'inicio';
+
+        var href = W.fuentesHref(data);
+        var lf = document.getElementById('fuentesNicole');
+        if (href && !lf) {
+          lf = document.createElement('link'); lf.rel = 'stylesheet'; lf.id = 'fuentesNicole';
+          document.head.appendChild(lf);
+        }
+        if (lf && href) lf.href = href;
+
+        var st = document.getElementById('estiloNicole');
+        if (!st) { st = document.createElement('style'); st.id = 'estiloNicole'; document.head.appendChild(st); }
+        st.textContent = W.estiloCss(data);
+
+        var an = document.querySelector('.anuncio');
+        var anHtml = W.anuncioHtml(data);
+        if (an) an.remove();
+        if (anHtml) document.body.insertAdjacentHTML('afterbegin', anHtml);
+
+        var head = document.querySelector('header');
+        if (pagina !== 'inicio') {
+          var nuevo = W.headerHtml(data);
+          if (head) head.outerHTML = nuevo;
+          else document.querySelector('main').insertAdjacentHTML('beforebegin', nuevo);
+          window.engancharMenu();
+        } else if (head) { head.remove(); }
+
+        document.querySelector('main').innerHTML = W.htmlPagina(pagina, data);
+        var pie = document.querySelector('footer');
+        if (pie) pie.outerHTML = W.pieHtml(data);
+      }
     })();
   </script>
-
-  {!noHeader && (
-    <script>
-      const toggle = document.querySelector('.menu-toggle');
-      const nav = document.querySelector('header nav');
-      toggle?.addEventListener('click', () => {
-        const open = toggle.getAttribute('aria-expanded') === 'true';
-        toggle.setAttribute('aria-expanded', String(!open));
-        nav?.classList.toggle('open', !open);
-      });
-      document.querySelectorAll('header nav a').forEach(a => a.addEventListener('click', () => {
-        nav?.classList.remove('open');
-        toggle?.setAttribute('aria-expanded', 'false');
-      }));
-    </script>
-  )}
 </body>
 </html>

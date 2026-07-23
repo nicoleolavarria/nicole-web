@@ -117,6 +117,60 @@
   .dcell.on{background:var(--accent);color:var(--bg);border-color:var(--accent);}
   .footnote{margin-top:36px;font-size:12.5px;color:var(--muted);border-top:1px solid var(--line);padding-top:14px;line-height:1.6;}
   .footnote code{font-family:var(--mono);color:var(--cream);font-size:12px;}
+  /* ---------- MI WEB (editor visual) ---------- */
+  .web-top{display:flex;flex-wrap:wrap;gap:12px;align-items:center;justify-content:space-between;margin-bottom:14px;position:sticky;top:0;background:var(--bg);z-index:12;padding:6px 0;}
+  .web-pages{display:flex;gap:6px;flex-wrap:wrap;}
+  .webpg{font-family:var(--mono);font-size:12px;letter-spacing:.06em;text-transform:uppercase;padding:8px 13px;border:1px solid var(--line);background:transparent;color:var(--muted);border-radius:2px;cursor:pointer;}
+  .webpg:hover{border-color:var(--muted);color:var(--cream);}
+  .webpg.active{background:var(--accent);border-color:var(--accent);color:var(--bg);font-weight:700;}
+  .web-acts{display:flex;gap:8px;align-items:center;flex-wrap:wrap;}
+  .web-estado{font-family:var(--mono);font-size:11px;color:var(--muted);}
+  .web-estado.sin{color:var(--amber);}
+  .web-editor{display:grid;grid-template-columns:minmax(300px,380px) 1fr;gap:18px;align-items:start;}
+  .web-side{max-height:calc(100vh - 190px);overflow-y:auto;padding-right:6px;}
+  .web-prev{position:sticky;top:58px;}
+  .web-prevbar{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:8px;}
+  .web-prevwrap{border:1px solid var(--line);border-radius:4px;background:#fff;overflow:hidden;}
+  .web-prevwrap.movil{max-width:390px;margin:0 auto;}
+  #webPrev{width:100%;height:calc(100vh - 235px);min-height:460px;border:0;display:block;background:#fff;}
+  .wgrp{border:1px solid var(--line);border-radius:4px;background:var(--panel);margin-bottom:10px;overflow:hidden;}
+  .wgrp>summary{list-style:none;cursor:pointer;padding:11px 13px;font-family:var(--mono);font-size:11.5px;text-transform:uppercase;letter-spacing:.09em;font-weight:700;color:var(--accent);display:flex;justify-content:space-between;align-items:center;gap:8px;}
+  .wgrp>summary::-webkit-details-marker{display:none;}
+  .wgrp>summary::after{content:"+";font-size:15px;color:var(--muted);}
+  .wgrp[open]>summary::after{content:"–";}
+  .wgrp>summary:hover{background:var(--panel2);}
+  .wbody{padding:4px 13px 14px;border-top:1px solid var(--line);}
+  .wf{margin-bottom:12px;}
+  .wf>label{display:block;font-family:var(--mono);font-size:10.5px;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin-bottom:5px;}
+  .wf input[type=text],.wf textarea,.wf select{width:100%;background:var(--bg);border:1px solid var(--line);color:var(--cream);font-family:var(--body);font-size:13.5px;padding:8px 10px;border-radius:2px;}
+  .wf textarea{resize:vertical;min-height:70px;line-height:1.5;}
+  .wf input:focus,.wf textarea:focus,.wf select:focus{outline:2px solid var(--accent);outline-offset:1px;}
+  .wf.mark{animation:wflash 1.2s ease;}
+  @keyframes wflash{0%{box-shadow:0 0 0 3px rgba(10,10,10,.35);}100%{box-shadow:0 0 0 0 rgba(10,10,10,0);}}
+  .wrange{display:flex;align-items:center;gap:10px;}
+  .wrange input[type=range]{flex:1;accent-color:var(--accent);}
+  .wrange .val{font-family:var(--mono);font-size:11.5px;color:var(--muted);min-width:44px;text-align:right;}
+  .wcolor{display:flex;align-items:center;gap:8px;}
+  .wcolor input[type=color]{width:52px;height:32px;padding:2px;border:1px solid var(--line);background:var(--bg);cursor:pointer;border-radius:2px;}
+  .witem{border:1px dashed var(--line);border-radius:3px;padding:10px;margin-bottom:10px;background:var(--bg);}
+  .witem-h{display:flex;justify-content:space-between;align-items:center;gap:6px;margin-bottom:7px;}
+  .witem-h b{font-family:var(--mono);font-size:10.5px;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);font-weight:700;}
+  .wmini{background:transparent;border:1px solid var(--line);color:var(--muted);font-family:var(--mono);font-size:11px;line-height:1;padding:5px 7px;border-radius:2px;cursor:pointer;}
+  .wmini:hover{border-color:var(--accent);color:var(--accent);}
+  .wmini.del:hover{border-color:var(--red);color:var(--red);}
+  .wfoto{display:flex;gap:10px;align-items:flex-start;}
+  .wfoto-box{position:relative;width:96px;height:120px;flex:0 0 96px;border:1px solid var(--line);overflow:hidden;background:var(--panel2);cursor:grab;border-radius:2px;}
+  .wfoto-box img{width:100%;height:100%;object-fit:cover;display:block;pointer-events:none;}
+  .wfoto-box:active{cursor:grabbing;}
+  .wfoto-punto{position:absolute;width:16px;height:16px;border:2px solid #fff;border-radius:50%;box-shadow:0 0 0 1px rgba(0,0,0,.6);transform:translate(-50%,-50%);pointer-events:none;}
+  .wfoto-acts{flex:1;display:flex;flex-direction:column;gap:6px;}
+  .web-danger{margin:18px 0 8px;padding-top:14px;border-top:1px solid var(--line);}
+  @media (max-width:1000px){
+    .web-editor{grid-template-columns:1fr;}
+    .web-side{max-height:none;overflow:visible;}
+    .web-prev{position:static;}
+    #webPrev{height:70vh;}
+  }
   .toast{position:fixed;bottom:22px;left:50%;transform:translateX(-50%) translateY(20px);background:var(--accent);color:var(--bg);font-family:var(--mono);font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;padding:11px 18px;border-radius:3px;opacity:0;transition:all .2s;pointer-events:none;z-index:99;}
   .toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
   @media (max-width:560px){ .frow{grid-template-columns:1fr;} .card .num{font-size:28px;} }
@@ -284,6 +338,7 @@
       <div class="navgroup">
         <button class="navgroup-h" type="button"><span class="ng-ico"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></span><span class="ng-tx">Configuración</span><span class="ng-chev"><svg viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg></span></button>
         <div class="navgroup-items">
+          <button class="tab" data-tab="web">Mi web</button>
           <button class="tab" data-tab="perfil">Perfil</button>
           <button class="tab" data-tab="ajustes">Ajustes</button>
         </div>
@@ -530,6 +585,51 @@
     </div>
   </section>
 
+  <!-- ============ MI WEB: editor visual de nicoleolavarria.com ============
+       Dos columnas: controles a la izquierda, vista previa en vivo a la derecha.
+       La previa es un iframe con srcdoc (mismo origen), así que se puede hacer
+       clic en cualquier parte de la página para saltar a su control. -->
+  <section class="panel" id="panel-web">
+    <div class="web-top">
+      <div class="web-pages" id="webPages">
+        <button class="webpg active" data-pg="inicio">Inicio</button>
+        <button class="webpg" data-pg="acerca">Acerca de</button>
+        <button class="webpg" data-pg="sesiones">Sesiones 1:1</button>
+        <button class="webpg" data-pg="contacto">Contacto</button>
+        <button class="webpg" data-pg="estilo">Diseño</button>
+      </div>
+      <div class="web-acts">
+        <span class="web-estado" id="webEstado">&nbsp;</span>
+        <button class="btn ghost sm" id="btnWebDeshacer" title="Descarta los cambios que no has publicado">Deshacer</button>
+        <button class="btn" id="btnWebPublicar">Publicar cambios</button>
+      </div>
+    </div>
+
+    <div class="web-editor">
+      <div class="web-side">
+        <p class="hint" id="webAyuda">Haz clic en cualquier parte de la vista previa para editar esa parte. Los cambios se ven al instante aquí; tu web pública recién cambia cuando le das <b>Publicar</b>.</p>
+        <div id="webControles"></div>
+        <div class="web-danger">
+          <button class="btn ghost sm" id="btnWebOriginal">Volver al diseño original</button>
+        </div>
+      </div>
+
+      <div class="web-prev">
+        <div class="web-prevbar">
+          <span class="mini" id="webPrevTit">Vista previa</span>
+          <div class="rowact">
+            <button class="btn ghost sm webdev active" data-dev="desktop">Computadora</button>
+            <button class="btn ghost sm webdev" data-dev="movil">Celular</button>
+            <a class="btn ghost sm" id="webAbrir" href="https://nicoleolavarria.com" target="_blank" rel="noopener">Ver mi web</a>
+          </div>
+        </div>
+        <div class="web-prevwrap" id="webPrevWrap">
+          <iframe id="webPrev" title="Vista previa de tu web"></iframe>
+        </div>
+      </div>
+    </div>
+  </section>
+
   <section class="panel" id="panel-ajustes">
     <div class="group">
       <h2>// Precios de paquetes (S/)</h2>
@@ -554,25 +654,8 @@
     </div>
     <div class="group">
       <h2>// Tu página web y tu marca</h2>
-      <p class="hint">Edita tu web (nicoleolavarria.com) y tus paneles sin tocar código. Guarda los ajustes y recarga la página para ver el cambio en vivo.</p>
-      <div class="cfgrow"><span class="pk">Fondo de tu web</span><input id="cfg_apar_bg_web" type="color" value="#fafaf8" style="flex:0 0 64px;min-width:64px;height:34px;padding:2px;cursor:pointer;" /><button class="btn ghost sm" type="button" data-aparreset="cfg_apar_bg_web" data-def="#fafaf8">Volver al original</button></div>
-      <div class="cfgrow"><span class="pk">Fondo de tus paneles</span><input id="cfg_apar_bg_panel" type="color" value="#fafaf8" style="flex:0 0 64px;min-width:64px;height:34px;padding:2px;cursor:pointer;" /><button class="btn ghost sm" type="button" data-aparreset="cfg_apar_bg_panel" data-def="#fafaf8">Volver al original</button></div>
-      <div class="cfgrow"><span class="pk">Color de acento</span><input id="cfg_apar_acento" type="color" value="#0a0a0a" style="flex:0 0 64px;min-width:64px;height:34px;padding:2px;cursor:pointer;" /><button class="btn ghost sm" type="button" data-aparreset="cfg_apar_acento" data-def="#0a0a0a">Volver al original</button></div>
-      <div class="cfgrow"><span class="pk">Tipografía de titulares (web)</span>
-        <select id="cfg_apar_font">
-          <option value="">DM Mono (la original)</option>
-          <option>Bebas Neue</option>
-          <option>Bricolage Grotesque</option>
-          <option>Playfair Display</option>
-          <option>Space Grotesk</option>
-          <option>Space Mono</option>
-        </select>
-      </div>
-      <div class="cfgrow"><span class="pk">Título del inicio</span><input id="cfg_web_hero_titulo" type="text" placeholder="Nicole Olavarría" /></div>
-      <div class="cfgrow"><span class="pk">Subtítulo del inicio</span><input id="cfg_web_hero_sub" type="text" placeholder="soprano · artista escénica · compositora" /></div>
-      <div class="cfgrow"><span class="pk">Primer párrafo de "Acerca de"</span><textarea id="cfg_web_acerca_intro" rows="3" placeholder="Cantante, artista escénica y compositora..."></textarea></div>
-      <div class="cfgrow"><span class="pk">Anuncio arriba de tu web (opcional)</span><input id="cfg_web_anuncio" type="text" placeholder="Ej: Vacantes abiertas para agosto — escríbeme" /></div>
-      <p class="hint" style="margin-top:-4px;">Los textos vacíos dejan el texto original de la web. El anuncio sale como una barra arriba de todas las páginas; bórralo y desaparece.</p>
+      <p class="hint">Ahora tu web se edita entera desde <b>Mi web</b>: textos, fotos, colores, tipografía y el orden de todo, con vista previa en vivo. Guarda ahí y publica cuando estés lista.</p>
+      <button class="btn" type="button" onclick="document.querySelector('.tab[data-tab=web]').click()">Ir a Mi web</button>
     </div>
     <div class="group">
       <h2>// Reprogramaciones del alumno</h2>
@@ -1227,14 +1310,8 @@ function renderAjustes(){
   el("cfg_crypto_moneda").value=(db.config&&db.config.crypto_moneda)||"";
   el("cfg_crypto_red").value=(db.config&&db.config.crypto_red)||"";
   el("cfg_crypto_wallet").value=(db.config&&db.config.crypto_wallet)||"";
-  if(el("cfg_apar_bg_web")) el("cfg_apar_bg_web").value=(db.config&&db.config.apar_bg_web)||"#fafaf8";
-  if(el("cfg_apar_bg_panel")) el("cfg_apar_bg_panel").value=(db.config&&db.config.apar_bg_panel)||"#fafaf8";
-  if(el("cfg_apar_acento")) el("cfg_apar_acento").value=(db.config&&db.config.apar_acento)||"#0a0a0a";
-  if(el("cfg_apar_font")) el("cfg_apar_font").value=(db.config&&db.config.apar_font)||"";
-  if(el("cfg_web_hero_titulo")) el("cfg_web_hero_titulo").value=(db.config&&db.config.web_hero_titulo)||"";
-  if(el("cfg_web_hero_sub")) el("cfg_web_hero_sub").value=(db.config&&db.config.web_hero_sub)||"";
-  if(el("cfg_web_acerca_intro")) el("cfg_web_acerca_intro").value=(db.config&&db.config.web_acerca_intro)||"";
-  if(el("cfg_web_anuncio")) el("cfg_web_anuncio").value=(db.config&&db.config.web_anuncio)||"";
+  /* Apariencia/textos de la web: se editan en "Mi web" (web_json). Solo se aplica al panel el
+     fondo que Nicole eligió (apar_bg_panel lo escribe "Mi web" al publicar). */
   aplicarAparienciaPanel();
   el("cfg_msg_renovacion").value=(db.config&&db.config.msg_renovacion)||"";
   el("cfg_gcal_client_id").value=(db.config&&db.config.gcal_client_id)||"";
@@ -1514,7 +1591,7 @@ function abrirGrupoActivo(){
 abrirGrupoActivo();
 
 /* ---------- Tabs / modales ---------- */
-var TITULOS={resumen:"Inicio",alumnos:"Alumnos",grupos:"Grupos",registro:"Clases",agenda:"Agenda",pagos:"Pagos",cuentas:"Accesos",leads:"Interesados",recursos:"Para tus alumnos",ejercicios:"Tu biblioteca",ajustes:"Ajustes",perfil:"Perfil",chat:"Chat"};
+var TITULOS={resumen:"Inicio",alumnos:"Alumnos",grupos:"Grupos",registro:"Clases",agenda:"Agenda",pagos:"Pagos",cuentas:"Accesos",leads:"Interesados",recursos:"Para tus alumnos",ejercicios:"Tu biblioteca",ajustes:"Ajustes",perfil:"Perfil",chat:"Chat",web:"Mi web"};
 document.querySelectorAll(".tab").forEach(function(t){
   t.addEventListener("click",function(){
     document.querySelectorAll(".tab").forEach(function(x){x.classList.remove("active");});
@@ -1531,6 +1608,7 @@ document.querySelectorAll(".tab").forEach(function(t){
     if(el("topTitle")) el("topTitle").textContent="// "+ti;
     if(t.dataset.tab==="agenda") cargarAgenda();
     if(t.dataset.tab==="perfil") renderPerfil();
+    if(t.dataset.tab==="web") abrirEditorWeb();
     cerrarDrawer();
   });
 });
@@ -2076,15 +2154,8 @@ el("btnGuardarAjustes").addEventListener("click",function(){
             msg_renovacion:el("cfg_msg_renovacion").value.trim(),
             gcal_client_id:el("cfg_gcal_client_id").value.trim(),
             gcal_client_secret:el("cfg_gcal_client_secret").value.trim(),
-            gcal_calendar_id:el("cfg_gcal_calendar_id").value.trim()||"primary",
-            apar_bg_web:aparValor("cfg_apar_bg_web","#fafaf8"),
-            apar_bg_panel:aparValor("cfg_apar_bg_panel","#fafaf8"),
-            apar_acento:aparValor("cfg_apar_acento","#0a0a0a"),
-            apar_font:(el("cfg_apar_font")?el("cfg_apar_font").value:""),
-            web_hero_titulo:(el("cfg_web_hero_titulo")?el("cfg_web_hero_titulo").value.trim():""),
-            web_hero_sub:(el("cfg_web_hero_sub")?el("cfg_web_hero_sub").value.trim():""),
-            web_acerca_intro:(el("cfg_web_acerca_intro")?el("cfg_web_acerca_intro").value.trim():""),
-            web_anuncio:(el("cfg_web_anuncio")?el("cfg_web_anuncio").value.trim():"") };
+            gcal_calendar_id:el("cfg_gcal_calendar_id").value.trim()||"primary" };
+            /* La apariencia y los textos de la web ya no se guardan desde acá: son de "Mi web". */
   Promise.all([ apiPut(), apiPost("/api/admin/config",cfg) ])
     .then(function(){ db.config=Object.assign(db.config||{},cfg); renderAll(); aplicarAparienciaPanel(); toast("Ajustes guardados"); })
     .catch(function(){ toast("No se pudieron guardar los ajustes"); });
@@ -2590,6 +2661,542 @@ function mvtInit(){
 window.mvtInit = mvtInit;
 </script>
 
+<!-- Motor de render de la web: el MISMO archivo que usa nicoleolavarria.com.
+     Lo genera scripts/build-web-render.mjs desde src/lib/web-render.mjs. -->
+<script src="/web/web-render.js"></script>
+
+<!-- ============================ MI WEB (editor visual) ============================
+     Estado de trabajo en memoria (WEB); la vista previa vive en un iframe del mismo
+     origen y se repinta con el render, sin recargar (no se pierde el scroll). Nada
+     sale a la web pública hasta que Nicole le da "Publicar cambios". -->
+<script>
+(function(){
+  var WEB = null;        // lo que se está editando
+  var GUARDADO = "";     // firma de lo último publicado (para saber si hay cambios)
+  var PG = "inicio";     // página abierta en el editor
+  var listo = false;     // el iframe ya cargó el render
+  var pintarT = null;
+
+  function W(){ return window.WebRender; }
+  function frame(){ return document.getElementById("webPrev"); }
+  function firma(o){ try { return JSON.stringify(o); } catch(e){ return ""; } }
+
+  /* ---------- rutas tipo "acerca.bloques.2.texto" ---------- */
+  function getR(obj, ruta){
+    var p = ruta.split("."), o = obj;
+    for (var i=0;i<p.length;i++){ if(o==null) return undefined; o = o[p[i]]; }
+    return o;
+  }
+  function setR(obj, ruta, val){
+    var p = ruta.split("."), o = obj;
+    for (var i=0;i<p.length-1;i++){
+      var k = p[i];
+      if (o[k] == null || typeof o[k] !== "object") o[k] = /^\d+$/.test(p[i+1]) ? [] : {};
+      o = o[k];
+    }
+    o[p[p.length-1]] = val;
+  }
+
+  /* ---------- vista previa ---------- */
+  var HOOKS = [
+    "var R = window.WebRender;",
+    "window.aplicar = function(data, pagina){",
+    "  var d = R.mezclar(data);",
+    "  document.getElementById('estiloEd').textContent = R.estiloCss(d);",
+    "  var lf = document.getElementById('fuentesEd'), h = R.fuentesHref(d);",
+    "  if (h) lf.href = h; else lf.removeAttribute('href');",
+    "  document.body.innerHTML = (pagina === 'inicio' ? '' : R.headerHtml(d)) +",
+    "    '<main>' + R.htmlPagina(pagina, d) + '</main>' + R.pieHtml(d);",
+    "  var an = R.anuncioHtml(d); if (an) document.body.insertAdjacentHTML('afterbegin', an);",
+    "};",
+    /* Clic en cualquier parte = editar esa parte. Se cancela la navegación: esto es
+       una maqueta, no la web de verdad. El iframe es srcdoc del mismo origen que el
+       CRM, así que se llama directo a la función del padre (postMessage no sirve: en
+       srcdoc el origin es 'null' y el navegador descarta el envío). */
+    "document.addEventListener('click', function(e){",
+    "  e.preventDefault(); e.stopPropagation();",
+    "  var n = e.target.closest('[data-ed]');",
+    "  try { if (parent && parent.edPreviewClick) parent.edPreviewClick(n ? n.getAttribute('data-ed') : ''); } catch(_){}",
+    "}, true);"
+  ].join("\n");
+
+  function docPreview(){
+    return "<!doctype html><html lang=\"es\"><head><meta charset=\"UTF-8\" />" +
+      "<meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\" />" +
+      "<link rel=\"preconnect\" href=\"https://fonts.googleapis.com\" />" +
+      "<link rel=\"preconnect\" href=\"https://fonts.gstatic.com\" crossorigin />" +
+      "<link href=\"https://fonts.googleapis.com/css2?family=DM+Mono:ital,wght@0,300;0,400;0,500;1,300;1,400&display=swap\" rel=\"stylesheet\" />" +
+      "<link id=\"fuentesEd\" rel=\"stylesheet\" />" +
+      "<link rel=\"stylesheet\" href=\"/web/global.css\" />" +
+      "<style id=\"estiloEd\"></style>" +
+      "<style>[data-ed]{transition:outline .1s}[data-ed]:hover{outline:2px dashed rgba(10,10,10,.45);outline-offset:3px;cursor:pointer}</style>" +
+      "<scr" + "ipt src=\"/web/web-render.js\"></scr" + "ipt>" +
+      "<scr" + "ipt>" + HOOKS + "</scr" + "ipt>" +
+      "</head><body></body></html>";
+  }
+
+  function pintar(){
+    var fr = frame();
+    if (!fr || !listo || !WEB) return;
+    try { fr.contentWindow.aplicar(WEB, PG === "estilo" ? "inicio" : PG); } catch(e){}
+    marcarEstado();
+  }
+  function pintarPronto(){ clearTimeout(pintarT); pintarT = setTimeout(pintar, 160); }
+
+  function marcarEstado(){
+    var e = document.getElementById("webEstado");
+    if (!e) return;
+    var hay = firma(WEB) !== GUARDADO;
+    e.textContent = hay ? "· cambios sin publicar" : "· todo publicado";
+    e.className = "web-estado" + (hay ? " sin" : "");
+  }
+
+  /* ---------- piezas de formulario ---------- */
+  function campo(ruta, etiqueta, opt){
+    opt = opt || {};
+    var v = getR(WEB, ruta);
+    v = v == null ? "" : String(v);
+    var input = opt.area
+      ? '<textarea data-w="' + ruta + '" rows="' + (opt.rows || 3) + '" placeholder="' + esc(opt.ph || "") + '">' + esc(v) + "</textarea>"
+      : '<input type="text" data-w="' + ruta + '" value="' + esc(v) + '" placeholder="' + esc(opt.ph || "") + '" />';
+    return '<div class="wf" data-wf="' + ruta + '"><label>' + esc(etiqueta) + "</label>" + input +
+      (opt.hint ? '<div class="mini" style="margin-top:4px">' + opt.hint + "</div>" : "") + "</div>";
+  }
+  function rango(ruta, etiqueta, min, max, paso, sufijo){
+    var v = Number(getR(WEB, ruta));
+    if (!isFinite(v)) v = min;
+    return '<div class="wf" data-wf="' + ruta + '"><label>' + esc(etiqueta) + '</label><div class="wrange">' +
+      '<input type="range" data-w="' + ruta + '" data-num="1" min="' + min + '" max="' + max + '" step="' + (paso || 1) + '" value="' + v + '" />' +
+      '<span class="val">' + v + (sufijo || "") + "</span></div></div>";
+  }
+  function color(ruta, etiqueta, def){
+    var v = getR(WEB, ruta) || "";
+    return '<div class="wf" data-wf="' + ruta + '"><label>' + esc(etiqueta) + '</label><div class="wcolor">' +
+      '<input type="color" data-w="' + ruta + '" data-color="1" value="' + esc(v || def) + '" />' +
+      '<button class="wmini" type="button" data-wact="reset" data-w="' + ruta + '">Volver al original</button>' +
+      (v ? "" : '<span class="mini">el original</span>') + "</div></div>";
+  }
+  function selectFuente(ruta, etiqueta){
+    var v = getR(WEB, ruta) || "";
+    var ops = ['<option value="">DM Mono (la original)</option>'];
+    Object.keys(W().FUENTES).forEach(function(f){
+      ops.push('<option value="' + esc(f) + '"' + (v === f ? " selected" : "") + ">" + esc(f) + "</option>");
+    });
+    return '<div class="wf" data-wf="' + ruta + '"><label>' + esc(etiqueta) + '</label><select data-w="' + ruta + '">' + ops.join("") + "</select></div>";
+  }
+  function foto(ruta, etiqueta, opt){
+    opt = opt || {};
+    var f = getR(WEB, ruta) || {};
+    var pos = (f.pos || "50% 50%").split(" ");
+    return '<div class="wf" data-wf="' + ruta + '"><label>' + esc(etiqueta) + '</label><div class="wfoto">' +
+      '<div class="wfoto-box" data-wpos="' + ruta + '" title="Arrastra para elegir qué parte de la foto se ve">' +
+        (f.url ? '<img src="' + esc(f.url) + '" alt="" />' : '<div class="mini" style="padding:8px">sin foto</div>') +
+        '<span class="wfoto-punto" style="left:' + esc(pos[0] || "50%") + ';top:' + esc(pos[1] || "50%") + '"></span>' +
+      "</div>" +
+      '<div class="wfoto-acts">' +
+        '<button class="wmini" type="button" data-wact="foto" data-w="' + ruta + '">Cambiar foto</button>' +
+        (opt.borrable ? '<button class="wmini del" type="button" data-wact="delfoto" data-w="' + ruta + '">Quitar</button>' : "") +
+        '<span class="mini">Arrastra el círculo sobre la foto para encuadrarla.</span>' +
+      "</div></div></div>";
+  }
+  function grupo(titulo, cuerpo, abierto){
+    return '<details class="wgrp"' + (abierto ? " open" : "") + "><summary>" + esc(titulo) + '</summary><div class="wbody">' + cuerpo + "</div></details>";
+  }
+  function barraItem(ruta, titulo, i, total){
+    return '<div class="witem-h"><b>' + esc(titulo) + "</b><span>" +
+      (i > 0 ? '<button class="wmini" type="button" data-wact="up" data-w="' + ruta + '" title="Subir">↑</button> ' : "") +
+      (i < total - 1 ? '<button class="wmini" type="button" data-wact="down" data-w="' + ruta + '" title="Bajar">↓</button> ' : "") +
+      '<button class="wmini del" type="button" data-wact="del" data-w="' + ruta + '" title="Borrar">✕</button></span></div>';
+  }
+  function agregar(ruta, texto){
+    return '<button class="btn ghost sm" type="button" data-wact="add" data-w="' + ruta + '">+ ' + esc(texto) + "</button>";
+  }
+  var AYUDA_TEXTO = 'Para poner algo en <em>cursiva</em> escríbelo entre asteriscos: *así*. Para <strong>negrita</strong>, dos: **así**.';
+
+  /* ---------- controles por página ---------- */
+  function controles(){
+    var h = "";
+    if (PG === "inicio"){
+      h += grupo("Portada", campo("inicio.titulo", "Título grande") + campo("inicio.sub", "Debajo del título"), true);
+      h += grupo("Tu foto", foto("inicio.foto", "Foto de portada") +
+        rango("inicio.foto.ancho", "Tamaño de la foto", 220, 720, 10, "px") +
+        '<div class="wf" data-wf="inicio.foto.ratio"><label>Forma de la foto</label><select data-w="inicio.foto.ratio">' +
+          ["3/4:Vertical (3:4)", "4/5:Vertical suave (4:5)", "1/1:Cuadrada", "4/3:Horizontal", "16/9:Panorámica"].map(function(o){
+            var p = o.split(":"), v = getR(WEB, "inicio.foto.ratio") || "3/4";
+            return '<option value="' + p[0] + '"' + (v === p[0] ? " selected" : "") + ">" + p[1] + "</option>";
+          }).join("") + "</select></div>", true);
+      var en = (WEB.inicio.enlaces || []);
+      h += grupo("Menú sobre la foto (" + en.length + ")",
+        '<div class="wf" data-wf="inicio.enlaces_pos"><label>Dónde va el menú</label><select data-w="inicio.enlaces_pos">' +
+          ["arriba:Arriba", "centro:Al centro", "abajo:Abajo"].map(function(o){
+            var p = o.split(":"), v = getR(WEB, "inicio.enlaces_pos") || "arriba";
+            return '<option value="' + p[0] + '"' + (v === p[0] ? " selected" : "") + ">" + p[1] + "</option>";
+          }).join("") + "</select></div>" +
+        en.map(function(a, i){
+          return '<div class="witem" data-wf="inicio.enlaces.' + i + '">' + barraItem("inicio.enlaces." + i, "Enlace " + (i+1), i, en.length) +
+            campo("inicio.enlaces." + i + ".texto", "Texto") + campo("inicio.enlaces." + i + ".url", "A dónde lleva", { ph: "/sesiones" }) + "</div>";
+        }).join("") + agregar("inicio.enlaces", "Agregar enlace"));
+      h += grupo("Tus redes", campo("inicio.instagram", "Instagram", { ph: "https://instagram.com/…" }) +
+        campo("inicio.whatsapp", "WhatsApp", { ph: "https://wa.me/51…" }));
+    }
+
+    if (PG === "acerca"){
+      h += grupo("Encabezado", campo("acerca.titulo", "Título") + campo("acerca.sub", "Debajo del título"), true);
+      var intro = (WEB.acerca.intro || []);
+      h += grupo("Presentación (" + intro.length + ")",
+        intro.map(function(p, i){
+          return '<div class="witem" data-wf="acerca.intro.' + i + '">' + barraItem("acerca.intro." + i, "Párrafo " + (i+1), i, intro.length) +
+            campo("acerca.intro." + i, "", { area: true, rows: 4 }) + "</div>";
+        }).join("") + agregar("acerca.intro", "Agregar párrafo") + '<div class="mini" style="margin-top:8px">' + AYUDA_TEXTO + "</div>", true);
+      h += grupo("Foto principal", foto("acerca.foto", "Foto de la columna izquierda", { borrable: true }));
+      var bl = (WEB.acerca.bloques || []);
+      h += grupo("Tu historia (" + bl.length + ")",
+        bl.map(function(b, i){
+          var cuerpo = b.tipo === "foto"
+            ? foto("acerca.bloques." + i, "Foto")
+            : campo("acerca.bloques." + i + ".texto", b.tipo === "titulo" ? "Título de sección" : "", { area: b.tipo !== "titulo", rows: 4 });
+          return '<div class="witem" data-wf="acerca.bloques.' + i + '">' +
+            barraItem("acerca.bloques." + i, b.tipo === "titulo" ? "Título" : (b.tipo === "foto" ? "Foto" : "Párrafo"), i, bl.length) + cuerpo + "</div>";
+        }).join("") +
+        agregar("acerca.bloques|parrafo", "Párrafo") + " " + agregar("acerca.bloques|titulo", "Título de sección") + " " + agregar("acerca.bloques|foto", "Foto"), true);
+      var gal = (WEB.acerca.galeria || []);
+      h += grupo("Galería de fotos (" + gal.length + ")",
+        gal.map(function(g, i){
+          return '<div class="witem" data-wf="acerca.galeria.' + i + '">' + barraItem("acerca.galeria." + i, "Foto " + (i+1), i, gal.length) +
+            foto("acerca.galeria." + i, "") + "</div>";
+        }).join("") + agregar("acerca.galeria", "Agregar foto"));
+    }
+
+    if (PG === "sesiones"){
+      var si = (WEB.sesiones.intro || []);
+      h += grupo("Encabezado", campo("sesiones.titulo", "Título") +
+        si.map(function(p, i){
+          return '<div class="witem" data-wf="sesiones.intro.' + i + '">' + barraItem("sesiones.intro." + i, "Párrafo " + (i+1), i, si.length) +
+            campo("sesiones.intro." + i, "", { area: true }) + "</div>";
+        }).join("") + agregar("sesiones.intro", "Agregar párrafo") +
+        campo("sesiones.nota", "Nota chica (ej: crédito de la foto)") +
+        '<div class="mini" style="margin:6px 0 10px">' + AYUDA_TEXTO + "</div>", true);
+      h += grupo("Foto", foto("sesiones.foto", "Foto del encabezado", { borrable: true }));
+      h += grupo("Botón de contacto", campo("sesiones.cta.texto", "Texto del botón") + campo("sesiones.cta.url", "A dónde lleva", { ph: "https://wa.me/51…" }), true);
+      var mo = (WEB.sesiones.modalidades || []);
+      h += grupo("Modalidades (" + mo.length + ")",
+        campo("sesiones.titulo_modalidades", "Título de la lista") +
+        mo.map(function(m, i){
+          return '<div class="witem" data-wf="sesiones.modalidades.' + i + '">' + barraItem("sesiones.modalidades." + i, "Modalidad " + (i+1), i, mo.length) +
+            campo("sesiones.modalidades." + i + ".nombre", "Nombre") +
+            campo("sesiones.modalidades." + i + ".desc", "Descripción", { area: true }) + "</div>";
+        }).join("") + agregar("sesiones.modalidades", "Agregar modalidad"), true);
+      var me = (WEB.sesiones.metas || []);
+      h += grupo("Datos al pie (" + me.length + ")",
+        me.map(function(m, i){
+          return '<div class="witem" data-wf="sesiones.metas.' + i + '">' + barraItem("sesiones.metas." + i, "Dato " + (i+1), i, me.length) +
+            campo("sesiones.metas." + i, "") + "</div>";
+        }).join("") + agregar("sesiones.metas", "Agregar dato"));
+    }
+
+    if (PG === "contacto"){
+      var it = (WEB.contacto.items || []);
+      h += grupo("Encabezado", campo("contacto.titulo", "Título"), true);
+      h += grupo("Tus datos (" + it.length + ")",
+        it.map(function(x, i){
+          return '<div class="witem" data-wf="contacto.items.' + i + '">' + barraItem("contacto.items." + i, "Dato " + (i+1), i, it.length) +
+            campo("contacto.items." + i + ".label", "Etiqueta", { ph: "whatsapp" }) +
+            campo("contacto.items." + i + ".valor", "Lo que se ve", { ph: "+51 999 999 999" }) +
+            campo("contacto.items." + i + ".url", "Link (opcional)", { ph: "https://wa.me/51…" }) + "</div>";
+        }).join("") + agregar("contacto.items", "Agregar dato"), true);
+    }
+
+    if (PG === "estilo"){
+      h += grupo("Tipografía", selectFuente("estilo.fuente_titulos", "Fuente de los títulos") +
+        selectFuente("estilo.fuente_cuerpo", "Fuente de los textos") +
+        rango("estilo.escala", "Tamaño de letra general", 70, 150, 1, "%") +
+        rango("estilo.escala_titulo", "Tamaño de los títulos", 70, 200, 1, "%"), true);
+      h += grupo("Colores", color("estilo.color_fondo", "Fondo de la web", "#fafaf8") +
+        color("estilo.color_texto", "Color del texto", "#0a0a0a") +
+        color("estilo.color_acento", "Color de acento", "#0a0a0a") +
+        '<div class="wf"><label>Fondo de tus paneles (CRM y portal)</label><div class="wcolor">' +
+          '<input type="color" id="webPanelBg" value="' + esc((db.config && db.config.apar_bg_panel) || "#fafaf8") + '" />' +
+          '<button class="wmini" type="button" id="webPanelBgReset">Volver al original</button>' +
+          '<span class="mini">se guarda al publicar</span></div></div>', true);
+      h += grupo("Espacio y formas", rango("estilo.ancho", "Ancho de las páginas", 620, 1200, 10, "px") +
+        rango("estilo.esquinas", "Esquinas redondeadas de las fotos", 0, 40, 1, "px"));
+      h += grupo("Marca y anuncio", campo("marca.nombre", "Tu nombre (arriba a la izquierda)") +
+        campo("marca.anuncio", "Barra de anuncio (opcional)", { ph: "Vacantes abiertas para agosto", hint: "Sale arriba de todas las páginas. Vacía = no aparece." }));
+      var nv = (WEB.nav || []);
+      h += grupo("Menú de arriba (" + nv.length + ")",
+        nv.map(function(n, i){
+          return '<div class="witem" data-wf="nav.' + i + '">' + barraItem("nav." + i, "Enlace " + (i+1), i, nv.length) +
+            campo("nav." + i + ".texto", "Texto") + campo("nav." + i + ".url", "A dónde lleva") + "</div>";
+        }).join("") + agregar("nav", "Agregar enlace"));
+      h += grupo("Pie de página", campo("pie.gracias", "Mensaje") + campo("pie.blog_texto", "Texto del enlace") +
+        campo("pie.blog_url", "Link") + campo("pie.copy", "Derechos"));
+    }
+    return h;
+  }
+
+  function render(){
+    var c = document.getElementById("webControles");
+    if (!c || !WEB) return;
+    c.innerHTML = controles();
+    var t = document.getElementById("webPrevTit");
+    if (t) t.textContent = PG === "estilo" ? "Vista previa (portada)" : "Vista previa";
+    marcarEstado();
+  }
+
+  /* ---------- eventos de los controles ---------- */
+  function nuevoItem(ruta, variante){
+    if (/inicio\.enlaces$|^nav$/.test(ruta)) return { texto: "Nuevo enlace", url: "/" };
+    if (/\.modalidades$/.test(ruta)) return { nombre: "Nueva modalidad", desc: "Para quién es." };
+    if (/\.items$/.test(ruta)) return { label: "dato", valor: "", url: "" };
+    if (/\.galeria$/.test(ruta)) return { url: "", pos: "50% 50%" };
+    if (/\.bloques$/.test(ruta)){
+      if (variante === "titulo") return { tipo: "titulo", texto: "Nueva sección" };
+      if (variante === "foto") return { tipo: "foto", url: "", pos: "50% 50%" };
+      return { tipo: "parrafo", texto: "Escribe aquí." };
+    }
+    return "Escribe aquí.";
+  }
+
+  function panelWeb(){ return document.getElementById("panel-web"); }
+
+  panelWeb().addEventListener("input", function(e){
+    var n = e.target;
+    if (!n.dataset || !n.dataset.w) return;
+    var val = n.value;
+    if (n.dataset.num){
+      val = Number(val);
+      var v = n.parentNode.querySelector(".val");
+      if (v) v.textContent = val + (v.textContent.replace(/^-?[\d.]+/, "") || "");
+    }
+    setR(WEB, n.dataset.w, val);
+    pintarPronto();
+  });
+  panelWeb().addEventListener("change", function(e){
+    var n = e.target;
+    if (!n.dataset || !n.dataset.w) return;
+    setR(WEB, n.dataset.w, n.dataset.num ? Number(n.value) : n.value);
+    if (n.tagName === "SELECT") { pintar(); }
+  });
+
+  panelWeb().addEventListener("click", function(e){
+    var b = e.target.closest("[data-wact]");
+    if (!b) return;
+    var acc = b.dataset.wact, ruta = b.dataset.w || "";
+
+    if (acc === "reset"){ setR(WEB, ruta, ""); render(); pintar(); return; }
+
+    if (acc === "add"){
+      var partes = ruta.split("|"), r = partes[0], variante = partes[1];
+      var lista = getR(WEB, r);
+      if (!Array.isArray(lista)){ lista = []; setR(WEB, r, lista); }
+      lista.push(nuevoItem(r, variante));
+      render(); pintar(); return;
+    }
+
+    var m = ruta.match(/^(.*)\.(\d+)$/);
+    if (!m) return;
+    var lista2 = getR(WEB, m[1]), i = Number(m[2]);
+    if (!Array.isArray(lista2)) return;
+
+    if (acc === "del"){
+      if (!confirm("¿Borrar esto de tu web?")) return;
+      lista2.splice(i, 1); render(); pintar(); return;
+    }
+    if (acc === "up" && i > 0){ lista2.splice(i-1, 0, lista2.splice(i, 1)[0]); render(); pintar(); return; }
+    if (acc === "down" && i < lista2.length-1){ lista2.splice(i+1, 0, lista2.splice(i, 1)[0]); render(); pintar(); return; }
+  });
+
+  /* ---------- fotos: subir (con reducción previa) y encuadrar ---------- */
+  panelWeb().addEventListener("click", function(e){
+    var b = e.target.closest('[data-wact="foto"], [data-wact="delfoto"]');
+    if (!b) return;
+    var ruta = b.dataset.w;
+    if (b.dataset.wact === "delfoto"){
+      setR(WEB, ruta + ".url", ""); render(); pintar(); return;
+    }
+    var inp = document.createElement("input");
+    inp.type = "file"; inp.accept = "image/png,image/jpeg";
+    inp.onchange = function(){
+      var f = inp.files && inp.files[0];
+      if (!f) return;
+      toast("Subiendo la foto…", 6000);
+      reducir(f).then(function(blob){
+        var fd = new FormData();
+        fd.append("archivo", blob, "foto.jpg");
+        return fetch("/api/admin/web/foto", { method: "POST", headers: { authorization: "Bearer " + token }, body: fd })
+          .then(function(r){ return r.json(); });
+      }).then(function(d){
+        if (!d || !d.url) throw new Error(d && d.error || "no subió");
+        setR(WEB, ruta + ".url", d.url);
+        render(); pintar(); toast("Foto lista");
+      }).catch(function(err){ toast((err && err.message) || "No se pudo subir la foto"); });
+    };
+    inp.click();
+  });
+
+  /* Reduce la foto en el navegador (máx 1600px, JPEG): sube rápido y la web carga liviana. */
+  function reducir(file){
+    return new Promise(function(res, rej){
+      var img = new Image(), url = URL.createObjectURL(file);
+      img.onload = function(){
+        var max = 1600, w = img.width, h = img.height;
+        if (w > max || h > max){ var k = max / Math.max(w, h); w = Math.round(w*k); h = Math.round(h*k); }
+        var c = document.createElement("canvas"); c.width = w; c.height = h;
+        c.getContext("2d").drawImage(img, 0, 0, w, h);
+        URL.revokeObjectURL(url);
+        c.toBlob(function(b){ b ? res(b) : rej(new Error("No pude procesar la imagen")); }, "image/jpeg", .86);
+      };
+      img.onerror = function(){ URL.revokeObjectURL(url); rej(new Error("Esa imagen no se pudo leer")); };
+      img.src = url;
+    });
+  }
+
+  /* Encuadre: arrastrar el círculo mueve el object-position de la foto. */
+  (function(){
+    var arrastrando = null;
+    function mover(caja, ev){
+      var r = caja.getBoundingClientRect();
+      var cx = (ev.touches ? ev.touches[0].clientX : ev.clientX) - r.left;
+      var cy = (ev.touches ? ev.touches[0].clientY : ev.clientY) - r.top;
+      var x = Math.max(0, Math.min(100, Math.round(cx / r.width * 100)));
+      var y = Math.max(0, Math.min(100, Math.round(cy / r.height * 100)));
+      var p = caja.querySelector(".wfoto-punto");
+      if (p){ p.style.left = x + "%"; p.style.top = y + "%"; }
+      setR(WEB, caja.dataset.wpos + ".pos", x + "% " + y + "%");
+      pintarPronto();
+    }
+    function abajo(e){
+      var caja = e.target.closest("[data-wpos]");
+      if (!caja) return;
+      arrastrando = caja; mover(caja, e); e.preventDefault();
+    }
+    panelWeb().addEventListener("mousedown", abajo);
+    panelWeb().addEventListener("touchstart", abajo, { passive: false });
+    document.addEventListener("mousemove", function(e){ if (arrastrando) mover(arrastrando, e); });
+    document.addEventListener("touchmove", function(e){ if (arrastrando){ mover(arrastrando, e); e.preventDefault(); } }, { passive: false });
+    document.addEventListener("mouseup", function(){ arrastrando = null; });
+    document.addEventListener("touchend", function(){ arrastrando = null; });
+  })();
+
+  /* ---------- clic en la vista previa -> abre su control ----------
+     La llama el iframe directamente (mismo origen). Salta a la página de esa parte
+     y resalta su control. */
+  window.edPreviewClick = function(ed){
+    if (!ed) return;
+    var raiz = ed.split(".")[0];
+    var destino = { marca: "estilo", nav: "estilo", pie: "estilo" }[raiz] || raiz;
+    if (destino !== PG){ irA(destino); }
+    setTimeout(function(){ enfocar(ed); }, 30);
+  };
+
+  function enfocar(ed){
+    var cont = document.getElementById("webControles");
+    var nodo = cont.querySelector('[data-wf="' + ed + '"]') ||
+               cont.querySelector('[data-wf^="' + ed + '."]') ||
+               cont.querySelector('[data-wf="' + ed + '.texto"]');
+    if (!nodo) return;
+    var det = nodo.closest("details");
+    if (det) det.open = true;
+    nodo.scrollIntoView({ block: "center", behavior: "smooth" });
+    nodo.classList.remove("mark"); void nodo.offsetWidth; nodo.classList.add("mark");
+    var inp = nodo.querySelector("input[type=text], textarea");
+    if (inp) inp.focus({ preventScroll: true });
+  }
+
+  function irA(pg){
+    PG = pg;
+    document.querySelectorAll(".webpg").forEach(function(b){ b.classList.toggle("active", b.dataset.pg === pg); });
+    render(); pintar();
+  }
+  document.getElementById("webPages").addEventListener("click", function(e){
+    var b = e.target.closest(".webpg");
+    if (b) irA(b.dataset.pg);
+  });
+  document.querySelectorAll(".webdev").forEach(function(b){
+    b.addEventListener("click", function(){
+      document.querySelectorAll(".webdev").forEach(function(x){ x.classList.remove("active"); });
+      b.classList.add("active");
+      document.getElementById("webPrevWrap").classList.toggle("movil", b.dataset.dev === "movil");
+    });
+  });
+
+  /* ---------- publicar / deshacer / volver al original ---------- */
+  document.getElementById("btnWebPublicar").addEventListener("click", function(){
+    var btn = this;
+    btn.disabled = true; btn.textContent = "Publicando…";
+    var extra = document.getElementById("webPanelBg");
+    var tareas = [fetch("/api/admin/web", { method: "POST", headers: hdr(), body: JSON.stringify({ web: WEB }) }).then(function(r){ return r.json(); })];
+    if (extra){
+      var bgp = extra.dataset.reset === "1" ? "" : extra.value;
+      tareas.push(apiPost("/api/admin/config", { apar_bg_panel: bgp }).then(function(){
+        db.config = Object.assign(db.config || {}, { apar_bg_panel: bgp });
+        aplicarAparienciaPanel();
+      }));
+    }
+    Promise.all(tareas).then(function(res){
+      var d = res[0];
+      if (!d || d.error) throw new Error(d && d.error || "No se pudo publicar");
+      if (d.web) WEB = W().mezclar(d.web);
+      GUARDADO = firma(WEB);
+      render(); pintar();
+      toast(d.rebuild ? "Publicado. Tu web se está actualizando." : "¡Publicado! Tu web ya muestra los cambios.", 4000);
+    }).catch(function(err){
+      toast((err && err.message) || "No se pudo publicar");
+    }).then(function(){
+      btn.disabled = false; btn.textContent = "Publicar cambios";
+    });
+  });
+
+  document.getElementById("btnWebDeshacer").addEventListener("click", function(){
+    if (firma(WEB) === GUARDADO){ toast("No hay cambios sin publicar"); return; }
+    if (!confirm("¿Descartar los cambios que no publicaste?")) return;
+    cargar(true);
+  });
+
+  document.getElementById("btnWebOriginal").addEventListener("click", function(){
+    if (!confirm("Esto devuelve tu web al diseño original (textos, fotos y colores de fábrica). Se aplica cuando publiques. ¿Seguir?")) return;
+    WEB = W().mezclar({});
+    render(); pintar();
+    toast("Listo. Dale Publicar si te quedas con el original.");
+  });
+
+  var extraHook = document.getElementById("webPanelBgReset");
+
+  /* ---------- arranque ---------- */
+  function cargar(forzar){
+    return fetch("/api/publico").then(function(r){ return r.json(); }).then(function(d){
+      WEB = W().mezclar((d && d.web) || {});
+      GUARDADO = firma(WEB);
+      render(); pintar();
+    }).catch(function(){
+      if (!WEB){ WEB = W().mezclar({}); render(); pintar(); }
+    });
+  }
+
+  window.abrirEditorWeb = function(){
+    if (!W()){ toast("No cargó el editor; recarga la página"); return; }
+    var fr = frame();
+    if (!listo && fr && !fr.dataset.init){
+      fr.dataset.init = "1";
+      fr.addEventListener("load", function(){ listo = true; pintar(); });
+      fr.srcdoc = docPreview();
+    }
+    if (!WEB) cargar();
+    else { render(); pintar(); }
+  };
+
+  /* El botón de "volver al original" del fondo de paneles vive fuera del modelo (es
+     config del CRM, no de la web): se marca y se manda vacío al publicar. */
+  document.addEventListener("click", function(e){
+    if (e.target && e.target.id === "webPanelBgReset"){
+      var i = document.getElementById("webPanelBg");
+      if (i){ i.value = "#fafaf8"; i.dataset.reset = "1"; }
+      toast("Se restaura al publicar");
+    }
+  });
+})();
+</script>
+
 <!-- Arranque del panel: script independiente. Si el script grande de arriba se corta por
      un error de top-level (extensiones de wallet, etc.), este bloque IGUAL ejecuta y el panel vive. -->
 <script>
@@ -2717,11 +3324,11 @@ window.mvtInit = mvtInit;
   var elTitle=document.getElementById("tourTitle"), elBody=document.getElementById("tourBody"), elDots=document.getElementById("tourDots");
   var btnNext=document.getElementById("tourNext"), btnSkip=document.getElementById("tourSkip");
   var PASOS=[
-    {sel:null, t:"Un tour de 30 segundos", b:"Te muestro lo esencial del panel en 4 pasos rapidos. Si ya lo conoces, salta sin culpa."},
-    {sel:'[data-tour="personas"]', t:"Todo empieza en Alumnos", b:"Aca agregas alumnos uno a uno, importas tu Excel de golpe o pegas tu lista tal cual. Tambien ves quien se registro en tu portal."},
+    {sel:null, t:"Un tour de 30 segundos", b:"Te muestro lo esencial del panel en 4 pasos rápidos. Si ya lo conoces, salta sin culpa."},
+    {sel:'[data-tour="personas"]', t:"Todo empieza en Alumnos", b:"Aquí agregas alumnos uno a uno, importas tu Excel de golpe o pegas tu lista tal cual. También ves quién se registró en tu portal."},
     {sel:'[data-tour="link-alumnos"]', t:"Comparte y cobra", b:"Tu link del portal para alumnos y los links de cobro directo: los copias, los mandas por WhatsApp y el alumno paga sin registrarse."},
-    {sel:'[data-tour="cobros"]', t:"Cobros sin perseguir a nadie", b:"Los pagos por Yape llegan aca y los confirmas en un clic; la tarjeta se confirma sola. Cada pago confirmado tiene su recibo imprimible."},
-    {sel:'#oiaFab', t:"Tu guia siempre a la mano", b:"Si te trabas en algo, este boton abre un asistente que responde como hacer cualquier cosa del panel. Listo!"}
+    {sel:'[data-tour="cobros"]', t:"Cobros sin perseguir a nadie", b:"Los pagos por Yape llegan aquí y los confirmas en un clic; la tarjeta se confirma sola. Cada pago confirmado tiene su recibo imprimible."},
+    {sel:'#oiaFab', t:"Tu guía siempre a la mano", b:"Si te trabas en algo, este botón abre un asistente que responde cómo hacer cualquier cosa del panel. ¡Listo!"}
   ];
   var i=0;
   function pos(){

@@ -442,8 +442,8 @@
 
       <div class="card empty-state hidden" id="iVacio">
         <span class="pill amber">Bienvenido</span>
-        <h2 style="margin-top:12px;">¡Tu cuenta está lista! 🤘</h2>
-        <p>Este es tu portal: acá manejas tus clases, pagos y material. Para arrancar son 3 pasos:</p>
+        <h2 style="margin-top:12px;">¡Tu cuenta está lista!</h2>
+        <p>Este es tu portal: aquí manejas tus clases, pagos y material. Para empezar son 3 pasos:</p>
         <ol class="onb-steps">
           <li><b>1 · Compra tu paquete.</b> <span id="txtOnbPaso1">Elige canto, piano o composición (o combínalos).</span> Con tarjeta se activa al instante; con Yape, Plin o transferencia el mismo día.</li>
           <li><b>2 · Elige tus horarios.</b> Coordinamos tus clases 1 a 1 a tu ritmo.</li>
@@ -1923,17 +1923,17 @@ function cargarMe(){
    y si un ancla no existe auto-salta ese paso. Todo defensivo: nunca debe romper el portal. */
 var TOUR_STEPS = [
   { sel:"#iHola", vista:"inicio", titulo:"Este es tu portal",
-    texto:"Acá manejas todo: tus clases, tu material y tus pagos, en un solo lugar. Te muestro lo importante en 30 segundos. Si prefieres explorar solo, dale a Saltar." },
+    texto:"Aquí manejas todo: tus clases, tu material y tus pagos, en un solo lugar. Te muestro lo importante en 30 segundos. Si prefieres explorar por tu cuenta, dale a Saltar." },
   { sel:'a[data-v="inicio"]', vista:"inicio", titulo:"Inicio",
     texto:"Tu resumen de un vistazo: el plan que tienes, cuántas clases te quedan y tus próximos horarios. Cuando actives un paquete, todo aparece aquí." },
   { sel:'a[data-v="comprar"]', vista:"comprar", titulo:"Activa tu paquete",
-    texto:"Eliges "+cursosOrLower()+" y pagas con Yape, Plin o tarjeta. Se activa el mismo día, casi siempre en minutos. Sin paquete no hay clases que reservar, así que parte por acá." },
+    texto:"Eliges "+cursosOrLower()+" y pagas con Yape, Plin o tarjeta. Se activa el mismo día, casi siempre en minutos. Sin paquete no hay clases que reservar, así que empieza por aquí." },
   { sel:'a[data-v="agenda"]', vista:"agenda", titulo:"Reserva tus clases",
-    texto:"Con tu paquete activo eliges horarios aquí. Una clase suelta cuando quieras, o un horario fijo semanal para no pensarlo más. También cancelas o reprogramas desde acá." },
+    texto:"Con tu paquete activo eliges horarios aquí. Una clase suelta cuando quieras, o un horario fijo semanal para no pensarlo más. También cancelas o reprogramas desde aquí." },
   { sel:'a[data-v="recursos"]', vista:"recursos", titulo:"Tu material",
     texto:"PDFs, audios y ejercicios que subo para ti. Se desbloquean apenas tu paquete esté activo. Tu tarea de la semana vive en Mis clases." },
   { sel:".chat-head", selAlt:"#chatFab", vista:"inicio", titulo:"Habla conmigo",
-    texto:"Este es el chat directo. Tienes el canal grupal con la comunidad y un canal privado conmigo para tus dudas. Te respondo por acá." },
+    texto:"Este es el chat directo. Tienes el canal grupal con la comunidad y un canal privado conmigo para tus dudas. Te respondo por aquí." },
   { sel:'a[data-v="referidos"]', vista:"referidos", titulo:"Trae a un amigo",
     texto:"Tu código es tuyo. Cuando alguien compra su primer paquete con él, ganas S/"+MARCA.referidoSoles+" de descuento para tu próxima compra. Listo, ya conoces tu portal. A darle." }
 ];

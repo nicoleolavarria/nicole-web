@@ -3,9 +3,10 @@
   "type": "module",
   "version": "1.0.0",
   "scripts": {
-    "dev": "astro dev",
+    "dev": "npm run render && astro dev",
     "start": "astro dev",
-    "build": "astro build",
+    "render": "node scripts/build-web-render.mjs",
+    "build": "npm run render && astro build",
     "preview": "astro preview",
     "astro": "astro"
   },

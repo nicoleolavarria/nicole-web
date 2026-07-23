@@ -195,9 +195,19 @@ async function verificarGoogle(env, credential){
 }
 
 /* ---------- reglas (idénticas al Excel/admin) ----------
-   reservasUsadas (opcional): clases de la AGENDA que ya consumen crédito de este
-   ciclo — reservas futuras (apartan), completadas (asistió) y faltas (cancelación
-   tardía). Así una reserva descuenta del paquete igual que un registro. */
+   reservasUsadas (opcional): clases FUTURAS que la agenda ya tiene apartadas en este
+   ciclo. Las clases que ya pasaron NO van aquí: esas las cuenta `regs` (el registro).
+   Si se suman las dos cosas, cada clase dictada descuenta dos créditos. */
+/* Plazo para canjear: pasada la fecha `alumnos.vence`, las clases sin usar EXPIRAN
+   (restantes = 0) pero el alumno CONSERVA el acceso al portal; solo se le pide renovar.
+   `vence` vacío = SIN límite (regla de por vida para ese paquete); al renovar, la compra
+   le pone `vence` y ya entra. (Portado de MVT, 23-jul-2026.) */
+function paqueteExpirado(alumno){
+  const v = (alumno && alumno.vence ? String(alumno.vence).trim() : "");
+  if (!v) return false;                            // sin fecha = sin límite
+  const ms = Date.parse(v + "T23:59:59Z");         // el día del vence todavía puede canjear
+  return Number.isFinite(ms) && Date.now() > ms;
+}
 function compute(alumno, regs, precios, reservasUsadas){
   const pk = PAQUETES[alumno.paquete] || { clases: 0, reprog: 0 };
   let asistio = 0, reprogramo = 0, falta = 0;
@@ -209,10 +219,13 @@ function compute(alumno, regs, precios, reservasUsadas){
   const exceso = Math.max(0, reprogramo - pk.reprog);
   const usadas = asistio + falta + exceso + (Number(reservasUsadas) || 0);
   const saldo = pk.clases - usadas;
+  const expirado = paqueteExpirado(alumno) && saldo > 0;
   return {
     compradas: pk.clases,
     usadas,
-    restantes: Math.max(0, saldo),
+    restantes: expirado ? 0 : Math.max(0, saldo),
+    expirado,
+    vence: (alumno && alumno.vence) || "",
     reprogPermitidas: pk.reprog,
     reprogUsadas: reprogramo,
     reprogRestantes: Math.max(0, pk.reprog - reprogramo),
@@ -222,6 +235,7 @@ function compute(alumno, regs, precios, reservasUsadas){
 }
 function estadoAlumno(c){
   if (!c) return "Inactivo";
+  if (c.expirado) return "Renovar pronto";   // plazo vencido: aunque el saldo bruto sea > 1
   if (c.saldo > 1) return "Activo";
   return "Renovar pronto";
 }
@@ -244,12 +258,194 @@ async function loadConfig(env){
               // Apariencia editable desde el CRM (23-jul-2026): colores/tipografía de la web y los
               // paneles + textos clave de nicoleolavarria.com. Vacío = el diseño original hardcodeado.
               apar_bg_web: "", apar_bg_panel: "", apar_acento: "", apar_font: "",
-              web_hero_titulo: "", web_hero_sub: "", web_acerca_intro: "", web_anuncio: "" };
+              web_hero_titulo: "", web_hero_sub: "", web_acerca_intro: "", web_anuncio: "",
+              // Editor visual "Mi web" (23-jul-2026): TODO el contenido y el diseño de
+              // nicoleolavarria.com en un solo JSON. Vacío = la web original. web_version cambia
+              // en cada publicación (la web la compara para saber si su HTML quedó viejo).
+              web_json: "", web_version: "", vercel_deploy_hook: "" };
               // Los 4 motores nuevos van APAGADOS por defecto (07-jul): tocan correos de alumnos reales.
               // Andrés los enciende poniendo el switch en "1" en la tabla config (comandos en la bitácora del loop).
   for (const row of (results || [])) c[row.clave] = row.valor || "";
   return c;
 }
+/* ============================================================================
+   "Mi web" — saneo del contenido que Nicole publica desde el editor visual.
+   ============================================================================
+   Regla: lo que sale de aquí SIEMPRE es renderizable. Nada de confiar en el
+   cliente — se aceptan solo los campos conocidos, con su tipo, su tope de largo
+   y su lista de valores válidos; lo demás se descarta en silencio. Un campo malo
+   se vuelve "" (= vuelve el diseño original en ese punto), nunca rompe la web.  */
+const WEB_FUENTES = ["Bebas Neue", "Bricolage Grotesque", "Cormorant Garamond", "DM Sans", "EB Garamond",
+                     "Inter Tight", "Libre Baskerville", "Playfair Display", "Space Grotesk", "Space Mono", "Work Sans"];
+const WEB_MAX_BYTES = 60 * 1024;
+
+function wTxt(v, max){
+  // fuera caracteres de control (el salto de linea si se permite: los parrafos pueden tenerlo)
+  return String(v == null ? "" : v).replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f]/g, "").trim().slice(0, max || 200);
+}
+function wHex(v){ return /^#[0-9a-fA-F]{6}$/.test(String(v || "").trim()) ? String(v).trim().toLowerCase() : ""; }
+function wNum(v, min, max, def){
+  const n = Number(v);
+  return isFinite(n) ? Math.min(max, Math.max(min, Math.round(n))) : def;
+}
+function wUrl(v){
+  const s = String(v == null ? "" : v).trim().slice(0, 500);
+  if (!s) return "";
+  if (/^(https?:\/\/|mailto:|tel:)/i.test(s)) return s;
+  if (/^[/#]/.test(s) && !/^\/\//.test(s)) return s;   // ruta interna ("//host" no lo es)
+  return "";
+}
+function wPos(v){
+  const s = String(v || "").trim();
+  return /^-?\d{1,3}(\.\d+)?% -?\d{1,3}(\.\d+)?%$/.test(s) ? s : "50% 50%";
+}
+function wFoto(o){
+  const f = o && typeof o === "object" ? o : {};
+  const out = { url: wUrl(f.url), pos: wPos(f.pos) };
+  if (f.alt !== undefined) out.alt = wTxt(f.alt, 120);
+  if (f.ratio !== undefined) out.ratio = ["3/4", "1/1", "4/5", "4/3", "16/9"].includes(String(f.ratio)) ? String(f.ratio) : "3/4";
+  if (f.ancho !== undefined) out.ancho = wNum(f.ancho, 220, 720, 380);
+  return out;
+}
+function wLista(v, max, fn){
+  if (!Array.isArray(v)) return undefined;
+  return v.slice(0, max).map(fn).filter(function (x){ return x !== null; });
+}
+function wSeccion(src, forma){
+  if (!src || typeof src !== "object") return undefined;
+  const out = {};
+  for (const k in forma){
+    if (src[k] === undefined) continue;
+    const val = forma[k](src[k]);
+    if (val !== undefined) out[k] = val;
+  }
+  return Object.keys(out).length ? out : undefined;
+}
+
+function sanearWeb(raw){
+  const d = raw && typeof raw === "object" ? raw : {};
+  const out = { v: 1 };
+
+  out.estilo = wSeccion(d.estilo, {
+    fuente_titulos: function (v){ return WEB_FUENTES.includes(String(v)) ? String(v) : ""; },
+    fuente_cuerpo:  function (v){ return WEB_FUENTES.includes(String(v)) ? String(v) : ""; },
+    escala:         function (v){ return wNum(v, 70, 150, 100); },
+    escala_titulo:  function (v){ return wNum(v, 70, 200, 100); },
+    color_fondo:    wHex,
+    color_texto:    wHex,
+    color_acento:   wHex,
+    ancho:          function (v){ return wNum(v, 620, 1200, 860); },
+    esquinas:       function (v){ return wNum(v, 0, 40, 0); }
+  });
+
+  out.marca = wSeccion(d.marca, {
+    nombre:  function (v){ return wTxt(v, 80); },
+    anuncio: function (v){ return wTxt(v, 160); }
+  });
+
+  out.nav = wLista(d.nav, 8, function (n){
+    const t = wTxt(n && n.texto, 40);
+    if (!t) return null;
+    const o = { texto: t, url: wUrl(n && n.url) };
+    if (n && n.destacado) o.destacado = true;
+    return o;
+  });
+
+  out.inicio = wSeccion(d.inicio, {
+    titulo:      function (v){ return wTxt(v, 80); },
+    sub:         function (v){ return wTxt(v, 160); },
+    foto:        wFoto,
+    enlaces_pos: function (v){ return ["arriba", "centro", "abajo"].includes(String(v)) ? String(v) : "arriba"; },
+    instagram:   wUrl,
+    whatsapp:    wUrl,
+    enlaces:     function (v){
+      return wLista(v, 10, function (a){
+        const t = wTxt(a && a.texto, 60);
+        return t ? { texto: t, url: wUrl(a && a.url) } : null;
+      });
+    }
+  });
+
+  out.acerca = wSeccion(d.acerca, {
+    titulo:  function (v){ return wTxt(v, 80); },
+    sub:     function (v){ return wTxt(v, 160); },
+    foto:    wFoto,
+    intro:   function (v){ return wLista(v, 12, function (p){ return wTxt(p, 1200); }); },
+    galeria: function (v){ return wLista(v, 16, function (g){ const f = wFoto(g); return f.url ? f : null; }); },
+    bloques: function (v){
+      return wLista(v, 40, function (b){
+        const tipo = ["titulo", "parrafo", "foto"].includes(b && b.tipo) ? b.tipo : "parrafo";
+        if (tipo === "foto"){ const f = wFoto(b); return f.url ? Object.assign({ tipo: "foto" }, f) : null; }
+        const t = wTxt(b && b.texto, tipo === "titulo" ? 80 : 1200);
+        return t ? { tipo: tipo, texto: t } : null;
+      });
+    }
+  });
+
+  out.sesiones = wSeccion(d.sesiones, {
+    titulo:             function (v){ return wTxt(v, 80); },
+    nota:               function (v){ return wTxt(v, 160); },
+    titulo_modalidades: function (v){ return wTxt(v, 60); },
+    foto:               wFoto,
+    intro:              function (v){ return wLista(v, 8, function (p){ return wTxt(p, 1200); }); },
+    metas:              function (v){ return wLista(v, 8, function (m){ return wTxt(m, 80) || null; }); },
+    cta:                function (v){ return { texto: wTxt(v && v.texto, 40), url: wUrl(v && v.url) }; },
+    modalidades:        function (v){
+      return wLista(v, 16, function (m){
+        const n = wTxt(m && m.nombre, 80);
+        return n ? { nombre: n, desc: wTxt(m && m.desc, 600) } : null;
+      });
+    }
+  });
+
+  out.contacto = wSeccion(d.contacto, {
+    titulo: function (v){ return wTxt(v, 80); },
+    items:  function (v){
+      return wLista(v, 12, function (it){
+        const l = wTxt(it && it.label, 40);
+        const val = wTxt(it && it.valor, 200);
+        return (l || val) ? { label: l, valor: val, url: wUrl(it && it.url) } : null;
+      });
+    }
+  });
+
+  out.pie = wSeccion(d.pie, {
+    gracias:    function (v){ return wTxt(v, 120); },
+    blog_texto: function (v){ return wTxt(v, 40); },
+    blog_url:   wUrl,
+    copy:       function (v){ return wTxt(v, 80); }
+  });
+
+  for (const k in out) if (out[k] === undefined) delete out[k];
+  return out;
+}
+
+/* Lo que la web (y el editor) leen. Si todavía no se usó el editor visual, se
+   arma desde los campos sueltos del Ajustes anterior, para que lo que Nicole ya
+   había configurado el 23-jul no se pierda. */
+function webDeConfig(cfg){
+  if (cfg.web_json){
+    try { return sanearWeb(JSON.parse(cfg.web_json)); } catch (e) { /* JSON corrupto: sigue al legacy */ }
+  }
+  const legacy = {};
+  if (cfg.web_hero_titulo || cfg.web_hero_sub){
+    legacy.inicio = {};
+    if (cfg.web_hero_titulo) legacy.inicio.titulo = cfg.web_hero_titulo;
+    if (cfg.web_hero_sub) legacy.inicio.sub = cfg.web_hero_sub;
+    legacy.acerca = Object.assign({}, legacy.acerca, {
+      titulo: cfg.web_hero_titulo || undefined, sub: cfg.web_hero_sub || undefined
+    });
+  }
+  if (cfg.web_acerca_intro) legacy.acerca = Object.assign({}, legacy.acerca, { intro: [cfg.web_acerca_intro] });
+  if (cfg.web_anuncio) legacy.marca = { anuncio: cfg.web_anuncio };
+  const est = {};
+  if (cfg.apar_bg_web) est.color_fondo = cfg.apar_bg_web;
+  if (cfg.apar_acento) est.color_acento = cfg.apar_acento;
+  if (cfg.apar_font) est.fuente_titulos = cfg.apar_font;
+  if (Object.keys(est).length) legacy.estilo = est;
+  return sanearWeb(legacy);
+}
+
 async function cuentaDeSesion(env, request){
   const auth = request.headers.get("authorization") || "";
   if (!auth.startsWith("Bearer ")) return null;
@@ -2250,6 +2446,12 @@ export default {
            en runtime; es data pública sin nada sensible. */
         const rPub = json({
           google_client_id: cfg.google_client_id || "",
+          /* Lo que Nicole edita en "Mi web": el sitio lo renderiza en su build y, si
+             ella publicó algo después, lo repinta en el navegador comparando web_version. */
+          web: webDeConfig(cfg),
+          web_version: cfg.web_version || "",
+          /* Formato viejo (23-jul, mañana): sigue mientras Vercel sirva HTML construido
+             antes del editor — ese HTML lee "apariencia", no "web". */
           apariencia: {
             bg_web: cfg.apar_bg_web || "", bg_panel: cfg.apar_bg_panel || "",
             acento: cfg.apar_acento || "", font: cfg.apar_font || "",
@@ -3804,7 +4006,8 @@ export default {
             if (par[0] in b) b[par[0]] = String(b[par[0]] || "").slice(0, par[1]);
           }
           const claves = ["pago_numero", "pago_titular", "google_client_id", "bcp_cuenta", "bcp_cci", "scotia_cuenta", "scotia_cci", "crypto_moneda", "crypto_red", "crypto_wallet", "profe_nombre", "profe_marca", "profe_foto", "gcal_client_id", "gcal_client_secret", "gcal_calendar_id", "reprog_activo", "reprog_min_h",
-                          "apar_bg_web", "apar_bg_panel", "apar_acento", "apar_font", "web_hero_titulo", "web_hero_sub", "web_acerca_intro", "web_anuncio"];
+                          "apar_bg_web", "apar_bg_panel", "apar_acento", "apar_font", "web_hero_titulo", "web_hero_sub", "web_acerca_intro", "web_anuncio",
+                          "vercel_deploy_hook"];
           const stmts = [];
           for (const k of claves){
             if (k in b){
@@ -3874,6 +4077,52 @@ export default {
             "INSERT INTO recursos (id,titulo,descripcion,url,curso,fecha) VALUES (?1,?2,?3,?4,?5,?6)"
           ).bind(crypto.randomUUID(), titulo, descripcion, "/api/recurso/archivo/" + key, curso, hoy()).run();
           return json({ ok: true });
+        }
+
+        /* -------- "Mi web": publicar el contenido y el diseño del sitio --------
+           Guarda el JSON ya saneado + una versión nueva (así la web sabe que su HTML
+           quedó viejo y se repinta sola). Si hay deploy hook de Vercel configurado,
+           se le avisa para que reconstruya el HTML estático — eso es lo que ve Google. */
+        if (url.pathname === "/api/admin/web" && request.method === "POST"){
+          const b = await request.json().catch(() => null);
+          if (!b || typeof b !== "object") return json({ error: "No pude leer los cambios." }, 400);
+          const limpio = sanearWeb(b.web);
+          const texto = JSON.stringify(limpio);
+          if (texto.length > WEB_MAX_BYTES){
+            return json({ error: "Hay demasiado contenido en la página. Recorta algún texto y vuelve a publicar." }, 400);
+          }
+          const version = new Date().toISOString();
+          await env.DB.batch([
+            env.DB.prepare("INSERT INTO config (clave, valor) VALUES ('web_json', ?1) ON CONFLICT(clave) DO UPDATE SET valor = ?1").bind(texto),
+            env.DB.prepare("INSERT INTO config (clave, valor) VALUES ('web_version', ?1) ON CONFLICT(clave) DO UPDATE SET valor = ?1").bind(version)
+          ]);
+          const cfgHook = await loadConfig(env);
+          let rebuild = false;
+          if (/^https:\/\/api\.vercel\.com\//.test(cfgHook.vercel_deploy_hook || "")){
+            // el rebuild tarda ~1 min; no se espera (la web ya se ve al toque por runtime)
+            ctx.waitUntil(fetch(cfgHook.vercel_deploy_hook, { method: "POST" }).catch(() => {}));
+            rebuild = true;
+          }
+          return json({ ok: true, version: version, rebuild: rebuild, web: limpio });
+        }
+
+        /* -------- "Mi web": subir una foto de la página (imagen) a R2 -------- */
+        if (url.pathname === "/api/admin/web/foto" && request.method === "POST"){
+          const form = await request.formData().catch(() => null);
+          if (!form) return json({ error: "Formulario inválido" }, 400);
+          const archivo = form.get("archivo");
+          const esArchivo = archivo && typeof archivo !== "string" && typeof archivo.arrayBuffer === "function";
+          const ext = esArchivo ? extArchivo(archivo.name) : null;
+          if (!ext || !/^(png|jpg|jpeg)$/.test(ext) || archivo.size > 8 * 1024 * 1024){
+            return json({ error: "Solo imágenes (png/jpg) de hasta 8 MB." }, 400);
+          }
+          const key = crypto.randomUUID() + "." + ext;
+          await env.RECURSOS_R2.put(key, archivo, {
+            httpMetadata: { contentType: MIME_ARCHIVO[ext], contentDisposition: "inline" }
+          });
+          /* URL absoluta: estas fotos las carga nicoleolavarria.com, que es otro dominio.
+             No se borra la foto anterior — puede seguir usada en otra sección. */
+          return json({ ok: true, url: MARCA.dominio + "/api/recurso/archivo/" + key });
         }
 
         /* -------- Perfil: subir foto del profesor (imagen) a R2 y guardarla en config -------- */

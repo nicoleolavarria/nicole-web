@@ -263,7 +263,21 @@ async function cuentaDeSesion(env, request){
     await env.DB.prepare("DELETE FROM sesiones WHERE token = ?1").bind(token).run();
     return null;
   }
+  await renovarSesion(env, token, row._expira);
   return row;
+}
+/* Sesión deslizante (23-jul-2026, portado de MVT): usar el portal la mantiene viva. Con menos
+   de la mitad de vida (15 días), se estira a SESION_DIAS desde hoy — a lo mucho 1 UPDATE cada
+   15 días por sesión. Antes eran 30 días fijos desde el login y el alumno activo se caía con
+   "Sesión expirada" a mitad de una acción. */
+async function renovarSesion(env, token, expiraIso){
+  try {
+    const msRestante = new Date(expiraIso).getTime() - Date.now();
+    if (msRestante < (SESION_DIAS * 86400000) / 2){
+      const nueva = new Date(Date.now() + SESION_DIAS * 86400000).toISOString();
+      await env.DB.prepare("UPDATE sesiones SET expira = ?1 WHERE token = ?2").bind(nueva, token).run();
+    }
+  } catch (e) { /* renovar es cosmético: jamás tumba el request */ }
 }
 async function crearSesion(env, cuentaId){
   const token = randHex(32);
@@ -292,6 +306,7 @@ async function esAdminAuth(env, request){
     await env.DB.prepare("DELETE FROM sesiones WHERE token = ?1").bind(token).run();
     return false;
   }
+  await renovarSesion(env, token, row.expira);
   return true;
 }
 

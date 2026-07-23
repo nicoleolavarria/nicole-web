@@ -240,7 +240,11 @@ async function loadConfig(env){
               salud_gcal: "ok", salud_gcal_aviso_utc: "", salud_correo_estado: "ok", salud_correo_aviso_utc: "",
               // 4 motores (07-jul-2026): encendidos por defecto; poner '0' en config para apagar.
               // review_link SIN default: si está vacío, el motor de reseñas no manda nada (no se inventa el link de Google).
-              review_link: "", rescate_activo: "0", resena_activo: "0", nudge_asistencia_activo: "0", referido_nudge_activo: "0" };
+              review_link: "", rescate_activo: "0", resena_activo: "0", nudge_asistencia_activo: "0", referido_nudge_activo: "0",
+              // Apariencia editable desde el CRM (23-jul-2026): colores/tipografía de la web y los
+              // paneles + textos clave de nicoleolavarria.com. Vacío = el diseño original hardcodeado.
+              apar_bg_web: "", apar_bg_panel: "", apar_acento: "", apar_font: "",
+              web_hero_titulo: "", web_hero_sub: "", web_acerca_intro: "", web_anuncio: "" };
               // Los 4 motores nuevos van APAGADOS por defecto (07-jul): tocan correos de alumnos reales.
               // Andrés los enciende poniendo el switch en "1" en la tabla config (comandos en la bitácora del loop).
   for (const row of (results || [])) c[row.clave] = row.valor || "";
@@ -2227,7 +2231,21 @@ export default {
       /* ============ PÚBLICO (sin auth): el portal lee esto antes del login ============ */
       if (url.pathname === "/api/publico" && request.method === "GET"){
         const cfg = await loadConfig(env);
-        return json({ google_client_id: cfg.google_client_id || "" });
+        /* CORS abierto SOLO aquí: nicoleolavarria.com (Vercel) lee la apariencia editable
+           en runtime; es data pública sin nada sensible. */
+        const rPub = json({
+          google_client_id: cfg.google_client_id || "",
+          apariencia: {
+            bg_web: cfg.apar_bg_web || "", bg_panel: cfg.apar_bg_panel || "",
+            acento: cfg.apar_acento || "", font: cfg.apar_font || "",
+            textos: {
+              hero_titulo: cfg.web_hero_titulo || "", hero_sub: cfg.web_hero_sub || "",
+              acerca_intro: cfg.web_acerca_intro || "", anuncio: cfg.web_anuncio || ""
+            }
+          }
+        });
+        rPub.headers.set("Access-Control-Allow-Origin", "*");
+        return rPub;
       }
 
       /* ============ GATE DE SATISFACCIÓN (público, un clic desde el correo) ============
@@ -3760,7 +3778,18 @@ export default {
 
         if (url.pathname === "/api/admin/config" && request.method === "POST"){
           const b = await request.json().catch(() => ({}));
-          const claves = ["pago_numero", "pago_titular", "google_client_id", "bcp_cuenta", "bcp_cci", "scotia_cuenta", "scotia_cci", "crypto_moneda", "crypto_red", "crypto_wallet", "profe_nombre", "profe_marca", "profe_foto", "gcal_client_id", "gcal_client_secret", "gcal_calendar_id", "reprog_activo", "reprog_min_h"];
+          /* Apariencia (23-jul-2026): colores hex validados, fuente solo de la lista, textos con tope.
+             Un valor inválido se guarda como '' (= vuelve el diseño original), nunca rompe la web. */
+          const APAR_FONTS = ["Bebas Neue", "Bricolage Grotesque", "Playfair Display", "Space Grotesk", "Space Mono"];
+          for (const kc of ["apar_bg_web", "apar_bg_panel", "apar_acento"]){
+            if (kc in b && b[kc] && !/^#[0-9a-fA-F]{6}$/.test(String(b[kc]).trim())) b[kc] = "";
+          }
+          if ("apar_font" in b && b.apar_font && APAR_FONTS.indexOf(String(b.apar_font).trim()) === -1) b.apar_font = "";
+          for (const par of [["web_hero_titulo", 80], ["web_hero_sub", 160], ["web_acerca_intro", 600], ["web_anuncio", 160]]){
+            if (par[0] in b) b[par[0]] = String(b[par[0]] || "").slice(0, par[1]);
+          }
+          const claves = ["pago_numero", "pago_titular", "google_client_id", "bcp_cuenta", "bcp_cci", "scotia_cuenta", "scotia_cci", "crypto_moneda", "crypto_red", "crypto_wallet", "profe_nombre", "profe_marca", "profe_foto", "gcal_client_id", "gcal_client_secret", "gcal_calendar_id", "reprog_activo", "reprog_min_h",
+                          "apar_bg_web", "apar_bg_panel", "apar_acento", "apar_font", "web_hero_titulo", "web_hero_sub", "web_acerca_intro", "web_anuncio"];
           const stmts = [];
           for (const k of claves){
             if (k in b){

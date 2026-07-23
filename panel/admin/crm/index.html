@@ -553,6 +553,28 @@
       <p class="hint" style="margin-top:-4px;">Salen en el portal como métodos de pago al comprar.</p>
     </div>
     <div class="group">
+      <h2>// Tu página web y tu marca</h2>
+      <p class="hint">Edita tu web (nicoleolavarria.com) y tus paneles sin tocar código. Guarda los ajustes y recarga la página para ver el cambio en vivo.</p>
+      <div class="cfgrow"><span class="pk">Fondo de tu web</span><input id="cfg_apar_bg_web" type="color" value="#fafaf8" style="flex:0 0 64px;min-width:64px;height:34px;padding:2px;cursor:pointer;" /><button class="btn ghost sm" type="button" data-aparreset="cfg_apar_bg_web" data-def="#fafaf8">Volver al original</button></div>
+      <div class="cfgrow"><span class="pk">Fondo de tus paneles</span><input id="cfg_apar_bg_panel" type="color" value="#fafaf8" style="flex:0 0 64px;min-width:64px;height:34px;padding:2px;cursor:pointer;" /><button class="btn ghost sm" type="button" data-aparreset="cfg_apar_bg_panel" data-def="#fafaf8">Volver al original</button></div>
+      <div class="cfgrow"><span class="pk">Color de acento</span><input id="cfg_apar_acento" type="color" value="#0a0a0a" style="flex:0 0 64px;min-width:64px;height:34px;padding:2px;cursor:pointer;" /><button class="btn ghost sm" type="button" data-aparreset="cfg_apar_acento" data-def="#0a0a0a">Volver al original</button></div>
+      <div class="cfgrow"><span class="pk">Tipografía de titulares (web)</span>
+        <select id="cfg_apar_font">
+          <option value="">DM Mono (la original)</option>
+          <option>Bebas Neue</option>
+          <option>Bricolage Grotesque</option>
+          <option>Playfair Display</option>
+          <option>Space Grotesk</option>
+          <option>Space Mono</option>
+        </select>
+      </div>
+      <div class="cfgrow"><span class="pk">Título del inicio</span><input id="cfg_web_hero_titulo" type="text" placeholder="Nicole Olavarría" /></div>
+      <div class="cfgrow"><span class="pk">Subtítulo del inicio</span><input id="cfg_web_hero_sub" type="text" placeholder="soprano · artista escénica · compositora" /></div>
+      <div class="cfgrow"><span class="pk">Primer párrafo de "Acerca de"</span><textarea id="cfg_web_acerca_intro" rows="3" placeholder="Cantante, artista escénica y compositora..."></textarea></div>
+      <div class="cfgrow"><span class="pk">Anuncio arriba de tu web (opcional)</span><input id="cfg_web_anuncio" type="text" placeholder="Ej: Vacantes abiertas para agosto — escríbeme" /></div>
+      <p class="hint" style="margin-top:-4px;">Los textos vacíos dejan el texto original de la web. El anuncio sale como una barra arriba de todas las páginas; bórralo y desaparece.</p>
+    </div>
+    <div class="group">
       <h2>// Reprogramaciones del alumno</h2>
       <div class="cfgrow"><span class="pk">¿El alumno reprograma solo?</span><select id="cfg_reprog_activo"><option value="">Sí, desde su portal</option><option value="0">No, solo a través de mí</option></select></div>
       <div class="cfgrow"><span class="pk">Horas mínimas de anticipación</span><input id="cfg_reprog_min_h" type="number" min="1" max="72" placeholder="4" /></div>
@@ -1205,6 +1227,15 @@ function renderAjustes(){
   el("cfg_crypto_moneda").value=(db.config&&db.config.crypto_moneda)||"";
   el("cfg_crypto_red").value=(db.config&&db.config.crypto_red)||"";
   el("cfg_crypto_wallet").value=(db.config&&db.config.crypto_wallet)||"";
+  if(el("cfg_apar_bg_web")) el("cfg_apar_bg_web").value=(db.config&&db.config.apar_bg_web)||"#fafaf8";
+  if(el("cfg_apar_bg_panel")) el("cfg_apar_bg_panel").value=(db.config&&db.config.apar_bg_panel)||"#fafaf8";
+  if(el("cfg_apar_acento")) el("cfg_apar_acento").value=(db.config&&db.config.apar_acento)||"#0a0a0a";
+  if(el("cfg_apar_font")) el("cfg_apar_font").value=(db.config&&db.config.apar_font)||"";
+  if(el("cfg_web_hero_titulo")) el("cfg_web_hero_titulo").value=(db.config&&db.config.web_hero_titulo)||"";
+  if(el("cfg_web_hero_sub")) el("cfg_web_hero_sub").value=(db.config&&db.config.web_hero_sub)||"";
+  if(el("cfg_web_acerca_intro")) el("cfg_web_acerca_intro").value=(db.config&&db.config.web_acerca_intro)||"";
+  if(el("cfg_web_anuncio")) el("cfg_web_anuncio").value=(db.config&&db.config.web_anuncio)||"";
+  aplicarAparienciaPanel();
   el("cfg_msg_renovacion").value=(db.config&&db.config.msg_renovacion)||"";
   el("cfg_gcal_client_id").value=(db.config&&db.config.gcal_client_id)||"";
   el("cfg_gcal_client_secret").value=(db.config&&db.config.gcal_client_secret)||"";
@@ -2010,6 +2041,21 @@ el("btnGuardarRenovar").addEventListener("click",function(){
     .finally(function(){ btnRen.disabled=false; });
 });
 
+/* ---------- Apariencia editable (23-jul-2026): el fondo/acento del CRM y el portal salen
+   de config; la web (nicoleolavarria.com) lee lo mismo vía /api/publico. Vacío = original. */
+function aplicarAparienciaPanel(){
+  var c=db.config||{}; var rs=document.documentElement.style;
+  if(c.apar_bg_panel && /^#[0-9a-fA-F]{6}$/.test(c.apar_bg_panel)) rs.setProperty("--bg", c.apar_bg_panel); else rs.removeProperty("--bg");
+  if(c.apar_acento && /^#[0-9a-fA-F]{6}$/.test(c.apar_acento)) rs.setProperty("--accent", c.apar_acento); else rs.removeProperty("--accent");
+}
+/* botón "Volver al original" de cada color: solo repone el picker; se aplica al Guardar */
+document.body.addEventListener("click",function(e){
+  var rb=e.target.closest("[data-aparreset]"); if(!rb) return;
+  var inp=el(rb.dataset.aparreset); if(inp) inp.value=rb.dataset.def||"#fafaf8";
+});
+/* un color igual al original se guarda como '' (= el diseño de fábrica sigue mandando) */
+function aparValor(id,def){ var i=el(id); if(!i) return ""; var v=(i.value||"").trim().toLowerCase(); return (v===def)?"":v; }
+
 /* ---------- Ajustes ---------- */
 el("btnGuardarAjustes").addEventListener("click",function(){
   document.querySelectorAll("[data-precio]").forEach(function(inp){
@@ -2030,9 +2076,17 @@ el("btnGuardarAjustes").addEventListener("click",function(){
             msg_renovacion:el("cfg_msg_renovacion").value.trim(),
             gcal_client_id:el("cfg_gcal_client_id").value.trim(),
             gcal_client_secret:el("cfg_gcal_client_secret").value.trim(),
-            gcal_calendar_id:el("cfg_gcal_calendar_id").value.trim()||"primary" };
+            gcal_calendar_id:el("cfg_gcal_calendar_id").value.trim()||"primary",
+            apar_bg_web:aparValor("cfg_apar_bg_web","#fafaf8"),
+            apar_bg_panel:aparValor("cfg_apar_bg_panel","#fafaf8"),
+            apar_acento:aparValor("cfg_apar_acento","#0a0a0a"),
+            apar_font:(el("cfg_apar_font")?el("cfg_apar_font").value:""),
+            web_hero_titulo:(el("cfg_web_hero_titulo")?el("cfg_web_hero_titulo").value.trim():""),
+            web_hero_sub:(el("cfg_web_hero_sub")?el("cfg_web_hero_sub").value.trim():""),
+            web_acerca_intro:(el("cfg_web_acerca_intro")?el("cfg_web_acerca_intro").value.trim():""),
+            web_anuncio:(el("cfg_web_anuncio")?el("cfg_web_anuncio").value.trim():"") };
   Promise.all([ apiPut(), apiPost("/api/admin/config",cfg) ])
-    .then(function(){ db.config=Object.assign(db.config||{},cfg); renderAll(); toast("Ajustes guardados"); })
+    .then(function(){ db.config=Object.assign(db.config||{},cfg); renderAll(); aplicarAparienciaPanel(); toast("Ajustes guardados"); })
     .catch(function(){ toast("No se pudieron guardar los ajustes"); });
 });
 

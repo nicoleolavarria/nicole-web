@@ -2032,6 +2032,15 @@ function initAlumno(){
   fetch("/api/publico").then(function(r){ return r.json(); }).then(function(d){
     GOOGLE_CLIENT = (d && d.google_client_id) || "";
     if(GOOGLE_CLIENT) cargarGoogle();
+    /* apariencia editable desde el CRM de Nicole: fondo/acento del portal (cosmético, jamás tumba nada) */
+    try{
+      var ap=d&&d.apariencia;
+      if(ap){
+        var rs=document.documentElement.style;
+        if(ap.bg_panel && /^#[0-9a-fA-F]{6}$/.test(ap.bg_panel)) rs.setProperty("--bg", ap.bg_panel);
+        if(ap.acento && /^#[0-9a-fA-F]{6}$/.test(ap.acento)) rs.setProperty("--accent", ap.acento);
+      }
+    }catch(e){}
   }).catch(function(){});
   if(RESET_TOKEN){ mostrarFormResetPass(); return; }
   if(getTok()){ cargarMe(); }

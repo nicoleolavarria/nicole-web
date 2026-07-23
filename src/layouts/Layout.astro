@@ -59,6 +59,47 @@ const canonicalURL = new URL(Astro.url.pathname, Astro.site);
     <p class="footer-copy">© 2025 Nicole Olavarría</p>
   </footer>
 
+  <script is:inline>
+    /* Apariencia editable desde el panel de Nicole (CRM → Ajustes → "Tu página web y tu marca").
+       Lee /api/publico del worker (CORS abierto ahí) y aplica colores, tipografía y textos.
+       Si el worker no responde o no hay nada configurado, la web queda EXACTAMENTE como el diseño
+       original — este script jamás debe romper la página. */
+    (function () {
+      fetch('https://nicole-crm-worker.nicoleolavarria.workers.dev/api/publico')
+        .then(function (r) { return r.json(); })
+        .then(function (d) {
+          var a = d && d.apariencia; if (!a) return;
+          var rs = document.documentElement.style;
+          var hex = /^#[0-9a-fA-F]{6}$/;
+          if (a.bg_web && hex.test(a.bg_web)) rs.setProperty('--bg', a.bg_web);
+          if (a.acento && hex.test(a.acento)) rs.setProperty('--accent', a.acento);
+          var FL = { 'Bebas Neue': 'family=Bebas+Neue', 'Bricolage Grotesque': 'family=Bricolage+Grotesque:wght@500;700',
+                     'Playfair Display': 'family=Playfair+Display:wght@500;700', 'Space Grotesk': 'family=Space+Grotesk:wght@500;700',
+                     'Space Mono': 'family=Space+Mono:wght@400;700' };
+          if (a.font && FL[a.font]) {
+            var l = document.createElement('link'); l.rel = 'stylesheet';
+            l.href = 'https://fonts.googleapis.com/css2?' + FL[a.font] + '&display=swap';
+            document.head.appendChild(l);
+            var st = document.createElement('style');
+            st.textContent = "h1,h2,h3,.site-name{font-family:'" + a.font + "', var(--mono);}";
+            document.head.appendChild(st);
+          }
+          var t = a.textos || {};
+          var put = function (sel, val) { if (!val) return; document.querySelectorAll(sel).forEach(function (n) { n.textContent = val; }); };
+          put('[data-edit="hero-titulo"]', t.hero_titulo);
+          put('[data-edit="hero-sub"]', t.hero_sub);
+          put('[data-edit="acerca-intro"]', t.acerca_intro);
+          if (t.anuncio) {
+            var b = document.createElement('div');
+            b.style.cssText = 'background:var(--accent);color:var(--bg);font-family:var(--mono);font-size:12px;letter-spacing:.06em;text-align:center;padding:9px 14px;';
+            b.textContent = t.anuncio;
+            document.body.insertBefore(b, document.body.firstChild);
+          }
+        })
+        .catch(function () {});
+    })();
+  </script>
+
   {!noHeader && (
     <script>
       const toggle = document.querySelector('.menu-toggle');

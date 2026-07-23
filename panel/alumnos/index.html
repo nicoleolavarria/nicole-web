@@ -1602,6 +1602,8 @@ function agSyncReprog(){ try{ if(ME&&ME.reprog){ AG_REPROG_ON=(ME.reprog.activo!
 var AG_TIPO = "fija"; // horario fijo semanal = default (02-jul-2026): mantiene el ritmo consistente. Clase suelta sigue disponible como 2da opción.
 var AG_CARGANDO = false;
 var AG_DIA = "";
+var AG_REPROG_ID = null;   // reserva que se está moviendo (modo reprogramar ATÓMICO, portado de MVT 23-jul)
+var AG_REPROG_LABEL = "";
 var AG_MESES = ["enero","febrero","marzo","abril","mayo","junio","julio","agosto","setiembre","octubre","noviembre","diciembre"];
 var DIAS_LARGO = ["domingo","lunes","martes","miércoles","jueves","viernes","sábado"];
 
@@ -1692,6 +1694,16 @@ function setTipoReserva(t){
   document.querySelectorAll("#v-agenda .agtipo [data-tipo]").forEach(function(b){
     b.classList.toggle("ghost", b.dataset.tipo!==AG_TIPO);
   });
+  var tsel=document.querySelector("#v-agenda .agtipo");
+  // En modo mover no aplica fija/suelta (un cambio siempre es una clase suelta): ocultamos el
+  // selector y explicamos qué está pasando, con opción de salir sin tocar la clase original.
+  if(AG_REPROG_ID){
+    if(tsel) tsel.style.display="none";
+    $("agTipoNota").innerHTML='Estás moviendo tu clase del <b>'+esc(AG_REPROG_LABEL)+'</b>. Elige el horario nuevo abajo; tu clase actual sigue en pie hasta que confirmes. <a href="#" id="agCancelReprog">Cancelar cambio</a>';
+    var cx=$("agCancelReprog"); if(cx) cx.addEventListener("click",function(ev){ev.preventDefault(); salirModoReprog();});
+    return;
+  }
+  if(tsel) tsel.style.display="";
   $("agTipoNota").textContent = AG_TIPO==="fija"
     ? "Reservas el mismo día y hora las próximas 4 semanas. Si tu plan tiene más horas, puedes elegir varios horarios fijos."
     : "Reservas una sola clase en el horario que elijas.";
@@ -1711,7 +1723,8 @@ function cargarSlots(){
 
 function pintarSlots(){
   if(AG_SLOTS.length===0){
-    $("agSlots").innerHTML = '<p class="note" style="margin:0">No hay horarios libres en las próximas semanas. Escríbeme y lo cuadramos.</p>';
+    $("agSlots").innerHTML = '<p class="note" style="margin:0">No hay horarios libres en las próximas semanas. Escríbeme y lo cuadramos.'+
+      (AG_REPROG_ID ? ' Tranquilo: tu clase del '+esc(AG_REPROG_LABEL)+' sigue reservada.' : '')+'</p>';
     return;
   }
   // agrupo los slots por día (clave local)
@@ -1753,6 +1766,7 @@ function pintarSlots(){
 }
 
 function reservarSlot(iso){
+  if(AG_REPROG_ID){ return confirmarReprogramar(iso); }   // en modo mover, elegir un slot reprograma (atómico)
   var label = fmtFechaLocal(iso)+" "+fmtHoraLocal(iso);
   var msg = AG_TIPO==="fija"
     ? "Vas a reservar el horario fijo de "+label+" las próximas 4 semanas. ¿Confirmas?"
@@ -1776,15 +1790,35 @@ function reservarSlot(iso){
     .catch(function(e){ toast(e.message || "No se pudo reservar."); cargarSlots(); });
 }
 
-function cancelarClase(id){
-  if(!confirm("¿Reprogramar esta clase? Se libera tu horario actual y eliges uno nuevo. Solo se puede con al menos "+AG_CANCELA_MIN_H+"h de anticipación.")) return;
-  api("/api/agenda/cancelar",{method:"POST",body:JSON.stringify({id:id})})
-    .then(function(r){ toast(r.mensaje || "Clase liberada."); return api("/api/me"); })
-    .then(function(d){
-      ME=d; renderAgenda();
-      var slots=$("agSlots"); if(slots) slots.scrollIntoView({behavior:"smooth",block:"start"});
+/* Reprogramar ATÓMICO (portado de MVT 23-jul): entrar en "modo mover" NO cancela nada; recién
+   al elegir el horario nuevo se hace el cambio en un solo paso (aparta el nuevo y suelta el viejo,
+   o no se toca ninguno). Antes esto cancelaba primero y reservaba después: si el 2do paso fallaba
+   —sin cupo, red caída, se cerró el tab— el alumno quedaba sin clase (el bug de Álvaro). */
+function entrarModoReprog(id){
+  var r=(ME.proximasClases||[]).filter(function(x){return x.id===id;})[0];
+  if(!r) return;
+  AG_REPROG_ID=id;
+  AG_REPROG_LABEL=fmtFechaLocal(r.inicio_utc)+" a las "+fmtHoraLocal(r.inicio_utc);
+  renderAgenda();
+  var slots=$("agSlots"); if(slots) slots.scrollIntoView({behavior:"smooth",block:"center"});
+}
+function salirModoReprog(){ AG_REPROG_ID=null; AG_REPROG_LABEL=""; renderAgenda(); }
+function confirmarReprogramar(iso){
+  var label=fmtFechaLocal(iso)+" "+fmtHoraLocal(iso);
+  if(!confirm("Mover tu clase del "+AG_REPROG_LABEL+" al "+label+". ¿Confirmas?")) return;
+  var id=AG_REPROG_ID;
+  api("/api/agenda/reprogramar",{method:"POST",body:JSON.stringify({id:id, inicio_utc:iso})})
+    .then(function(r){
+      AG_REPROG_ID=null; AG_REPROG_LABEL="";
+      toast(r.mensaje || "Listo, moví tu clase 🎸");
+      return api("/api/me");
     })
-    .catch(function(e){ toast(e.message || "No se pudo reprogramar."); });
+    .then(function(d){ ME=d; renderAgenda(); })
+    .catch(function(e){
+      // La clase original NO se tocó: seguimos en modo mover y el alumno elige otro horario.
+      toast(e.message || "No se pudo mover la clase. Tu clase original sigue en pie.");
+      cargarSlots();
+    });
 }
 
 $("v-agenda").addEventListener("click", function(e){
@@ -1795,7 +1829,7 @@ $("v-agenda").addEventListener("click", function(e){
   var s = e.target.closest("[data-slot]");
   if(s){ reservarSlot(s.dataset.slot); return; }
   var c = e.target.closest("[data-cancelar]");
-  if(c){ cancelarClase(c.dataset.cancelar); return; }
+  if(c){ entrarModoReprog(c.dataset.cancelar); return; }
 });
 
 var RENDER = { inicio:renderInicio, clases:renderClases, agenda:renderAgenda, recursos:renderRecursos,

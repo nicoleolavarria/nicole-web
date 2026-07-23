@@ -673,7 +673,7 @@ async function confirmarCompra(env, compra){
     const nuevoId = crypto.randomUUID();
     alumnoIdNuevo = nuevoId;
     stmts.push(env.DB.prepare(
-      "INSERT INTO alumnos (id,codigo,nombre,whatsapp,curso,paquete,fecha,pago,horario,notas,ciclo,vence) VALUES (?1,?2,?3,?4,?5,?6,?7,'Pagado','','Creado por compra web',1,?8)"
+      "INSERT INTO alumnos (id,codigo,nombre,whatsapp,curso,paquete,fecha,pago,horario,notas,ciclo,vence,origen) VALUES (?1,?2,?3,?4,?5,?6,?7,'Pagado','','Creado por compra web',1,?8,'compra-web')"
     ).bind(nuevoId, randHex(3).toUpperCase(), cu.nombre, cu.whatsapp || "", compra.curso || "Canto", compra.paquete, hoy(), vence));
     stmts.push(env.DB.prepare("UPDATE cuentas SET alumno_id = ?1 WHERE id = ?2").bind(nuevoId, cu.id));
   }
@@ -2015,13 +2015,72 @@ function limaToUtc(y, m, d, hhmm){
   return new Date(Date.UTC(y, m, d, H, M) + LIMA_OFFSET_MS);
 }
 function hhmm(p){ return String(p.h).padStart(2, "0") + ":" + String(p.min).padStart(2, "0"); }
+/* Fecha-Lima (YYYY-MM-DD) de un instante ISO. La bitácora vive en días calendario de Lima:
+   con la fecha UTC, toda clase de 19:00+ Lima caía al día siguiente. (Portado de MVT.) */
+function fechaLimaDe(iso){
+  const t = Date.parse(iso);
+  if (!Number.isFinite(t)) return "";
+  const p = limaParts(new Date(t));
+  return p.y + "-" + String(p.m + 1).padStart(2, "0") + "-" + String(p.d).padStart(2, "0");
+}
+function diaVecino(f, delta){
+  const t = Date.parse(String(f) + "T12:00:00Z");
+  return Number.isFinite(t) ? new Date(t + delta * 86400000).toISOString().slice(0, 10) : "";
+}
 
-// Cuántas clases del paquete consume ya la agenda (este ciclo).
-async function reservasUsadasCount(env, alumnoId, ciclo){
-  const r = await env.DB.prepare(
-    "SELECT COUNT(*) AS n FROM reservas WHERE alumno_id = ?1 AND COALESCE(ciclo,1) = ?2 AND estado IN ('reservada','completada','falta')"
-  ).bind(alumnoId, ciclo).first();
-  return (r && Number(r.n)) || 0;
+/* Cuántas clases del paquete consume la AGENDA en este ciclo, sin pisarse con el `registro`.
+   Regla: cada clase descuenta UN crédito y una sola vez.
+     - Reserva futura     -> aparta crédito (todavía no hay fila de registro).
+     - Reserva ya pasada  -> la cuenta su fila de registro; si NO tiene fila, la contamos aquí
+                             (dictada y sin anotar: igual consume, no se regala la clase).
+   Emparejamiento 1 a 1 por fecha-Lima, con vecino ±1 día (el registro histórico se anotó en
+   fecha UTC: una clase nocturna quedó corrida un día). Antes esto era un COUNT(*) de TODAS
+   las reservas del ciclo sumado a los "Asistió" del registro: cada clase dictada descontaba
+   DOS créditos, agotaba el paquete a media vida y bloqueaba reservar/reprogramar (el bug que
+   reportó Álvaro Guillén en MVT el 19-jul-2026). excluirId: la reserva que se está moviendo en
+   un reprogramar (mover una clase no puede exigir un crédito extra). (Portado de MVT, 23-jul.) */
+async function reservasUsadasCount(env, alumnoId, ciclo, excluirId){
+  const excl = String(excluirId || "");
+  const ahora = Date.now();
+  const { results: resv } = await env.DB.prepare(
+    "SELECT id, inicio_utc FROM reservas WHERE alumno_id = ?1 AND COALESCE(ciclo,1) = ?2 " +
+    "AND estado IN ('reservada','completada','falta') ORDER BY inicio_utc ASC"
+  ).bind(alumnoId, ciclo).all();
+  if (!resv || !resv.length) return 0;
+
+  // Solo filas de CLASE emparejan reservas: una fila 'Reprogramó' es el movimiento de un
+  // horario, no una clase dictada (su costo lo cobra compute() vía la cuota/exceso).
+  const { results: regs } = await env.DB.prepare(
+    "SELECT fecha FROM registro WHERE alumno_id = ?1 AND COALESCE(ciclo,1) = ?2 AND estado != 'Reprogramó'"
+  ).bind(alumnoId, ciclo).all();
+  const porFecha = new Map();          // fecha -> filas de registro libres para emparejar
+  for (const g of (regs || [])){
+    const f = String(g.fecha || "").slice(0, 10);
+    if (f) porFecha.set(f, (porFecha.get(f) || 0) + 1);
+  }
+
+  let n = 0;
+  const pasadas = [];
+  for (const r of resv){
+    if (r.id === excl) continue;
+    if (Date.parse(r.inicio_utc) >= ahora){ n++; continue; }   // futura: aparta crédito
+    pasadas.push(fechaLimaDe(r.inicio_utc));
+  }
+  const sinPar = [];
+  for (const f of pasadas){
+    const libres = porFecha.get(f) || 0;
+    if (libres > 0) porFecha.set(f, libres - 1);
+    else sinPar.push(f);
+  }
+  for (const f of sinPar){
+    let emparejada = false;
+    for (const vf of [diaVecino(f, 1), diaVecino(f, -1)]){
+      const libres = porFecha.get(vf) || 0;
+      if (libres > 0){ porFecha.set(vf, libres - 1); emparejada = true; break; }
+    }
+    if (!emparejada) n++;                                      // dictada y sin anotar: igual consume
+  }
+  return n;
 }
 
 const DIAS_FIJO = ["Domingo","Lunes","Martes","Miércoles","Jueves","Viernes","Sábado"];
@@ -2235,18 +2294,36 @@ async function gcalCrearEvento(env, info){
   } catch (e) { return ""; }
 }
 
+/* Devuelve true si el evento quedó fuera del calendario (borrado ahora, o ya no existía:
+   404/410). false = Google falló y el evento sigue vivo; el llamador NO debe limpiar
+   gcal_event_id, así el barrido horario del cron lo reintenta (si no, el evento huérfano
+   bloquea ese slot para siempre vía gcalBusy y nadie se entera). (Portado de MVT, 23-jul.) */
 async function gcalBorrarEvento(env, eventId){
   try {
-    if (!eventId) return;
+    if (!eventId) return true;
     const tok = await gcalAccessToken(env);
-    if (!tok) return;
+    if (!tok) return false;
     const cfg = await loadConfig(env);
     const calId = cfg.gcal_calendar_id || "primary";
-    await fetch(
+    const r = await fetch(
       "https://www.googleapis.com/calendar/v3/calendars/" + encodeURIComponent(calId) + "/events/" + encodeURIComponent(eventId) + "?sendUpdates=all",
       { method: "DELETE", headers: { "authorization": "Bearer " + tok } }
     );
-  } catch (e) {}
+    return r.ok || r.status === 404 || r.status === 410;
+  } catch (e) { return false; }
+}
+
+/* Barrido del cron: reintenta borrar los eventos de Google de reservas CANCELADAS cuyo
+   borrado online falló (el gcal_event_id que quedó es la huella del huérfano). Tanda corta
+   por corrida. (Portado de MVT, 23-jul.) */
+async function limpiarGcalHuerfanos(env){
+  const { results } = await env.DB.prepare(
+    "SELECT id, gcal_event_id FROM reservas WHERE estado = 'cancelada' AND COALESCE(gcal_event_id,'') != '' LIMIT 10"
+  ).all();
+  for (const r of (results || [])){
+    const ok = await gcalBorrarEvento(env, r.gcal_event_id);
+    if (ok) await env.DB.prepare("UPDATE reservas SET gcal_event_id = '' WHERE id = ?1").bind(r.id).run();
+  }
 }
 
 /* Bloques OCUPADOS del calendario de Andrés entre dos instantes (freeBusy).
@@ -2424,6 +2501,14 @@ async function ensureSchema(env){
     await env.DB.prepare(
       "CREATE TABLE IF NOT EXISTS feedback (token_hash TEXT PRIMARY KEY, alumno_id TEXT NOT NULL, nota INTEGER DEFAULT 0, usado INTEGER DEFAULT 0, creada TEXT DEFAULT '', respondida TEXT DEFAULT '')"
     ).run();
+    // v-paridad (23-jul-2026, portado de MVT): origen del alumno + auditoría de cancelaciones.
+    const tieneOrigen = (infoAlumnos.results || []).some(c => c.name === "origen");
+    if (!tieneOrigen) await env.DB.prepare("ALTER TABLE alumnos ADD COLUMN origen TEXT DEFAULT ''").run();
+    const infoReservas = await env.DB.prepare("PRAGMA table_info(reservas)").all();
+    const tieneCancUtc = (infoReservas.results || []).some(c => c.name === "cancelada_utc");
+    if (!tieneCancUtc) await env.DB.prepare("ALTER TABLE reservas ADD COLUMN cancelada_utc TEXT DEFAULT ''").run();
+    const tieneCancPor = (infoReservas.results || []).some(c => c.name === "cancelada_por");
+    if (!tieneCancPor) await env.DB.prepare("ALTER TABLE reservas ADD COLUMN cancelada_por TEXT DEFAULT ''").run();
     _schemaChecked = true;
   } catch (e) { /* otra invocación pudo correrla en paralelo; se reintenta en la próxima request */ }
 }
@@ -3628,11 +3713,93 @@ export default {
         return json({ ok: true, reservadas: creadas, tipo: "fija", saltadas });
       }
 
+      /* ============ AGENDA: reprogramar una clase (ATÓMICO) ============
+         Aparta el horario nuevo y recién ENTONCES suelta el viejo, en un solo batch (o entran
+         los dos o no entra ninguno). Si el horario nuevo ya no está libre, el alumno se queda
+         con su clase original intacta. Antes esto eran dos pasos sueltos (cancelar -> reservar):
+         si el segundo fallaba —sin créditos, slot tomado, red caída, se cerró el tab— el alumno
+         quedaba sin clase y sin botón para recuperarla, que es justo lo que le pasó a Álvaro
+         Guillén en MVT el 19-jul-2026. (Portado de MVT, 23-jul-2026.) */
+      if (url.pathname === "/api/agenda/reprogramar" && request.method === "POST"){
+        const cu = await cuentaDeSesion(env, request);
+        if (!cu || !cu.alumno_id) return json({ error: "Sesión expirada" }, 401);
+        const b = await request.json().catch(() => ({}));
+
+        const vieja = await env.DB.prepare("SELECT * FROM reservas WHERE id = ?1").bind(String(b.id || "")).first();
+        if (!vieja || vieja.alumno_id !== cu.alumno_id) return json({ error: "No encuentro esa clase." }, 404);
+        if (vieja.estado !== "reservada") return json({ error: "Esa clase ya no se puede reprogramar." }, 400);
+
+        const rcfg = reprogCfg(await loadConfig(env).catch(() => ({})));
+        if (!rcfg.activo){
+          return json({ error: "Tu profesor gestiona los cambios de horario directamente. Escríbele para reprogramar esta clase." }, 403);
+        }
+        const horasV = (Date.parse(vieja.inicio_utc) - Date.now()) / 3600000;
+        if (horasV < rcfg.minH){
+          return json({ error: "Ya no se puede reprogramar: falta menos de " + rcfg.minH + " horas para tu clase. Si no puedes asistir, escríbele a tu profesor; de lo contrario, cuenta como clase usada." }, 400);
+        }
+
+        const isoN = String(b.inicio_utc || "");
+        if (isoN === vieja.inicio_utc) return json({ error: "Ese es el mismo horario que ya tienes." }, 400);
+        if (!(await slotValido(env, isoN))) return json({ error: "Ese horario ya no está disponible. Elige otro." }, 400);
+
+        const alumnoR = await env.DB.prepare("SELECT * FROM alumnos WHERE id = ?1").bind(cu.alumno_id).first();
+        if (!alumnoR) return json({ error: "No encuentro tu ficha de alumno." }, 400);
+        const cicloR = Number(alumnoR.ciclo) || 1;
+        const { results: regsR } = await env.DB.prepare(
+          "SELECT estado FROM registro WHERE alumno_id = ?1 AND COALESCE(ciclo,1) = ?2"
+        ).bind(alumnoR.id, cicloR).all();
+        // Excluimos la reserva que estamos moviendo: mover una clase no debe exigir un crédito extra.
+        const rUsadasR = await reservasUsadasCount(env, alumnoR.id, cicloR, vieja.id);
+        const compR = compute(alumnoR, regsR || [], await loadPrecios(env), rUsadasR);
+        if (compR.restantes < 1){
+          return json({ error: "No te quedan clases en tu paquete. Renueva para reservar más." }, 409);
+        }
+        // Cuota real de reprogramaciones: agotada la del paquete, el cambio consume 1 clase
+        // del saldo (el exceso que ya cobra compute); si no hay una libre que lo cubra, se bloquea.
+        if (compR.reprogRestantes < 1 && compR.restantes < 2){
+          return json({ error: "Ya usaste las " + compR.reprogPermitidas + " reprogramaciones de tu paquete y no te queda una clase libre que cubra este cambio. Escríbele a tu profesor y lo ven juntos." }, 409);
+        }
+
+        const finN = new Date(Date.parse(isoN) + CLASE_MIN * 60000).toISOString();
+        const ridN = crypto.randomUUID();
+        try {
+          await env.DB.batch([
+            env.DB.prepare(
+              "INSERT INTO reservas (id,alumno_id,inicio_utc,fin_utc,tipo,serie_id,estado,curso,ciclo,creada) VALUES (?1,?2,?3,?4,'suelta','','reservada',?5,?6,?7)"
+            ).bind(ridN, alumnoR.id, isoN, finN, alumnoR.curso || "", cicloR, new Date().toISOString()),
+            env.DB.prepare(
+              "UPDATE reservas SET estado = 'cancelada', cancelada_utc = ?2, cancelada_por = 'alumno' WHERE id = ?1 AND estado = 'reservada'"
+            ).bind(vieja.id, new Date().toISOString()),
+            // La cuota deja de ser decorativa: cada cambio self-service queda en la bitácora
+            // como 'Reprogramó' (compute lo cuenta contra pk.reprog y cobra el exceso).
+            env.DB.prepare(
+              "INSERT INTO registro (id,fecha,alumno_id,curso,estado,trabajo,tarea,ciclo,tarea_audio,plan) VALUES (?1,?2,?3,?4,'Reprogramó','Cambio de horario self-service','',?5,'','')"
+            ).bind(crypto.randomUUID(), fechaLimaDe(vieja.inicio_utc), alumnoR.id, vieja.curso || alumnoR.curso || "", Number(vieja.ciclo) || cicloR)
+          ]);
+        } catch (e){
+          // El índice único del slot reventó: alguien se ganó ese horario entre medio.
+          // El batch se revierte entero, así que la clase original sigue en pie.
+          return json({ error: "Justo tomaron ese horario. Tu clase original sigue en pie: elige otro." }, 409);
+        }
+
+        // El calendario va DESPUÉS del commit: la base es la fuente de verdad y si Google falla
+        // el alumno igual conserva su clase (el chequeo de salud de gcal ya avisa aparte).
+        const eidN = await gcalCrearEvento(env, { inicio_utc: isoN, fin_utc: finN, curso: alumnoR.curso, alumnoNombre: alumnoR.nombre, email: cu.email });
+        if (eidN) await env.DB.prepare("UPDATE reservas SET gcal_event_id = ?1 WHERE id = ?2").bind(eidN, ridN).run();
+        if (vieja.gcal_event_id && await gcalBorrarEvento(env, vieja.gcal_event_id)){
+          await env.DB.prepare("UPDATE reservas SET gcal_event_id = '' WHERE id = ?1").bind(vieja.id).run();
+        }
+
+        return json({ ok: true, id: ridN, inicio_utc: isoN, mensaje: "Listo, moví tu clase 🎸" });
+      }
+
       /* ============ AGENDA: cancelar / reprogramar una clase ============
          Con >=CANCELA_MIN_H de anticipación: se libera (no consume la clase) y el alumno
          queda listo para elegir un nuevo horario en el mismo tab. Con MENOS anticipación:
          el self-service queda BLOQUEADO (no se puede reprogramar) — si el alumno no avisa
-         a tiempo y no asiste, el profesor la marca como falta a mano desde el CRM. */
+         a tiempo y no asiste, el profesor la marca como falta a mano desde el CRM.
+         OJO: el portal ya NO usa este endpoint para reprogramar (usa /api/agenda/reprogramar,
+         que es atómico). Se queda vivo para navegadores con el JS viejo en caché. */
       if (url.pathname === "/api/agenda/cancelar" && request.method === "POST"){
         const cu = await cuentaDeSesion(env, request);
         if (!cu || !cu.alumno_id) return json({ error: "Sesión expirada" }, 401);
@@ -3648,8 +3815,13 @@ export default {
         if (horas < rcfg.minH){
           return json({ error: "Ya no se puede reprogramar: falta menos de " + rcfg.minH + " horas para tu clase. Si no puedes asistir, escríbele a tu profesor; de lo contrario, cuenta como clase usada." }, 400);
         }
-        await env.DB.prepare("UPDATE reservas SET estado = 'cancelada' WHERE id = ?1").bind(r.id).run();
-        if (r.gcal_event_id) await gcalBorrarEvento(env, r.gcal_event_id);
+        await env.DB.prepare(
+          "UPDATE reservas SET estado = 'cancelada', cancelada_utc = ?2, cancelada_por = 'alumno' WHERE id = ?1"
+        ).bind(r.id, new Date().toISOString()).run();
+        // Si Google falla, dejamos el gcal_event_id como huella: el barrido horario lo reintenta.
+        if (r.gcal_event_id && await gcalBorrarEvento(env, r.gcal_event_id)){
+          await env.DB.prepare("UPDATE reservas SET gcal_event_id = '' WHERE id = ?1").bind(r.id).run();
+        }
         return json({ ok: true, mensaje: "Listo, liberé tu horario. Elige tu nuevo horario abajo 👇" });
       }
 
@@ -3829,7 +4001,34 @@ export default {
           const id = String(b.id || "");
           const nuevo = String(b.estado || "");
           if (!["completada", "falta", "cancelada"].includes(nuevo)) return json({ error: "Estado inválido" }, 400);
-          await env.DB.prepare("UPDATE reservas SET estado = ?1 WHERE id = ?2").bind(nuevo, id).run();
+          const rsv = await env.DB.prepare("SELECT * FROM reservas WHERE id = ?1").bind(id).first();
+          if (!rsv) return json({ error: "No encuentro esa reserva" }, 404);
+          const stmts = [];
+          if (nuevo === "cancelada"){
+            stmts.push(env.DB.prepare(
+              "UPDATE reservas SET estado = 'cancelada', cancelada_utc = ?2, cancelada_por = 'admin' WHERE id = ?1"
+            ).bind(id, new Date().toISOString()));
+          } else {
+            stmts.push(env.DB.prepare("UPDATE reservas SET estado = ?1 WHERE id = ?2").bind(nuevo, id));
+            // Marcar también escribe la bitácora (antes solo cambiaba la reserva y el crédito
+            // dependía del emparejamiento). Idempotente: si ese día ya tiene fila de clase, no se duplica.
+            const fL = fechaLimaDe(rsv.inicio_utc);
+            const cicloRsv = Number(rsv.ciclo) || 1;
+            const ya = await env.DB.prepare(
+              "SELECT COUNT(*) AS n FROM registro WHERE alumno_id = ?1 AND COALESCE(ciclo,1) = ?2 AND estado != 'Reprogramó' AND substr(fecha,1,10) IN (?3,?4)"
+            ).bind(rsv.alumno_id, cicloRsv, fL, String(rsv.inicio_utc || "").slice(0, 10)).first();
+            if (!ya || !Number(ya.n)){
+              stmts.push(env.DB.prepare(
+                "INSERT INTO registro (id,fecha,alumno_id,curso,estado,trabajo,tarea,ciclo,tarea_audio,plan) VALUES (?1,?2,?3,?4,?5,'','',?6,'','')"
+              ).bind(crypto.randomUUID(), fL, rsv.alumno_id, rsv.curso || "", nuevo === "completada" ? "Asistió" : "Falta", cicloRsv));
+            }
+          }
+          await env.DB.batch(stmts);
+          // Cancelada desde el admin: el evento de Google también se va (si Google falla,
+          // el gcal_event_id queda como huella y el barrido horario lo reintenta).
+          if (nuevo === "cancelada" && rsv.gcal_event_id && await gcalBorrarEvento(env, rsv.gcal_event_id)){
+            await env.DB.prepare("UPDATE reservas SET gcal_event_id = '' WHERE id = ?1").bind(id).run();
+          }
           return json({ ok: true });
         }
 
@@ -3969,11 +4168,12 @@ export default {
           ];
           for (const a of body.alumnos){
             stmts.push(env.DB.prepare(
-              "INSERT INTO alumnos (id,codigo,nombre,whatsapp,curso,paquete,fecha,pago,horario,notas,ciclo) VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11)"
+              "INSERT INTO alumnos (id,codigo,nombre,whatsapp,curso,paquete,fecha,pago,horario,notas,ciclo,vence,origen) VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12,?13)"
             ).bind(
               a.id, String(a.codigo || "").toUpperCase() || randHex(3).toUpperCase(), a.nombre,
               a.whatsapp || "", a.curso || "", a.paquete || "",
-              a.fecha || "", a.pago || "", a.horario || "", a.notas || "", a.ciclo || 1
+              a.fecha || "", a.pago || "", a.horario || "", a.notas || "", a.ciclo || 1,
+              a.vence || "", a.origen || ""
             ));
           }
           for (const r of body.registro){
@@ -4387,6 +4587,8 @@ export default {
     ctx.waitUntil(procesarRecordatoriosClase(env).catch(function(){}));
     // Salud de Google Calendar: cada hora, alerta 1 vez por incidencia (detección ≤1h).
     ctx.waitUntil(chequearSaludGcal(env).catch(function(){}));
+    // Reintento de eventos de Google huérfanos (reservas canceladas cuyo borrado falló). (Portado de MVT.)
+    ctx.waitUntil(limpiarGcalHuerfanos(env).catch(function(){}));
     // Renovaciones: una sola vez al día, en el disparo de las 14:00 UTC (≈ 09:00 Lima).
     if (new Date().getUTCHours() === 14){
       ctx.waitUntil(procesarRenovaciones(env).catch(function(){}));

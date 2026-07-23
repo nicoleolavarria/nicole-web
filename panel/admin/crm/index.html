@@ -781,6 +781,17 @@
       <div class="field"><label>Fecha de compra</label><input id="a_fecha" type="date" /></div>
       <div class="field"><label>Estado de pago</label><select id="a_pago"><option>Pagado</option><option>Pendiente</option></select></div>
     </div>
+    <div class="field"><label>Origen (¿de dónde llegó?)</label>
+      <select id="a_origen">
+        <option value="">Sin especificar</option>
+        <option value="meta-ads">Meta Ads</option>
+        <option value="referido">Referido</option>
+        <option value="organico">Orgánico</option>
+        <option value="lead-email">Lead email</option>
+        <option value="compra-web">Compra web</option>
+        <option value="otro">Otro</option>
+      </select>
+      <p class="hint" style="margin:5px 0 0;">Para medir de dónde vienen tus alumnos. Las compras del portal se marcan solas.</p></div>
     <div class="field"><label>Nota de horario (manual, opcional)</label><input id="a_horario" type="text" placeholder="Solo si no usa la agenda. Ej: Martes 18:00" />
       <p class="hint" id="a_horario_derivado" style="margin:4px 0 0;"></p></div>
     <div class="field"><label>Notas</label><textarea id="a_notas"></textarea></div>
@@ -1638,6 +1649,7 @@ el("btnNuevoAlumno").addEventListener("click",function(){
   setCursosAlumno(MARCA.cursoDefault); fillSelects(); el("a_paquete").value="Paquete 4";
   el("a_fecha").value=new Date().toISOString().slice(0,10); el("a_pago").value="Pagado";
   el("a_horario").value=""; el("a_notas").value=""; el("a_horario_derivado").textContent="";
+  if(el("a_origen")) el("a_origen").value="";
   el("btnGuardarAlumnoOtro").style.display="";
   openOv("ovAlumno");
 });
@@ -1645,11 +1657,15 @@ function guardarAlumnoModal(encadenar){
   var nombre=el("a_nombre").value.trim();
   if(!nombre){ toast("Ponle nombre al alumno"); return; }
   var id=el("a_id").value;
-  var obj={ id:id||uid(), codigo:el("a_codigo").value||uid().slice(-6).toUpperCase(),
+  // Preservamos los campos que el CRM no edita a mano (vence, origen, flags de motores): sin esto,
+  // editar un alumno los borraba en el guardado bulk (y con vence vacío la expiración no aplica).
+  var prev=id?(db.alumnos.find(function(x){return x.id===id;})||{}):{};
+  var obj=Object.assign({}, prev, { id:id||uid(), codigo:el("a_codigo").value||uid().slice(-6).toUpperCase(),
     ciclo:Number(el("a_ciclo").value)||1,
     nombre:nombre, whatsapp:el("a_whatsapp").value.trim(), curso:getCursosAlumno()||MARCA.cursoDefault,
     paquete:el("a_paquete").value, fecha:el("a_fecha").value, pago:el("a_pago").value,
-    horario:el("a_horario").value.trim(), notas:el("a_notas").value.trim() };
+    horario:el("a_horario").value.trim(), notas:el("a_notas").value.trim(),
+    origen:(el("a_origen")?el("a_origen").value:(prev.origen||"")) });
   if(id){ db.alumnos=db.alumnos.map(function(a){return a.id===id?obj:a;}); }
   else{ db.alumnos.push(obj); }
   var b1=el("btnGuardarAlumno"),b2=el("btnGuardarAlumnoOtro"); b1.disabled=true; if(b2)b2.disabled=true;
@@ -1697,6 +1713,7 @@ document.body.addEventListener("click",function(e){
     el("a_nombre").value=a.nombre; el("a_whatsapp").value=a.whatsapp||"";
     setCursosAlumno(a.curso); el("a_paquete").value=a.paquete; el("a_fecha").value=a.fecha||"";
     el("a_pago").value=a.pago; el("a_horario").value=a.horario||""; el("a_notas").value=a.notas||"";
+    if(el("a_origen")) el("a_origen").value=a.origen||"";
     el("a_horario_derivado").textContent=(a.horarioFijo&&a.horarioFijo.length)?("Agenda: "+a.horarioFijo.join(" · ")):"Sin horario fijo en la agenda";
     openOv("ovAlumno");
   }

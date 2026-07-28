@@ -37,3 +37,9 @@ INSERT OR IGNORE INTO precios (paquete, precio) VALUES
   ('Paquete 8', 450),
   ('Paquete 12', 600),
   ('Clase suelta', 70);
+
+-- Saldo migrado desde otro sistema (28-jul-2026): clases ya consumidas al importar y el
+-- ciclo en que aplican (al renovar sube el ciclo y el arrastre deja de contar solo).
+-- En las D1 de prod se agregaron por ALTER.
+ALTER TABLE alumnos ADD COLUMN migrado_usadas INTEGER DEFAULT 0;
+ALTER TABLE alumnos ADD COLUMN migrado_ciclo INTEGER DEFAULT 0;

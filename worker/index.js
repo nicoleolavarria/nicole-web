@@ -217,7 +217,13 @@ function compute(alumno, regs, precios, reservasUsadas){
     else if (r.estado === "Falta") falta++;
   }
   const exceso = Math.max(0, reprogramo - pk.reprog);
-  const usadas = asistio + falta + exceso + (Number(reservasUsadas) || 0);
+  /* Saldo migrado (28-jul-2026): clases que el alumno YA traía consumidas de otro sistema
+     al importarlo. Se guarda como "usadas de arranque" en vez de inventar clases dictadas
+     que ensucien reportes y caja. Pesa SOLO en el ciclo en que se importó: al renovar sube
+     el ciclo, deja de aplicar solo y arranca su paquete completo. */
+  const migradas = ((Number(alumno && alumno.migrado_ciclo) || 0) === (Number(alumno && alumno.ciclo) || 1))
+    ? Math.max(0, Number(alumno && alumno.migrado_usadas) || 0) : 0;
+  const usadas = asistio + falta + exceso + (Number(reservasUsadas) || 0) + migradas;
   const saldo = pk.clases - usadas;
   const expirado = paqueteExpirado(alumno) && saldo > 0;
   return {
@@ -4161,19 +4167,37 @@ export default {
           if (!body || !Array.isArray(body.alumnos) || !Array.isArray(body.registro)){
             return json({ error: "Cuerpo inválido" }, 400);
           }
+          /* Saldo migrado (28-jul-2026): el CRM manda el snapshot completo y esto borra y
+             reinserta, asi que hay que leer antes lo que el CRM no edita. El arrastre de
+             clases lo fija SOLO el importador, y solo al crear al alumno; despues manda la
+             base (un CRM abierto con datos viejos no puede borrarlo). */
+          const estadoPrevio = new Map();
+          try {
+            for (const p of ((await env.DB.prepare(
+              "SELECT id, COALESCE(migrado_usadas,0) AS migrado_usadas, COALESCE(migrado_ciclo,0) AS migrado_ciclo FROM alumnos"
+            ).all()).results || [])) estadoPrevio.set(p.id, p);
+          } catch (e) { /* D1 sin las columnas todavia: el guardado normal no se cae por eso */ }
           const stmts = [
             env.DB.prepare("DELETE FROM registro"),
             env.DB.prepare("DELETE FROM alumnos"),
             env.DB.prepare("DELETE FROM precios")
           ];
           for (const a of body.alumnos){
+            const prev = estadoPrevio.get(a.id) || {};
+            let migUsadas = Number(prev.migrado_usadas) || 0;
+            let migCiclo = Number(prev.migrado_ciclo) || 0;
+            if (!estadoPrevio.has(a.id)){
+              const mu = Math.floor(Number(a.migrado_usadas));
+              if (Number.isFinite(mu) && mu > 0){ migUsadas = Math.min(mu, 9999); migCiclo = Number(a.ciclo) || 1; }
+            }
             stmts.push(env.DB.prepare(
-              "INSERT INTO alumnos (id,codigo,nombre,whatsapp,curso,paquete,fecha,pago,horario,notas,ciclo,vence,origen) VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12,?13)"
+              "INSERT INTO alumnos (id,codigo,nombre,whatsapp,curso,paquete,fecha,pago,horario,notas,ciclo,vence,origen,migrado_usadas,migrado_ciclo) VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12,?13,?14,?15)"
             ).bind(
               a.id, String(a.codigo || "").toUpperCase() || randHex(3).toUpperCase(), a.nombre,
               a.whatsapp || "", a.curso || "", a.paquete || "",
               a.fecha || "", a.pago || "", a.horario || "", a.notas || "", a.ciclo || 1,
-              a.vence || "", a.origen || ""
+              a.vence || "", a.origen || "",
+              migUsadas, migCiclo
             ));
           }
           for (const r of body.registro){

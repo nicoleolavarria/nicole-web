@@ -2995,12 +2995,17 @@ export default {
           alumno = await env.DB.prepare("SELECT * FROM alumnos WHERE id = ?1").bind(cu.alumno_id).first();
           if (alumno){
             const ciclo = alumno.ciclo || 1;
+            /* El alumno ve TODAS sus clases, de todos los ciclos (03-ago-2026). Antes esto
+               filtraba por el ciclo actual y al renovar se le vaciaba el historial y la tarea.
+               El filtro por ciclo sigue vivo pero SOLO para la cuenta de clases usadas/restantes
+               (`compute`), que es lo único que debe reiniciarse al renovar. */
             const { results } = await env.DB.prepare(
-              "SELECT fecha, estado, trabajo, tarea, COALESCE(plan,'') AS plan, COALESCE(tarea_audio,'') AS tarea_audio FROM registro WHERE alumno_id = ?1 AND COALESCE(ciclo,1) = ?2 ORDER BY fecha ASC, id ASC"
-            ).bind(alumno.id, ciclo).all();
+              "SELECT fecha, estado, trabajo, tarea, COALESCE(plan,'') AS plan, COALESCE(tarea_audio,'') AS tarea_audio, COALESCE(ciclo,1) AS ciclo FROM registro WHERE alumno_id = ?1 ORDER BY fecha ASC, id ASC"
+            ).bind(alumno.id).all();
             historial = (results || []).map(r => Object.assign({}, r, { tarea_audios: parseAudios(r.tarea_audio) }));
+            const histCiclo = historial.filter(r => Number(r.ciclo) === Number(ciclo));
             const rUsadas = await reservasUsadasCount(env, alumno.id, ciclo);
-            computed = compute(alumno, historial, precios, rUsadas);
+            computed = compute(alumno, histCiclo, precios, rUsadas);
             horarioFijo = await horarioFijoDerivado(env, alumno.id);
             proximasClases = (await env.DB.prepare(
               "SELECT id, inicio_utc, fin_utc, tipo, curso FROM reservas WHERE alumno_id = ?1 AND estado = 'reservada' AND inicio_utc >= ?2 ORDER BY inicio_utc ASC"
@@ -3044,6 +3049,7 @@ export default {
             compradas: computed.compradas, usadas: computed.usadas, restantes: computed.restantes,
             reprogPermitidas: computed.reprogPermitidas, reprogRestantes: computed.reprogRestantes,
             monto: computed.monto, vence: alumno.vence || "",
+            cicloActual: alumno.ciclo || 1,
             historial: historial.slice().reverse()
           } : null,
           compraPendiente: pendiente || null,

@@ -8,6 +8,7 @@
    deploy de Vercel — así ve su cambio al instante, sin esperar un rebuild. */
 import { obtenerWeb, ORIGEN } from '../lib/web-data.mjs';
 import { htmlPagina, headerHtml, pieHtml, anuncioHtml, estiloCss, fuentesHref, mezclar } from '../lib/web-render.mjs';
+import { CANONICO, jsonLd, canonicalDe } from '../lib/seo.mjs';
 
 interface Props {
   pagina: 'inicio' | 'acerca' | 'sesiones' | 'contacto';
@@ -18,7 +19,7 @@ interface Props {
 const {
   pagina,
   title,
-  description = 'Clases de canto, técnica vocal y lenguaje musical en Lima. Sesiones 1:1 con Nicole Olavarría, soprano y artista escénica.',
+  description = 'Clases de canto, técnica vocal y lenguaje musical en Lima y online. Sesiones 1:1 con Nicole Olavarría, soprano y artista escénica.',
   image,
 } = Astro.props;
 
@@ -26,10 +27,16 @@ const { web, version } = await obtenerWeb();
 const data = mezclar(web);
 const conHeader = pagina !== 'inicio';
 
-const ogImage = image ?? 'https://nicoleolavarria.com/images/sesiones.jpg';
-const canonicalURL = new URL(Astro.url.pathname, Astro.site);
+/* La tarjeta de 1200x630 en su tipografía y su paleta. Sus fotos son verticales (4:5):
+   en el recorte 1.91:1 de WhatsApp y X salen partidas por la mitad, así que la previsualización
+   va con la tarjeta y las fotos se quedan donde se ven completas, que es la web. */
+const ogImage = CANONICO + (image ?? '/og-nicole-olavarria.png');
+/* Canónica SIN barra final: Vercel sirve /sesiones (cleanUrls + trailingSlash:false) y
+   Astro construye /sesiones/. Apuntar a la que redirige es regalarle un aviso a Search Console. */
+const canonicalURL = canonicalDe(Astro.url.pathname);
 const cssExtra = estiloCss(data);
 const hrefFuentes = fuentesHref(data);
+const datosEstructurados = jsonLd(pagina, data, canonicalURL);
 ---
 <!doctype html>
 <html lang="es">
@@ -39,17 +46,30 @@ const hrefFuentes = fuentesHref(data);
   <title>{title}</title>
   <meta name="description" content={description} />
   <link rel="canonical" href={canonicalURL} />
+  <meta property="og:type" content="website" />
+  <meta property="og:site_name" content="Nicole Olavarría" />
+  <meta property="og:locale" content="es_PE" />
   <meta property="og:title" content={title} />
   <meta property="og:description" content={description} />
   <meta property="og:image" content={ogImage} />
+  <meta property="og:image:width" content="1200" />
+  <meta property="og:image:height" content="630" />
   <meta property="og:url" content={canonicalURL} />
   <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content={title} />
+  <meta name="twitter:description" content={description} />
+  <meta name="twitter:image" content={ogImage} />
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+  <link rel="icon" href="/favicon-32.png" sizes="32x32" type="image/png" />
+  <link rel="icon" href="/icon-512.png" sizes="512x512" type="image/png" />
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=DM+Mono:ital,wght@0,300;0,400;0,500;1,300;1,400&display=swap" rel="stylesheet" />
   {hrefFuentes && <link href={hrefFuentes} rel="stylesheet" id="fuentesNicole" />}
   <link rel="stylesheet" href="/styles/global.css" />
   {cssExtra && <style id="estiloNicole" set:html={cssExtra} />}
+  <script type="application/ld+json" set:html={datosEstructurados} />
 </head>
 <body data-pagina={pagina} data-webver={version}>
   <Fragment set:html={anuncioHtml(data)} />

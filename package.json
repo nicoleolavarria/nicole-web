@@ -6,7 +6,7 @@
     "dev": "npm run render && astro dev",
     "start": "astro dev",
     "render": "node scripts/build-web-render.mjs",
-    "build": "npm run render && astro build",
+    "build": "npm run render && astro build && node bin/postbuild.mjs",
     "preview": "astro preview",
     "astro": "astro"
   },

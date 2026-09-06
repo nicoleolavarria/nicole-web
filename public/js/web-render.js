@@ -225,11 +225,35 @@ function fuentesHref(data){
   return qs.length ? "https://fonts.googleapis.com/css2?" + qs.join("&") + "&display=swap" : "";
 }
 
+/* ---------- descripciones de las fotos (alt) ----------
+   Hasta el 6-set-2026 todas las fotos salían con alt="": para un lector de pantalla la
+   página no tenía imágenes, y para Google tampoco.
+
+   El alt va atado a LA FOTO, no al hueco donde está, porque Nicole reordena su galería
+   desde el CRM y los arreglos guardados PISAN a los DEFAULTS enteros (mezclar()). Si ella
+   sube una foto nueva, cae al genérico — que sigue siendo cierto — y si escribe su propia
+   descripción desde el CRM, esa manda sobre todo lo de aquí. */
+const ALT_FOTOS = {
+  "/images/sesiones.jpg": "Nicole Olavarría recostada sobre telas blancas, fotografía en blanco y negro",
+  "/images/foto-1.jpg": "Retrato en movimiento de Nicole Olavarría, en blanco y negro",
+  "/images/foto-2.jpg": "Nicole Olavarría inclinada hacia atrás sobre un fondo de tela blanca",
+  "/images/foto-3.jpg": "Nicole Olavarría de espaldas, con camisa clara, sobre un fondo blanco",
+  "/images/foto-4.jpg": "Nicole Olavarría con el torso arqueado y el brazo sobre la cabeza",
+  "/images/foto-5.jpg": "Nicole Olavarría de espaldas, con el brazo extendido hacia una cortina blanca"
+};
+const ALT_GENERICO = "Nicole Olavarría, soprano y artista escénica";
+
+function altFoto(o){
+  if (o && o.alt) return String(o.alt);
+  var u = String((o && o.url) || "").split("?")[0].split("#")[0];
+  return ALT_FOTOS[u] || ALT_GENERICO;
+}
+
 /* ---------- piezas comunes ---------- */
 function fotoImg(f, clase, extra, ed){
   var o = f && typeof f === "object" ? f : {};
   var st = "object-position:" + escPos(o.pos) + ";" + (extra || "");
-  return '<img src="' + urlSegura(o.url || "") + '" alt="' + esc(o.alt || "") + '" class="' + (clase || "") + '"' +
+  return '<img src="' + urlSegura(o.url || "") + '" alt="' + esc(altFoto(o)) + '" class="' + (clase || "") + '"' +
          (ed ? ' data-ed="' + esc(ed) + '"' : "") + ' style="' + st + '" loading="lazy" />';
 }
 function escPos(p){
@@ -403,5 +427,5 @@ function htmlDocumento(pagina, data, opciones){
     "</body></html>";
 }
 
-  g.WebRender = { DEFAULTS, FUENTES, esc, texto, urlSegura, mezclar, estiloCss, fuentesHref, anuncioHtml, headerHtml, pieHtml, htmlPagina, htmlDocumento };
+  g.WebRender = { DEFAULTS, FUENTES, esc, texto, urlSegura, mezclar, estiloCss, fuentesHref, ALT_FOTOS, ALT_GENERICO, altFoto, anuncioHtml, headerHtml, pieHtml, htmlPagina, htmlDocumento };
 })(typeof window !== "undefined" ? window : globalThis);

@@ -1,0 +1,7 @@
+# nicoleolavarria.com — abierto a todos los rastreadores, incluidos los de IA.
+# El dominio canónico es CON www; el no-www redirige 308 hacia allá.
+
+User-agent: *
+Allow: /
+
+Sitemap: https://www.nicoleolavarria.com/sitemap.xml

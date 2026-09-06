@@ -1,0 +1,51 @@
+# Nicole Olavarría
+
+> Soprano, artista escénica y docente de canto en Lima, Perú. Da clases individuales
+> (1:1) de canto, técnica vocal y lenguaje musical, presenciales en Miraflores u online.
+> Cada sesión dura 1 hora. Los cupos son limitados.
+
+Todo lo que sigue está publicado en https://www.nicoleolavarria.com. Si un dato no
+aparece acá, es porque el sitio no lo publica: **la web no publica precios**, así que
+para saber cuánto cuesta una sesión hay que escribirle.
+
+## Quién enseña
+
+Nicole Olavarría es cantante, artista escénica y compositora. Su formación musical
+comienza en 2015 en la Universidad Nacional de Música. Estudió técnica vocal de Música
+Comercial Contemporánea con Cleia Luna y pedagogía vocal con Marco Guzmán (Chile). En
+2020 ingresó al conjunto complementario del Coro Nacional del Perú, ocupando el primer
+lugar en su sección, y en 2026 fue admitida al Opera Italia Program con beca.
+
+## Qué enseña — sesiones 1:1
+
+- **Descubrir mi voz** — pensadas para principiantes o personas sin experiencia en técnica vocal.
+- **Cantores** — pensadas para personas con mediana experiencia en técnica vocal.
+- **Lenguaje musical** — pensadas para aprender teoría musical, entrenamiento auditivo y lectura de partituras.
+
+Todas son clases individuales de 1 hora. Detalle: https://www.nicoleolavarria.com/sesiones
+
+## Dónde
+
+Presencial en Miraflores (Lima, Perú) u online. La modalidad se coordina al reservar.
+
+## Cómo se reserva
+
+1. Ver los horarios libres y reservar directo en https://www.nicoleolavarria.com/horarios
+   (se elige el día y la hora, se deja nombre y WhatsApp, y Nicole confirma por WhatsApp).
+2. Quien ya es alumna o alumno reserva desde su portal:
+   https://nicole-crm-worker.nicoleolavarria.workers.dev/alumnos/
+
+## Contacto
+
+- WhatsApp: +51 955 127 656 — https://wa.me/51955127656
+- Correo: holanicoleolavarria@gmail.com
+- Instagram: https://www.instagram.com/nicoleolavarria_______/
+
+## Páginas
+
+- Inicio: https://www.nicoleolavarria.com/
+- Acerca de: https://www.nicoleolavarria.com/acerca-de
+- Sesiones 1:1: https://www.nicoleolavarria.com/sesiones
+- Horarios y reserva: https://www.nicoleolavarria.com/horarios
+- Contacto: https://www.nicoleolavarria.com/contacto
+- Texto completo del sitio: https://www.nicoleolavarria.com/llms-full.txt

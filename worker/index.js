@@ -34,6 +34,9 @@ const MARCA = {
   dominio: "https://nicole-crm-worker.nicoleolavarria.workers.dev",
   correoAvisos: "avisos@nicoleolavarria.com",   // remitente (requiere dominio verificado en Resend)
   correoAdmin: "andressalame@gmail.com",        // a dónde llegan las alertas internas (cambiar al de Nicole cuando lo dé)
+  /* A quién avisa una reserva hecha desde la web pública. Es SU negocio: el aviso va a ella,
+     no al operador. El resto de alertas internas siguen yendo a correoAdmin. */
+  correoProfesora: "holanicoleolavarria@gmail.com",
   whatsapp: "51955127656",
   ciudad: "Miraflores, Lima",
   statementDescriptor: "NICOLE OLAVARRIA",      // máx 22 chars, extracto de la tarjeta
@@ -56,6 +59,21 @@ const json = (data, status) => new Response(JSON.stringify(data), {
   status: status || 200,
   headers: { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" }
 });
+
+/* La web pública de Nicole (Vercel) vive en otro origen que el worker, así que para escribir
+   —reservar— hace falta CORS. Lista blanca de dos dominios, no "*": esto crea filas. */
+const ORIGENES_WEB = ["https://nicoleolavarria.com", "https://www.nicoleolavarria.com"];
+function origenWeb(request){
+  const o = request.headers.get("Origin") || "";
+  return ORIGENES_WEB.includes(o) ? o : "";
+}
+function conCors(r, origen){
+  if (origen){
+    r.headers.set("Access-Control-Allow-Origin", origen);
+    r.headers.set("Vary", "Origin");
+  }
+  return r;
+}
 
 /* ---------- util ---------- */
 const enc = new TextEncoder();
@@ -1295,6 +1313,73 @@ async function avisarLeadConTelefono(env, info){
   }
 }
 
+/* ============ RESERVA HECHA DESDE LA WEB PÚBLICA (06-set-2026) ============
+   Tres canales, independientes entre sí: si uno está apagado los otros siguen.
+     1. Push a los dispositivos del panel (necesita las llaves VAPID).
+     2. Correo a Nicole (Cloudflare Email si hay binding; si no, Resend).
+     3. WhatsApp: se ENCOLA en avisos_wa y lo despacha el poller de la Mac.
+   El WhatsApp es el que de verdad la alcanza: ella vive en el celular. */
+const DIAS_LARGO = ["domingo", "lunes", "martes", "miércoles", "jueves", "viernes", "sábado"];
+const MESES_LARGO = ["enero","febrero","marzo","abril","mayo","junio","julio","agosto","setiembre","octubre","noviembre","diciembre"];
+function cuandoLima(iso){
+  const p = limaParts(new Date(Date.parse(iso)));
+  const h12 = p.h % 12 === 0 ? 12 : p.h % 12;
+  const ampm = p.h < 12 ? "a. m." : "p. m.";
+  return {
+    dia: DIAS_LARGO[p.dow] + " " + p.d + " de " + MESES_LARGO[p.m],
+    hora: h12 + ":" + String(p.min).padStart(2, "0") + " " + ampm
+  };
+}
+async function avisarReservaWeb(env, info){
+  const c = cuandoLima(info.inicio_utc);
+  const wa = "wa.me/" + info.whatsapp;
+  const texto = "Nueva clase reservada desde tu web: " + c.dia + " a las " + c.hora + " (Lima) · " +
+                info.nombre + " · " + wa + ". Ya está en tu panel; entra para confirmarla.";
+
+  // 1. Push al panel
+  try {
+    await avisarPush(env, {
+      title: "Nueva clase desde tu web",
+      body: info.nombre + " · " + c.dia + " " + c.hora,
+      url: MARCA.dominio + "/admin/crm/"
+    });
+  } catch (e) { /* el push no puede tumbar los otros avisos */ }
+
+  // 2. Correo
+  const destino = MARCA.correoProfesora || MARCA.correoAdmin;
+  const subject = "Nueva clase reservada: " + info.nombre + " · " + c.dia;
+  const cuerpo =
+    texto + "\n\n" +
+    "Nombre:   " + info.nombre + "\n" +
+    "WhatsApp: +" + info.whatsapp + "  (https://" + wa + ")\n" +
+    "Cuándo:   " + c.dia + ", " + c.hora + " hora de Lima\n" +
+    (info.nota ? ("Nota:     " + info.nota + "\n") : "") +
+    "\nConfirmarla o soltarla: " + MARCA.dominio + "/admin/crm/\n";
+  let enviado = false;
+  if (env.AVISOS){
+    try {
+      const msg = createMimeMessage();
+      msg.setSender({ name: "Avisos " + MARCA.nombre, addr: MARCA.correoAvisos });
+      msg.setRecipient(destino);
+      msg.setSubject(subject);
+      msg.addMessage({ contentType: "text/plain", data: cuerpo });
+      await env.AVISOS.send(new EmailMessage(MARCA.correoAvisos, destino, msg.asRaw()));
+      enviado = true;
+    } catch (e) { enviado = false; }
+  }
+  if (!enviado){
+    await enviarCorreo(env, { to: destino, subject: subject, text: cuerpo,
+      from: { name: "Avisos " + MARCA.nombre, email: MARCA.correoAvisos } });
+  }
+
+  // 3. WhatsApp (cola)
+  try {
+    await env.DB.prepare(
+      "INSERT INTO avisos_wa (id,para,texto,estado,creado) VALUES (?1,?2,?3,'pendiente',?4)"
+    ).bind(crypto.randomUUID(), MARCA.whatsapp, texto, new Date().toISOString()).run();
+  } catch (e) { /* si la cola falla, el correo y el push ya salieron */ }
+}
+
 /* ============ RESCATE DE COMPRAS ABANDONADAS (07-jul-2026) ============
    La compra que quedó 'iniciada' (checkout de tarjeta que nunca pagó) o 'rechazada' hoy muere
    en silencio. Este motor manda UN correo por compra invitando a retomarla en el portal.
@@ -1698,6 +1783,21 @@ async function chatbotPasoTope(env, ip, limite){
   } catch (e) { return false; }   // si la tabla aún no existe, no bloquear
 }
 
+/* Mismo contador, ventana DIARIA (misma tabla chatbot_uso; la limpieza de las 07:00 UTC borra
+   estas filas igual que las horarias). Para lo que se mide por día, no por hora: las reservas
+   públicas, donde 5 por hora sería una barra libre. */
+async function pasoTopeDia(env, clave, limite){
+  if (!clave) return false;
+  const ventana = hoy();                                    // YYYY-MM-DD
+  try {
+    await env.DB.prepare(
+      "INSERT INTO chatbot_uso (ip, ventana, n) VALUES (?1, ?2, 1) ON CONFLICT(ip, ventana) DO UPDATE SET n = n + 1"
+    ).bind(clave, ventana).run();
+    const row = await env.DB.prepare("SELECT n FROM chatbot_uso WHERE ip = ?1 AND ventana = ?2").bind(clave, ventana).first();
+    return !!(row && Number(row.n) > (limite || 5));
+  } catch (e) { return false; }
+}
+
 /* ============ IA de onboarding del panel (admin y alumno) ============
    Distinto del chatbot de marketing (Workers AI/Llama, gratis): este usa Claude Haiku con la
    API key real de Andrés (ANTHROPIC_API_KEY, wrangler secret), así que tiene costo — de ahí el
@@ -1997,6 +2097,16 @@ const HORIZONTE_SEMANAS = 4;      // hasta cuándo se puede reservar adelante
 const SERIE_SEMANAS = 4;          // una reserva fija aparta las próximas 4 semanas ("de 4 en 4")
 const ANTICIPACION_MIN_H = 12;    // no se puede reservar con menos de 12h de anticipación
 const CANCELA_MIN_H = 4;          // default; el profesor puede cambiarlo en Ajustes (reprog_min_h)
+/* TOPE DIARIO (06-set-2026, regla de Andrés): nadie dicta más de 5 clases en un día.
+   Cuando un día calendario de Lima llega al tope, TODOS sus slots desaparecen de la vitrina
+   y el servidor rechaza cualquier intento de reservar ahí (409). Se puede subir/bajar sin
+   redeploy con config.tope_dia. Los 'bloqueo' NO cuentan: son horas personales, no clases. */
+const TOPE_CLASES_DIA = 5;
+const ESTADOS_ACTIVOS = ["reservada", "pendiente", "completada"];   // ocupan slot y cuentan para el tope
+function topeDia(cfg){
+  const n = parseInt(cfg && cfg.tope_dia, 10);
+  return (Number.isFinite(n) && n >= 1 && n <= 24) ? n : TOPE_CLASES_DIA;
+}
 /* Reprogramación configurable por el profesor (10-jul-2026):
    reprog_activo '' = ON (default) | '0' = el alumno no reprograma solo.
    reprog_min_h  horas mínimas 1-72; vacío/invalido = CANCELA_MIN_H. */
@@ -2117,6 +2227,34 @@ async function horarioFijoDerivado(env, alumnoId){
     .map(e => e[0]);
 }
 
+/* Cuántas CLASES tiene cada día calendario de Lima en un rango. Devuelve Map "YYYY-MM-DD" -> n.
+   Se cuenta por fecha-Lima, no por fecha UTC: una clase de 20:00 Lima cae a las 01:00 UTC del
+   día siguiente y, contada en UTC, se le sumaría al día equivocado. */
+async function clasesPorDiaLima(env, desdeIso, hastaIso){
+  const marcas = ESTADOS_ACTIVOS.map(e => "'" + e + "'").join(",");
+  const { results } = await env.DB.prepare(
+    "SELECT inicio_utc FROM reservas WHERE estado IN (" + marcas + ") AND COALESCE(tipo,'') != 'bloqueo' " +
+    "AND inicio_utc >= ?1 AND inicio_utc <= ?2"
+  ).bind(desdeIso, hastaIso).all();
+  const m = new Map();
+  for (const r of (results || [])){
+    const f = fechaLimaDe(r.inicio_utc);
+    if (f) m.set(f, (m.get(f) || 0) + 1);
+  }
+  return m;
+}
+
+/* Guarda de servidor: ¿el día de ese instante ya llegó al tope? (true = no se puede reservar) */
+async function diaLleno(env, iso, tope){
+  const fecha = fechaLimaDe(iso);
+  if (!fecha) return true;
+  const desde = new Date(Date.parse(fecha + "T00:00:00Z") - 12 * 3600000).toISOString();
+  const hasta = new Date(Date.parse(fecha + "T00:00:00Z") + 36 * 3600000).toISOString();
+  const porDia = await clasesPorDiaLima(env, desde, hasta);
+  const limite = tope || topeDia(await loadConfig(env));
+  return (porDia.get(fecha) || 0) >= limite;
+}
+
 // ¿Ese instante ISO es un slot real y reservable? (existe en disponibilidad, dentro del horizonte y con anticipación).
 async function slotValido(env, iso, opts){
   const t = Date.parse(iso);
@@ -2143,15 +2281,24 @@ async function generarSlots(env){
   const { results: disp } = await env.DB.prepare(
     "SELECT dia_semana, hora FROM disponibilidad WHERE activo = 1"
   ).all();
-  const porDia = {};
-  for (const r of (disp || [])){ (porDia[r.dia_semana] = porDia[r.dia_semana] || []).push(r.hora); }
+  const porDiaSemana = {};
+  for (const r of (disp || [])){ (porDiaSemana[r.dia_semana] = porDiaSemana[r.dia_semana] || []).push(r.hora); }
 
   const now = Date.now();
   const hastaMs = now + HORIZONTE_SEMANAS * 7 * 86400000;
+  const desdeIso = new Date(now).toISOString(), hastaIso = new Date(hastaMs).toISOString();
   const { results: tomadas } = await env.DB.prepare(
-    "SELECT inicio_utc FROM reservas WHERE estado IN ('reservada','completada') AND inicio_utc >= ?1 AND inicio_utc <= ?2"
-  ).bind(new Date(now).toISOString(), new Date(hastaMs).toISOString()).all();
+    "SELECT inicio_utc FROM reservas WHERE estado IN ('reservada','pendiente','completada') AND inicio_utc >= ?1 AND inicio_utc <= ?2"
+  ).bind(desdeIso, hastaIso).all();
   const ocupados = new Set((tomadas || []).map(r => r.inicio_utc));
+
+  /* Tope diario: el día que ya tiene sus 5 clases desaparece ENTERO de la vitrina.
+     Se mira un rango con 12h de aire a cada lado para no perder las clases nocturnas
+     (20:00 Lima = 01:00 UTC del día siguiente). */
+  const cfgTope = await loadConfig(env);
+  const limiteDia = topeDia(cfgTope);
+  const porDia = await clasesPorDiaLima(env,
+    new Date(now - 12 * 3600000).toISOString(), new Date(hastaMs + 36 * 3600000).toISOString());
 
   // Bloques ocupados en el Google Calendar de Andrés (si está conectado): esos slots no se ofrecen.
   const busy = await gcalBusy(env, new Date(now).toISOString(), new Date(hastaMs).toISOString());
@@ -2162,7 +2309,9 @@ async function generarSlots(env){
   const slots = [];
   for (let i = 0; i <= HORIZONTE_SEMANAS * 7; i++){
     const p = limaParts(new Date(medianocheHoy + i * 86400000));
-    const horas = porDia[p.dow] || [];
+    const fechaDia = p.y + "-" + String(p.m + 1).padStart(2, "0") + "-" + String(p.d).padStart(2, "0");
+    if ((porDia.get(fechaDia) || 0) >= limiteDia) continue;   // día lleno: no se ofrece ninguna hora
+    const horas = porDiaSemana[p.dow] || [];
     for (const h of horas){
       const ms = limaToUtc(p.y, p.m, p.d, h).getTime();
       if (ms <= now + ANTICIPACION_MIN_H * 3600000 || ms > hastaMs) continue;
@@ -2172,6 +2321,67 @@ async function generarSlots(env){
   }
   slots.sort();
   return slots;
+}
+
+/* ═══════════════ FEED ICS (VCALENDAR) ═══════════════
+   Lo que Google Calendar consume desde "Suscribirse desde URL". Lima es UTC-5 fijo, así que su
+   VTIMEZONE es un solo bloque STANDARD sin reglas de horario de verano. */
+function icsEsc(s){
+  return String(s == null ? "" : s).replace(/\\/g, "\\\\").replace(/;/g, "\\;").replace(/,/g, "\\,").replace(/\r?\n/g, "\\n");
+}
+function icsFechaUtc(iso){
+  return new Date(Date.parse(iso)).toISOString().replace(/[-:]/g, "").replace(/\.\d{3}/, "");
+}
+function icsFechaLima(iso){
+  const p = limaParts(new Date(Date.parse(iso)));
+  return p.y + String(p.m + 1).padStart(2, "0") + String(p.d).padStart(2, "0") + "T" +
+         String(p.h).padStart(2, "0") + String(p.min).padStart(2, "0") + "00";
+}
+/* RFC 5545: ninguna línea pasa de 75 octetos; lo que sigue va con un espacio delante. */
+function icsPlegar(linea){
+  const bytes = new TextEncoder().encode(linea);
+  if (bytes.length <= 74) return linea;
+  const partes = [];
+  let actual = "";
+  for (const ch of linea){
+    const largo = new TextEncoder().encode(actual + ch).length;
+    if (largo > (partes.length ? 73 : 74)){ partes.push(actual); actual = ch; }
+    else actual += ch;
+  }
+  if (actual) partes.push(actual);
+  return partes.join("\r\n ");
+}
+function icsCalendario(filas){
+  const L = [
+    "BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//" + MARCA.nombre + "//Agenda//ES",
+    "CALSCALE:GREGORIAN", "METHOD:PUBLISH",
+    "X-WR-CALNAME:Clases · " + MARCA.nombre, "X-WR-TIMEZONE:America/Lima",
+    "BEGIN:VTIMEZONE", "TZID:America/Lima", "BEGIN:STANDARD",
+    "DTSTART:19700101T000000", "TZOFFSETFROM:-0500", "TZOFFSETTO:-0500", "TZNAME:-05",
+    "END:STANDARD", "END:VTIMEZONE"
+  ];
+  const ahora = icsFechaUtc(new Date().toISOString());
+  for (const r of filas){
+    const quien = String(r.quien || "").trim() || "sin nombre";
+    const desc = [
+      r.wa ? ("WhatsApp: +" + r.wa + " (https://wa.me/" + r.wa + ")") : "",
+      "Origen: " + (r.origen === "web" ? "reserva desde la web" : (r.origen || "portal")),
+      "Estado: " + (r.estado === "pendiente" ? "POR CONFIRMAR" : r.estado),
+      r.curso ? ("Curso: " + r.curso) : "",
+      r.nota ? ("Nota: " + r.nota) : ""
+    ].filter(Boolean).join("\n");
+    L.push("BEGIN:VEVENT");
+    L.push("UID:" + r.id + "@nicoleolavarria.com");
+    L.push("DTSTAMP:" + ahora);
+    L.push("DTSTART;TZID=America/Lima:" + icsFechaLima(r.inicio_utc));
+    L.push("DTEND;TZID=America/Lima:" + icsFechaLima(r.fin_utc || new Date(Date.parse(r.inicio_utc) + CLASE_MIN * 60000).toISOString()));
+    L.push("SUMMARY:" + icsEsc((r.estado === "pendiente" ? "Clase (por confirmar) · " : "Clase · ") + quien));
+    L.push("DESCRIPTION:" + icsEsc(desc));
+    L.push("STATUS:" + (r.estado === "pendiente" ? "TENTATIVE" : "CONFIRMED"));
+    L.push("END:VEVENT");
+  }
+  L.push("END:VCALENDAR");
+  return L.map(icsPlegar).join("\r\n") + "\r\n";
 }
 
 /* Correo de recordatorio de clase al alumno (via Resend). cuando = '24h' | '2h'. */
@@ -2484,6 +2694,11 @@ async function ensureSchema(env){
     if (!tieneTelefono) await env.DB.prepare("ALTER TABLE leads ADD COLUMN telefono TEXT DEFAULT ''").run();
     const tienePuente = (infoLeads.results || []).some(c => c.name === "puente_wa");
     if (!tienePuente) await env.DB.prepare("ALTER TABLE leads ADD COLUMN puente_wa INTEGER DEFAULT 0").run();
+    /* nombre: faltaba en esta instancia y NADIE lo notó porque /api/lead lo escribe igual —
+       cada captura de lead moría con un 500 (06-set-2026). El código lo daba por hecho; la
+       tabla, no. */
+    const tieneNombreLead = (infoLeads.results || []).some(c => c.name === "nombre");
+    if (!tieneNombreLead) await env.DB.prepare("ALTER TABLE leads ADD COLUMN nombre TEXT DEFAULT ''").run();
     // v16 (win-back) plegada al auto-migrador: en prod se aplicó por .sql recién el 06-jul-2026,
     // pero un despliegue fresco (clon Batuta) la necesita igual que las demás.
     const tieneRecFecha = (infoAlumnos.results || []).some(c => c.name === "recordatorio_fecha");
@@ -2515,6 +2730,40 @@ async function ensureSchema(env){
     if (!tieneCancUtc) await env.DB.prepare("ALTER TABLE reservas ADD COLUMN cancelada_utc TEXT DEFAULT ''").run();
     const tieneCancPor = (infoReservas.results || []).some(c => c.name === "cancelada_por");
     if (!tieneCancPor) await env.DB.prepare("ALTER TABLE reservas ADD COLUMN cancelada_por TEXT DEFAULT ''").run();
+
+    /* ===== v-web (06-set-2026): reservas hechas desde nicoleolavarria.com/horarios =====
+       Quien reserva ahí NO tiene cuenta ni paquete: es un interesado. Su reserva entra con
+       alumno_id NULL, estado 'pendiente' y sus datos de contacto en la propia fila, para que
+       Nicole vea nombre + WhatsApp en el panel sin cruzar tablas. */
+    const tieneLeadNombre = (infoReservas.results || []).some(c => c.name === "lead_nombre");
+    if (!tieneLeadNombre) await env.DB.prepare("ALTER TABLE reservas ADD COLUMN lead_nombre TEXT DEFAULT ''").run();
+    const tieneLeadWa = (infoReservas.results || []).some(c => c.name === "lead_whatsapp");
+    if (!tieneLeadWa) await env.DB.prepare("ALTER TABLE reservas ADD COLUMN lead_whatsapp TEXT DEFAULT ''").run();
+    const tieneOrigenRsv = (infoReservas.results || []).some(c => c.name === "origen");
+    if (!tieneOrigenRsv) await env.DB.prepare("ALTER TABLE reservas ADD COLUMN origen TEXT DEFAULT ''").run();
+
+    /* El índice único que impide dos reservas en el mismo instante nació sin 'pendiente'; sin
+       este arreglo, dos personas podían quedarse con la misma hora desde la web. Se recrea solo
+       si le falta (idempotente). */
+    const idxRsv = await env.DB.prepare(
+      "SELECT sql FROM sqlite_master WHERE type='index' AND name='idx_reservas_slot_unico'"
+    ).first();
+    if (!idxRsv || !String(idxRsv.sql || "").includes("pendiente")){
+      await env.DB.prepare("DROP INDEX IF EXISTS idx_reservas_slot_unico").run();
+      await env.DB.prepare(
+        "CREATE UNIQUE INDEX idx_reservas_slot_unico ON reservas (inicio_utc) " +
+        "WHERE estado IN ('reservada','completada','pendiente')"
+      ).run();
+    }
+
+    /* Cola de avisos por WhatsApp: el worker no puede escribirle a Nicole por su cuenta (no hay
+       API oficial en este número), así que deja el mensaje aquí y el poller de la Mac lo manda
+       por el bot de la casa. Sin cola, un aviso perdido no se recupera. */
+    await env.DB.prepare(
+      "CREATE TABLE IF NOT EXISTS avisos_wa (id TEXT PRIMARY KEY, para TEXT NOT NULL, texto TEXT NOT NULL, " +
+      "estado TEXT DEFAULT 'pendiente', creado TEXT DEFAULT '', enviado TEXT DEFAULT '')"
+    ).run();
+    await env.DB.prepare("CREATE INDEX IF NOT EXISTS idx_avisos_wa_estado ON avisos_wa (estado)").run();
     _schemaChecked = true;
   } catch (e) { /* otra invocación pudo correrla en paralelo; se reintenta en la próxima request */ }
 }
@@ -2525,6 +2774,18 @@ export default {
 
     if (!url.pathname.startsWith("/api/") && !url.pathname.startsWith("/r/")){
       return env.ASSETS ? env.ASSETS.fetch(request) : json({ error: "No encontrado" }, 404);
+    }
+    /* Preflight de la reserva pública: el navegador pregunta antes del POST con JSON. Solo se le
+       abre la puerta a los dos dominios de Nicole (el resto sigue cayendo en el 204 pelado). */
+    if (request.method === "OPTIONS" && url.pathname === "/api/agenda/reservar-publico"){
+      const o = origenWeb(request);
+      const r = new Response(null, { status: 204 });
+      if (o){
+        r.headers.set("Access-Control-Allow-Methods", "POST, OPTIONS");
+        r.headers.set("Access-Control-Allow-Headers", "content-type");
+        r.headers.set("Access-Control-Max-Age", "86400");
+      }
+      return conCors(r, o);
     }
     if (request.method === "OPTIONS") return new Response(null, { status: 204 });
 
@@ -3652,6 +3913,116 @@ export default {
         return r;
       }
 
+      /* ===== AGENDA: RESERVAR desde la web pública (sin cuenta, sin pago) =====
+         Es la puerta de entrada de nicoleolavarria.com/horarios: un interesado elige su hora,
+         deja nombre y WhatsApp, y la clase queda 'pendiente' hasta que Nicole la confirme.
+         La reserva aparta el horario de inmediato (índice único) para que no se lo quiten
+         mientras ella responde. */
+      if (url.pathname === "/api/agenda/reservar-publico" && request.method === "POST"){
+        const origen = origenWeb(request);
+        const b = await request.json().catch(() => ({}));
+        if (b.website) return conCors(json({ ok: true }), origen);   // honeypot: bot, se descarta callado
+
+        const nombre = String(b.nombre || "").trim().replace(/\s+/g, " ").slice(0, 60);
+        if (nombre.length < 2) return conCors(json({ error: "Escribe tu nombre." }, 400), origen);
+
+        // WhatsApp peruano: 9 dígitos que empiezan en 9, con o sin el 51 delante.
+        let d = String(b.whatsapp || "").replace(/[^\d]/g, "");
+        if (d.length === 11 && d.startsWith("51")) d = d.slice(2);
+        if (!/^9\d{8}$/.test(d)){
+          return conCors(json({ error: "Ese WhatsApp no parece peruano. Son 9 números y empiezan con 9." }, 400), origen);
+        }
+        const waFull = "51" + d;
+
+        const email = String(b.email || "").trim().toLowerCase().slice(0, 120);
+        if (email && !emailOk(email)) return conCors(json({ error: "Ese correo no se ve bien. Revísalo o déjalo en blanco." }, 400), origen);
+        const nota = String(b.nota || "").trim().slice(0, 200);
+
+        const iso = String(b.inicio_utc || "");
+        if (!(await slotValido(env, iso))){
+          return conCors(json({ error: "Ese horario ya no está disponible. Elige otro." }, 409), origen);
+        }
+        if (await diaLleno(env, iso)){
+          return conCors(json({ error: "Ese día ya está completo. Elige otro día." }, 409), origen);
+        }
+
+        /* Limitador por IP: 5 reservas al día. Va aquí, DESPUÉS de validar, para que solo cuenten
+           las reservas de verdad — quien se equivoca tres veces al escribir su número no puede
+           quedarse sin poder reservar por eso. */
+        const ipRsv = request.headers.get("CF-Connecting-IP") || "";
+        if (ipRsv && await pasoTopeDia(env, "rsvweb:" + ipRsv, 5)){
+          return conCors(json({ error: "Ya reservaste varias veces hoy. Escríbele a Nicole por WhatsApp y lo cuadran directo." }, 429), origen);
+        }
+
+        const startMs = Date.parse(iso);
+        const fin = new Date(startMs + CLASE_MIN * 60000).toISOString();
+        const nowIso = new Date().toISOString();
+        const rid = crypto.randomUUID();
+        try {
+          await env.DB.prepare(
+            "INSERT INTO reservas (id,alumno_id,inicio_utc,fin_utc,tipo,serie_id,estado,curso,nota,ciclo,creada,lead_nombre,lead_whatsapp,origen) " +
+            "VALUES (?1,NULL,?2,?3,'suelta','','pendiente','',?4,1,?5,?6,?7,'web')"
+          ).bind(rid, iso, fin, nota, nowIso, nombre, waFull).run();
+        } catch (e){
+          return conCors(json({ error: "Justo tomaron ese horario. Elige otro." }, 409), origen);
+        }
+
+        /* El lead vive en su tabla aunque nunca llegue a alumna: es el CRM de Nicole.
+           Sin correo, la clave de dedupe es sintética por número (mismo truco que /api/lead). */
+        const emailLead = email || ("wa-" + waFull + "@wa.nicole");
+        try {
+          const ya = await env.DB.prepare(
+            "SELECT id, COALESCE(telefono,'') AS telefono FROM leads WHERE email = ?1 AND marca = ?2"
+          ).bind(emailLead, "NICOLE").first();
+          if (!ya){
+            await env.DB.prepare(
+              "INSERT INTO leads (id,email,marca,fuente,interes,fecha,telefono,nombre,nurture_paso) VALUES (?1,?2,'NICOLE','web-horarios','clase',?3,?4,?5,99)"
+            ).bind(crypto.randomUUID(), emailLead, hoy(), waFull, nombre).run();
+          } else if (!ya.telefono){
+            await env.DB.prepare("UPDATE leads SET telefono = ?1, nombre = COALESCE(NULLIF(nombre,''), ?2) WHERE id = ?3")
+              .bind(waFull, nombre, ya.id).run();
+          }
+        } catch (e) { /* la reserva ya entró: un lead duplicado no puede tumbarla */ }
+
+        // Google Calendar (si está conectado) y los tres avisos, fuera del camino de respuesta.
+        ctx.waitUntil((async () => {
+          try {
+            const eid = await gcalCrearEvento(env, {
+              inicio_utc: iso, fin_utc: fin, curso: "Clase (por confirmar)",
+              alumnoNombre: nombre + " · +" + waFull, email: email || ""
+            });
+            if (eid) await env.DB.prepare("UPDATE reservas SET gcal_event_id = ?1 WHERE id = ?2").bind(eid, rid).run();
+          } catch (e) { /* sin Google conectado esto es un no-op */ }
+          await avisarReservaWeb(env, { inicio_utc: iso, nombre, whatsapp: waFull, nota });
+        })());
+
+        const c = cuandoLima(iso);
+        return conCors(json({ ok: true, id: rid, dia: c.dia, hora: c.hora }), origen);
+      }
+
+      /* ===== AGENDA: feed ICS de las clases (para suscribirlo en Google Calendar) =====
+         Es el puente SIN OAuth: Google Calendar → "Otros calendarios" → "Desde URL". Solo
+         lectura, protegido por el mismo token de los avisos (la URL es la llave, como en
+         cualquier feed privado de calendario). */
+      if (url.pathname === "/api/agenda/ical" && request.method === "GET"){
+        if (!env.AVISOS_TOKEN || !safeEq(String(url.searchParams.get("k") || ""), env.AVISOS_TOKEN)){
+          return json({ error: "No autorizado" }, 401);
+        }
+        const desde = new Date(Date.now() - 30 * 86400000).toISOString();
+        const { results } = await env.DB.prepare(
+          "SELECT r.id, r.inicio_utc, r.fin_utc, r.estado, r.curso, r.nota, r.origen, " +
+          "COALESCE(NULLIF(r.lead_nombre,''), a.nombre, '') AS quien, COALESCE(r.lead_whatsapp,'') AS wa " +
+          "FROM reservas r LEFT JOIN alumnos a ON a.id = r.alumno_id " +
+          "WHERE r.estado IN ('reservada','pendiente') AND r.inicio_utc >= ?1 ORDER BY r.inicio_utc ASC"
+        ).bind(desde).all();
+        const ics = icsCalendario(results || []);
+        return new Response(ics, { headers: {
+          "content-type": "text/calendar; charset=utf-8",
+          "content-disposition": 'inline; filename="nicole-clases.ics"',
+          "cache-control": "no-store"
+        } });
+      }
+
       if (url.pathname === "/api/agenda/slots" && request.method === "GET"){
         const cu = await cuentaDeSesion(env, request);
         if (!cu) return json({ error: "Sesión expirada" }, 401);
@@ -3669,6 +4040,8 @@ export default {
         const tipo = b.tipo === "fija" ? "fija" : "suelta";
         const iso = String(b.inicio_utc || "");
         if (!(await slotValido(env, iso))) return json({ error: "Ese horario ya no está disponible. Elige otro." }, 400);
+        // Mismo tope que la web pública: 5 clases por día y ni una más, venga de donde venga.
+        if (await diaLleno(env, iso)) return json({ error: "Ese día ya está completo. Elige otro día." }, 409);
 
         const alumno = await env.DB.prepare("SELECT * FROM alumnos WHERE id = ?1").bind(cu.alumno_id).first();
         if (!alumno) return json({ error: "No encuentro tu ficha de alumno." }, 400);
@@ -3895,6 +4268,30 @@ export default {
         return json({ ok: true, token: token });
       }
 
+      /* ===== COLA DE AVISOS POR WHATSAPP (la lee el poller de la Mac) =====
+         Va ANTES del portón de /api/admin/ porque no la abre un navegador con sesión, sino un
+         proceso de la Mac de Andrés que solo tiene el token (secret AVISOS_TOKEN). */
+      if (url.pathname === "/api/admin/avisos-wa" && request.method === "GET"){
+        if (!env.AVISOS_TOKEN || !safeEq(String(url.searchParams.get("k") || ""), env.AVISOS_TOKEN)){
+          return json({ error: "No autorizado" }, 401);
+        }
+        const { results } = await env.DB.prepare(
+          "SELECT id, para, texto, creado FROM avisos_wa WHERE estado = 'pendiente' ORDER BY creado ASC LIMIT 20"
+        ).all();
+        return json({ avisos: results || [] });
+      }
+      if (url.pathname === "/api/admin/avisos-wa/enviado" && request.method === "POST"){
+        const b0 = await request.json().catch(() => ({}));
+        const k = String(url.searchParams.get("k") || b0.k || "");
+        if (!env.AVISOS_TOKEN || !safeEq(k, env.AVISOS_TOKEN)) return json({ error: "No autorizado" }, 401);
+        const id = String(b0.id || "");
+        if (!id) return json({ error: "Falta el id" }, 400);
+        const estado = b0.estado === "error" ? "error" : "enviado";
+        await env.DB.prepare("UPDATE avisos_wa SET estado = ?1, enviado = ?2 WHERE id = ?3")
+          .bind(estado, new Date().toISOString(), id).run();
+        return json({ ok: true });
+      }
+
       if (url.pathname.startsWith("/api/admin/")){
         if (!(await esAdminAuth(env, request))){
           return json({ error: "No autorizado" }, 401);
@@ -3969,10 +4366,31 @@ export default {
         if (url.pathname === "/api/admin/agenda" && request.method === "GET"){
           const desde = new Date(Date.now() - 7 * 86400000).toISOString();
           const rows = (await env.DB.prepare(
-            "SELECT r.id, r.alumno_id, r.inicio_utc, r.fin_utc, r.tipo, r.serie_id, r.estado, r.curso, r.nota, a.nombre AS alumno_nombre " +
+            "SELECT r.id, r.alumno_id, r.inicio_utc, r.fin_utc, r.tipo, r.serie_id, r.estado, r.curso, r.nota, " +
+            "COALESCE(r.lead_nombre,'') AS lead_nombre, COALESCE(r.lead_whatsapp,'') AS lead_whatsapp, " +
+            "COALESCE(r.origen,'') AS origen, a.nombre AS alumno_nombre " +
             "FROM reservas r LEFT JOIN alumnos a ON a.id = r.alumno_id WHERE r.inicio_utc >= ?1 ORDER BY r.inicio_utc ASC"
           ).bind(desde).all()).results || [];
-          return json({ reservas: rows });
+          return json({ reservas: rows, tope_dia: topeDia(await loadConfig(env)) });
+        }
+
+        /* ----- Agenda: confirmar una reserva que entró por la web (pendiente -> reservada) ----- */
+        if (url.pathname === "/api/admin/agenda/confirmar" && request.method === "POST"){
+          const b = await request.json().catch(() => ({}));
+          const id = String(b.id || "");
+          const rsv = await env.DB.prepare("SELECT * FROM reservas WHERE id = ?1").bind(id).first();
+          if (!rsv) return json({ error: "No encuentro esa reserva" }, 404);
+          if (rsv.estado !== "pendiente") return json({ error: "Esa clase ya no está por confirmar." }, 409);
+          await env.DB.prepare("UPDATE reservas SET estado = 'reservada' WHERE id = ?1").bind(id).run();
+          // Si Google Calendar se conectó DESPUÉS de la reserva, el evento se crea recién ahora.
+          if (!rsv.gcal_event_id){
+            const eid = await gcalCrearEvento(env, {
+              inicio_utc: rsv.inicio_utc, fin_utc: rsv.fin_utc, curso: rsv.curso || "Clase",
+              alumnoNombre: rsv.lead_nombre || "", email: ""
+            });
+            if (eid) await env.DB.prepare("UPDATE reservas SET gcal_event_id = ?1 WHERE id = ?2").bind(eid, id).run();
+          }
+          return json({ ok: true });
         }
 
         /* ----- Agenda: bloquear un slot / sembrar una clase fija existente ----- */
@@ -4026,9 +4444,10 @@ export default {
             // dependía del emparejamiento). Idempotente: si ese día ya tiene fila de clase, no se duplica.
             const fL = fechaLimaDe(rsv.inicio_utc);
             const cicloRsv = Number(rsv.ciclo) || 1;
-            const ya = await env.DB.prepare(
+            // Una reserva de la web todavía no tiene ficha de alumna: no hay bitácora que escribir.
+            const ya = rsv.alumno_id ? await env.DB.prepare(
               "SELECT COUNT(*) AS n FROM registro WHERE alumno_id = ?1 AND COALESCE(ciclo,1) = ?2 AND estado != 'Reprogramó' AND substr(fecha,1,10) IN (?3,?4)"
-            ).bind(rsv.alumno_id, cicloRsv, fL, String(rsv.inicio_utc || "").slice(0, 10)).first();
+            ).bind(rsv.alumno_id, cicloRsv, fL, String(rsv.inicio_utc || "").slice(0, 10)).first() : { n: 1 };
             if (!ya || !Number(ya.n)){
               stmts.push(env.DB.prepare(
                 "INSERT INTO registro (id,fecha,alumno_id,curso,estado,trabajo,tarea,ciclo,tarea_audio,plan) VALUES (?1,?2,?3,?4,?5,'','',?6,'','')"

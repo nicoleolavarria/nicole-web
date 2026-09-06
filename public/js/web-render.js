@@ -47,6 +47,7 @@ const DEFAULTS = {
     { texto: "inicio", url: "/" },
     { texto: "acerca de", url: "/acerca-de" },
     { texto: "sesiones 1:1", url: "/sesiones" },
+    { texto: "horarios", url: "/horarios" },
     { texto: "contacto", url: "/contacto" },
     { texto: "portal alumno", url: "/portal/index.html", destacado: true }
   ],
@@ -57,7 +58,7 @@ const DEFAULTS = {
     enlaces: [
       { texto: "Acerca de", url: "/acerca-de" },
       { texto: "Sesiones 1:1", url: "/sesiones" },
-      { texto: "Horarios disponibles", url: "/sesiones" },
+      { texto: "Horarios disponibles", url: "/horarios" },
       { texto: "Portal del alumno", url: "/portal/index.html" },
       { texto: "Contacto", url: "/contacto" }
     ],

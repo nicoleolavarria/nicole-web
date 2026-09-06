@@ -1,0 +1,391 @@
+---
+/* HORARIOS — la vitrina de la agenda real de Nicole, con reserva incluida.
+
+   Esta página NO usa Layout.astro a propósito: aquel renderiza el contenido que
+   Nicole edita desde su CRM y lo REPINTA en el navegador cuando detecta una
+   versión nueva, lo que borraría esta pantalla. Aquí se reusan las piezas
+   compartidas (header, pie, estilo, fuentes) y el cuerpo es propio.
+
+   Los horarios salen del worker en vivo; el tope de 5 clases al día ya viene
+   aplicado desde el servidor (un día lleno simplemente no trae slots). */
+import { obtenerWeb, ORIGEN } from '../lib/web-data.mjs';
+import { headerHtml, pieHtml, anuncioHtml, estiloCss, fuentesHref, mezclar } from '../lib/web-render.mjs';
+
+const { web } = await obtenerWeb();
+const data = mezclar(web);
+const cssExtra = estiloCss(data);
+const hrefFuentes = fuentesHref(data);
+
+const title = 'Horarios disponibles — Nicole Olavarría';
+const description =
+  'Mira los horarios libres de Nicole Olavarría y reserva tu clase de canto o lenguaje musical. Presencial en Miraflores u online.';
+const canonical = 'https://nicoleolavarria.com/horarios';
+const PORTAL = ORIGEN + '/alumnos/';
+---
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>{title}</title>
+  <meta name="description" content={description} />
+  <link rel="canonical" href={canonical} />
+  <meta property="og:title" content={title} />
+  <meta property="og:description" content={description} />
+  <meta property="og:image" content="https://nicoleolavarria.com/images/sesiones.jpg" />
+  <meta property="og:url" content={canonical} />
+  <meta name="twitter:card" content="summary_large_image" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:ital,wght@0,300;0,400;0,500;1,300;1,400&display=swap" rel="stylesheet" />
+  {hrefFuentes && <link href={hrefFuentes} rel="stylesheet" id="fuentesNicole" />}
+  <link rel="stylesheet" href="/styles/global.css" />
+  {cssExtra && <style id="estiloNicole" set:html={cssExtra} />}
+  <!-- is:global es OBLIGATORIO acá: los días y las horas los crea el JavaScript en el
+       navegador, así que no llevan el atributo con el que Astro scopea sus estilos. Con estilo
+       scopeado, esos botones salen sin ningún formato (pasó en la primera captura). -->
+  <style is:global>
+    /* El rosa lo eligió Nicole. Aquí es el color de lo elegido, no del fondo:
+       marca la fecha y la hora que la persona acaba de tocar. */
+    :root { --rosa: #fee1f2; }
+
+    .hor-wrap { max-width: min(680px, var(--ancho)); margin: 0 auto; padding: 44px 20px 72px; }
+    @media (min-width: 700px) { .hor-wrap { padding: 72px 40px 96px; } }
+
+    .hor-wrap h1 { margin-bottom: 10px; }
+    .hor-intro { font-size: calc(14px * var(--esc)); line-height: 1.65; color: var(--muted); margin-bottom: 6px; }
+    .hor-tz { font-size: calc(12.5px * var(--esc)); color: var(--muted); margin: 10px 0 0; }
+
+    .hor-paso { margin-top: 34px; }
+    .hor-paso > h2 {
+      font-family: var(--font-titulo); font-size: calc(11px * var(--esc));
+      letter-spacing: .12em; text-transform: uppercase; color: var(--muted);
+      border-bottom: 1px solid var(--line); padding-bottom: 8px; margin-bottom: 16px;
+    }
+
+    /* --- tira de días --- */
+    .hor-dias { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 10px; -webkit-overflow-scrolling: touch; }
+    .hor-dias::-webkit-scrollbar { height: 3px; }
+    .hor-dias::-webkit-scrollbar-thumb { background: var(--line); }
+    .hor-dia {
+      flex: 0 0 auto; min-width: 74px; min-height: 78px;
+      display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px;
+      border: 1px solid var(--line); background: var(--bg); color: var(--fg);
+      font-family: var(--font-cuerpo); cursor: pointer; padding: 10px 8px;
+      transition: border-color .12s, background .12s;
+    }
+    .hor-dia .d-sem { font-size: calc(11px * var(--esc)); letter-spacing: .08em; text-transform: lowercase; color: var(--muted); }
+    .hor-dia .d-num { font-size: calc(21px * var(--esc)); line-height: 1.1; }
+    .hor-dia .d-est { font-size: calc(10px * var(--esc)); letter-spacing: .06em; color: var(--muted); }
+    .hor-dia[aria-pressed="true"] { background: var(--rosa); border-color: var(--fg); }
+    .hor-dia[aria-pressed="true"] .d-sem, .hor-dia[aria-pressed="true"] .d-est { color: var(--fg); }
+    .hor-dia:disabled { cursor: default; opacity: .45; }
+
+    /* --- horas --- */
+    .hor-horas { display: grid; grid-template-columns: repeat(auto-fill, minmax(112px, 1fr)); gap: 10px; }
+    .hor-hora {
+      min-height: 52px; border: 1px solid var(--line); background: var(--bg); color: var(--fg);
+      font-family: var(--font-cuerpo); font-size: calc(15px * var(--esc)); cursor: pointer;
+      transition: border-color .12s, background .12s;
+    }
+    .hor-hora:hover { border-color: var(--fg); }
+    .hor-hora[aria-pressed="true"] { background: var(--rosa); border-color: var(--fg); }
+
+    /* --- tarjeta de reserva --- */
+    .hor-card { border: 1px solid var(--fg); padding: 22px 20px; margin-top: 26px; background: var(--bg); }
+    .hor-card .elegido { font-size: calc(17px * var(--esc)); line-height: 1.45; margin-bottom: 4px; }
+    .hor-card .elegido-sub { font-size: calc(12.5px * var(--esc)); color: var(--muted); margin-bottom: 18px; }
+    .hor-campo { margin-bottom: 14px; }
+    .hor-campo label { display: block; font-size: calc(12px * var(--esc)); letter-spacing: .06em; color: var(--muted); margin-bottom: 6px; }
+    .hor-campo input {
+      width: 100%; min-height: 50px; padding: 0 12px; box-sizing: border-box;
+      border: 1px solid var(--line); background: var(--bg); color: var(--fg);
+      font-family: var(--font-cuerpo); font-size: calc(15px * var(--esc));
+    }
+    .hor-campo input:focus { outline: none; border-color: var(--fg); }
+    .hor-hp { position: absolute; left: -9999px; width: 1px; height: 1px; overflow: hidden; }
+
+    .hor-btn {
+      width: 100%; min-height: 54px; border: 1px solid var(--fg); background: var(--fg); color: var(--bg);
+      font-family: var(--font-cuerpo); font-size: calc(15px * var(--esc)); letter-spacing: .04em; cursor: pointer;
+    }
+    .hor-btn:disabled { opacity: .5; cursor: default; }
+    .hor-error {
+      margin-top: 14px; padding: 12px 14px; border: 1px solid var(--fg);
+      font-size: calc(13.5px * var(--esc)); line-height: 1.5;
+    }
+    .hor-portal { margin-top: 18px; font-size: calc(13px * var(--esc)); color: var(--muted); }
+
+    /* --- confirmación --- */
+    .hor-listo { border: 1px solid var(--fg); background: var(--rosa); padding: 34px 24px; text-align: center; margin-top: 26px; }
+    .hor-listo .tick { display: block; margin: 0 auto 16px; }
+    .hor-listo h2 { font-family: var(--font-titulo); font-size: calc(24px * var(--esc) * var(--esc-tit)); margin-bottom: 12px; border: 0; padding: 0; letter-spacing: 0; text-transform: none; color: var(--fg); }
+    .hor-listo p { font-size: calc(15px * var(--esc)); line-height: 1.6; margin-bottom: 8px; }
+    .hor-listo .cuando { font-size: calc(17px * var(--esc)); }
+
+    .hor-vacio { font-size: calc(13.5px * var(--esc)); color: var(--muted); line-height: 1.6; }
+  </style>
+</head>
+<body data-pagina="horarios">
+  <Fragment set:html={anuncioHtml(data)} />
+  <Fragment set:html={headerHtml(data)} />
+
+  <main>
+    <div class="hor-wrap">
+      <h1>Elige tu horario</h1>
+      <p class="hor-intro">
+        Esta es la agenda real de Nicole, al minuto. Elige el día, la hora y déjale
+        tu WhatsApp: ella te confirma y coordinan si es presencial en Miraflores u online.
+      </p>
+      <p class="hor-tz" id="tzNota" hidden></p>
+
+      <section class="hor-paso" id="pasoDias">
+        <h2>1 · El día</h2>
+        <div class="hor-dias" id="dias" aria-live="polite">
+          <p class="hor-vacio">Cargando la agenda…</p>
+        </div>
+      </section>
+
+      <section class="hor-paso" id="pasoHoras" hidden>
+        <h2>2 · La hora</h2>
+        <div class="hor-horas" id="horas"></div>
+      </section>
+
+      <section id="pasoForm" hidden>
+        <div class="hor-card">
+          <p class="elegido" id="elegido"></p>
+          <p class="elegido-sub" id="elegidoSub"></p>
+          <form id="formReserva" novalidate>
+            <div class="hor-campo">
+              <label for="f_nombre">Tu nombre</label>
+              <input id="f_nombre" name="nombre" type="text" autocomplete="name" maxlength="60" required />
+            </div>
+            <div class="hor-campo">
+              <label for="f_wa">Tu WhatsApp</label>
+              <input id="f_wa" name="whatsapp" type="tel" inputmode="numeric" autocomplete="tel" placeholder="999 888 777" maxlength="15" required />
+            </div>
+            <div class="hor-hp" aria-hidden="true">
+              <label for="f_web">No llenar</label>
+              <input id="f_web" name="website" type="text" tabindex="-1" autocomplete="off" />
+            </div>
+            <button class="hor-btn" type="submit" id="btnReservar">Reservar esta hora</button>
+          </form>
+          <div class="hor-error" id="errorBox" hidden></div>
+          <p class="hor-portal">
+            Ya eres alumna? <a href={PORTAL}>Entra a tu portal</a> y reserva desde ahí.
+          </p>
+        </div>
+      </section>
+
+      <section id="pasoListo" hidden>
+        <div class="hor-listo">
+          <svg class="tick" width="38" height="38" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <circle cx="12" cy="12" r="10"></circle><path d="M8 12.5l2.5 2.5L16 9.5"></path>
+          </svg>
+          <h2>Listo</h2>
+          <p class="cuando" id="listoCuando"></p>
+          <p>Nicole te confirma por WhatsApp.</p>
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <Fragment set:html={pieHtml(data)} />
+
+  <script is:inline define:vars={{ ORIGEN }}>
+    /* Menú móvil (mismo comportamiento que el resto del sitio). */
+    (function () {
+      var toggle = document.querySelector('.menu-toggle');
+      var nav = document.querySelector('header nav');
+      if (!toggle || !nav) return;
+      toggle.addEventListener('click', function () {
+        var open = toggle.getAttribute('aria-expanded') === 'true';
+        toggle.setAttribute('aria-expanded', String(!open));
+        nav.classList.toggle('open', !open);
+      });
+    })();
+
+    (function () {
+      var API = ORIGEN + '/api/agenda';
+      var LIMA = 'America/Lima';
+      var MAX_DIAS = 14;
+
+      var elDias = document.getElementById('dias');
+      var elHoras = document.getElementById('horas');
+      var pasoHoras = document.getElementById('pasoHoras');
+      var pasoForm = document.getElementById('pasoForm');
+      var pasoListo = document.getElementById('pasoListo');
+      var errorBox = document.getElementById('errorBox');
+      var btn = document.getElementById('btnReservar');
+
+      var tz = 'America/Lima';
+      try { tz = Intl.DateTimeFormat().resolvedOptions().timeZone || LIMA; } catch (e) {}
+
+      var porDia = {};      // 'YYYY-MM-DD' local -> [iso, ...]
+      var diasWork = {};    // día de la semana en el que ella SÍ atiende (0-6, hora local)
+      var elegido = null;
+
+      function fmt(iso, opts) {
+        return new Intl.DateTimeFormat('es-PE', Object.assign({ timeZone: tz }, opts)).format(new Date(iso));
+      }
+      function claveLocal(d) {
+        var p = new Intl.DateTimeFormat('en-CA', { timeZone: tz, year: 'numeric', month: '2-digit', day: '2-digit' }).format(d);
+        return p;   // en-CA da YYYY-MM-DD
+      }
+      function dowLocal(d) {
+        var n = new Intl.DateTimeFormat('en-US', { timeZone: tz, weekday: 'short' }).format(d);
+        return ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].indexOf(n);
+      }
+
+      function pintarDias() {
+        var hoy = new Date();
+        var html = '';
+        var primerLibre = null;
+        for (var i = 0; i < MAX_DIAS; i++) {
+          var d = new Date(hoy.getTime() + i * 86400000);
+          var clave = claveLocal(d);
+          var libres = porDia[clave] || [];
+          var sem = fmt(d.toISOString(), { weekday: 'short' }).replace('.', '');
+          var num = fmt(d.toISOString(), { day: 'numeric' });
+          /* Un día sin horas puede ser que esté lleno o que ella no atienda ese día de la
+             semana. Decir "Completo" en su día libre sería mentir, así que se distingue por
+             si ese día de la semana aparece alguna vez en la agenda. */
+          var etiqueta = libres.length ? (libres.length + (libres.length === 1 ? ' hora' : ' horas'))
+                       : (diasWork[dowLocal(d)] ? 'Completo' : 'Cerrado');
+          if (libres.length && primerLibre === null) primerLibre = clave;
+          html += '<button type="button" class="hor-dia" data-dia="' + clave + '" aria-pressed="false"' +
+                  (libres.length ? '' : ' disabled') + '>' +
+                  '<span class="d-sem">' + sem + '</span>' +
+                  '<span class="d-num">' + num + '</span>' +
+                  '<span class="d-est">' + etiqueta + '</span></button>';
+        }
+        elDias.innerHTML = html;
+        if (primerLibre) elegirDia(primerLibre);
+      }
+
+      function elegirDia(clave) {
+        elegido = null;
+        pasoForm.hidden = true;
+        pasoListo.hidden = true;
+        errorBox.hidden = true;
+        elDias.querySelectorAll('.hor-dia').forEach(function (b) {
+          b.setAttribute('aria-pressed', String(b.dataset.dia === clave));
+        });
+        var libres = porDia[clave] || [];
+        elHoras.innerHTML = libres.map(function (iso) {
+          return '<button type="button" class="hor-hora" data-iso="' + iso + '" aria-pressed="false">' +
+                 fmt(iso, { hour: 'numeric', minute: '2-digit' }) + '</button>';
+        }).join('');
+        pasoHoras.hidden = libres.length === 0;
+      }
+
+      function elegirHora(iso) {
+        elegido = iso;
+        errorBox.hidden = true;
+        elHoras.querySelectorAll('.hor-hora').forEach(function (b) {
+          b.setAttribute('aria-pressed', String(b.dataset.iso === iso));
+        });
+        document.getElementById('elegido').textContent =
+          fmt(iso, { weekday: 'long', day: 'numeric', month: 'long' }) + ' · ' + fmt(iso, { hour: 'numeric', minute: '2-digit' });
+        document.getElementById('elegidoSub').textContent =
+          tz === LIMA ? 'Clase de 1 hora.' : 'Clase de 1 hora. En Lima son las ' +
+            new Intl.DateTimeFormat('es-PE', { timeZone: LIMA, hour: 'numeric', minute: '2-digit' }).format(new Date(iso)) + '.';
+        pasoForm.hidden = false;
+        pasoListo.hidden = true;
+        pasoForm.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      }
+
+      elDias.addEventListener('click', function (e) {
+        var b = e.target.closest('.hor-dia');
+        if (b && !b.disabled) elegirDia(b.dataset.dia);
+      });
+      elHoras.addEventListener('click', function (e) {
+        var b = e.target.closest('.hor-hora');
+        if (b) elegirHora(b.dataset.iso);
+      });
+
+      function mostrarError(msg) {
+        errorBox.textContent = msg;
+        errorBox.hidden = false;
+      }
+
+      document.getElementById('formReserva').addEventListener('submit', function (e) {
+        e.preventDefault();
+        if (!elegido) { mostrarError('Elige primero una hora.'); return; }
+        var nombre = document.getElementById('f_nombre').value.trim();
+        var wa = document.getElementById('f_wa').value.trim();
+        if (nombre.length < 2) { mostrarError('Escribe tu nombre.'); return; }
+        var soloNum = wa.replace(/[^\d]/g, '');
+        if (soloNum.length === 11 && soloNum.indexOf('51') === 0) soloNum = soloNum.slice(2);
+        if (!/^9\d{8}$/.test(soloNum)) { mostrarError('Ese WhatsApp no parece peruano. Son 9 números y empiezan con 9.'); return; }
+
+        errorBox.hidden = true;
+        btn.disabled = true;
+        btn.textContent = 'Reservando…';
+        fetch(API + '/reservar-publico', {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({
+            inicio_utc: elegido, nombre: nombre, whatsapp: soloNum,
+            website: document.getElementById('f_web').value
+          })
+        })
+          .then(function (r) { return r.json().then(function (d) { return { ok: r.ok, d: d }; }); })
+          .then(function (res) {
+            btn.disabled = false;
+            btn.textContent = 'Reservar esta hora';
+            if (!res.ok || !res.d.ok) {
+              mostrarError(res.d.error || 'No pudimos guardar tu reserva. Intenta de nuevo en un momento.');
+              if (res.d.error && res.d.error.indexOf('disponible') > -1) cargar();   // alguien se adelantó: refrescar
+              if (res.d.error && res.d.error.indexOf('completo') > -1) cargar();
+              return;
+            }
+            document.getElementById('listoCuando').textContent =
+              fmt(elegido, { weekday: 'long', day: 'numeric', month: 'long' }) + ' · ' + fmt(elegido, { hour: 'numeric', minute: '2-digit' });
+            document.getElementById('pasoDias').hidden = true;
+            pasoHoras.hidden = true;
+            pasoForm.hidden = true;
+            pasoListo.hidden = false;
+            pasoListo.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          })
+          .catch(function () {
+            btn.disabled = false;
+            btn.textContent = 'Reservar esta hora';
+            mostrarError('No hay conexión con la agenda. Revisa tu internet e intenta de nuevo.');
+          });
+      });
+
+      function cargar() {
+        fetch(API + '/slots-publicos')
+          .then(function (r) { return r.json(); })
+          .then(function (d) {
+            var slots = (d && d.slots) || [];
+            porDia = {}; diasWork = {};
+            slots.forEach(function (iso) {
+              var f = new Date(iso);
+              var clave = claveLocal(f);
+              (porDia[clave] = porDia[clave] || []).push(iso);
+              diasWork[dowLocal(f)] = true;
+            });
+            if (!slots.length) {
+              elDias.innerHTML = '<p class="hor-vacio">Por ahora no hay horarios publicados. ' +
+                'Escríbele a Nicole por <a href="https://wa.me/51955127656">WhatsApp</a> y lo coordinan.</p>';
+              return;
+            }
+            if (tz !== LIMA) {
+              var n = document.getElementById('tzNota');
+              n.textContent = 'Las horas se muestran en tu hora local (' + tz.replace(/_/g, ' ') + '). Nicole está en Lima.';
+              n.hidden = false;
+            }
+            pintarDias();
+          })
+          .catch(function () {
+            elDias.innerHTML = '<p class="hor-vacio">No pudimos cargar la agenda ahora mismo. ' +
+              'Escríbele a Nicole por <a href="https://wa.me/51955127656">WhatsApp</a> y lo coordinan al toque.</p>';
+          });
+      }
+      cargar();
+    })();
+  </script>
+</body>
+</html>

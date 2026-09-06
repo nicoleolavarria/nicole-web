@@ -571,6 +571,7 @@
     <div class="group">
       <h2>// Próximas clases reservadas</h2>
       <p class="hint">Lo que los alumnos reservaron desde su portal, más lo que bloquees aquí. Marca asistencia para cerrar la clase (Asistió y Falta consumen 1 clase del paquete).</p>
+      <div id="agNuevasWeb"></div>
       <div class="tablewrap"><table id="tablaAgenda"><thead><tr><th>Cuándo (Lima)</th><th>Alumno</th><th>Tipo</th><th>Estado</th><th></th></tr></thead><tbody></tbody></table></div>
       <div class="empty hidden" id="agAdminVacio">No hay clases próximas todavía.</div>
     </div>
@@ -1560,11 +1561,32 @@ function renderAgendaAdmin(){
       .map(function(a){return '<option value="'+esc(a.id)+'">'+esc(a.nombre)+'</option>';}).join("");
   sel.value = actual;
 
+  /* Reservas que entraron por nicoleolavarria.com/horarios: van ARRIBA y en tarjeta grande,
+     no en la tabla. Son gente esperando respuesta, no una fila más de la agenda. */
+  var nuevas = AG_RESERVAS.filter(function(r){ return r.estado==="pendiente"; });
+  var resto  = AG_RESERVAS.filter(function(r){ return r.estado!=="pendiente"; });
+  el("agNuevasWeb").innerHTML = nuevas.length===0 ? "" : nuevas.map(function(r){
+    var wa = String(r.lead_whatsapp||"");
+    return '<div style="border:2px solid var(--fg);border-radius:10px;padding:16px;margin-bottom:14px;">'+
+      '<div style="display:inline-block;font-size:13px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;border:1px solid var(--fg);border-radius:999px;padding:3px 10px;margin-bottom:10px;">Nueva · desde la web</div>'+
+      '<div style="font-size:19px;font-weight:700;line-height:1.35;">'+esc(r.lead_nombre||"Sin nombre")+'</div>'+
+      '<div style="font-size:17px;margin-top:6px;">'+esc(fmtLima(r.inicio_utc))+'</div>'+
+      (wa ? '<div style="font-size:17px;margin-top:6px;"><a href="https://wa.me/'+esc(wa)+'" target="_blank" rel="noopener">Escribirle: +'+esc(wa)+'</a></div>' : '')+
+      (r.nota ? '<div style="font-size:16px;margin-top:6px;">'+esc(r.nota)+'</div>' : '')+
+      '<div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:14px;">'+
+        '<button class="btn" data-ag-confirmar="'+esc(r.id)+'" style="min-height:46px;font-size:16px;padding:0 20px;">Confirmar</button>'+
+        '<button class="btn ghost" data-ag-marcar="cancelada" data-id="'+esc(r.id)+'" style="min-height:46px;font-size:16px;padding:0 20px;">No va</button>'+
+      '</div>'+
+    '</div>';
+  }).join("");
+
   var tb = el("tablaAgenda").querySelector("tbody");
-  if(AG_RESERVAS.length===0){ tb.innerHTML=""; el("agAdminVacio").classList.remove("hidden"); return; }
+  if(resto.length===0){ tb.innerHTML=""; el("agAdminVacio").classList.toggle("hidden", nuevas.length>0); return; }
   el("agAdminVacio").classList.add("hidden");
-  tb.innerHTML = AG_RESERVAS.map(function(r){
-    var quien = r.alumno_nombre ? esc(r.alumno_nombre) : '<span class="hint" style="margin:0">'+(r.tipo==="bloqueo"?"(bloqueo)":"—")+(r.nota?" · "+esc(r.nota):"")+'</span>';
+  tb.innerHTML = resto.map(function(r){
+    var quien = r.alumno_nombre ? esc(r.alumno_nombre)
+      : (r.lead_nombre ? esc(r.lead_nombre)+(r.lead_whatsapp?' · <a href="https://wa.me/'+esc(r.lead_whatsapp)+'" target="_blank" rel="noopener">WhatsApp</a>':'')+'<span class="hint" style="margin:0"> desde la web</span>'
+      : '<span class="hint" style="margin:0">'+(r.tipo==="bloqueo"?"(bloqueo)":"—")+(r.nota?" · "+esc(r.nota):"")+'</span>');
     var acc = "";
     if(r.estado==="reservada"){
       acc = '<button class="btn ghost sm" data-ag-marcar="completada" data-id="'+esc(r.id)+'">Asistió</button> '+
@@ -1577,6 +1599,13 @@ function renderAgendaAdmin(){
 el("panel-agenda").addEventListener("click",function(e){
   var cell = e.target.closest(".dcell");
   if(cell){ var on=cell.classList.toggle("on"); cell.textContent=on?"✓":""; return; }
+  var cb = e.target.closest("[data-ag-confirmar]");
+  if(cb){
+    apiPost("/api/admin/agenda/confirmar",{id:cb.dataset.agConfirmar})
+      .then(function(){ toast("Clase confirmada"); cargarAgenda(); })
+      .catch(function(err){ toast(err.message||"No se pudo"); });
+    return;
+  }
   var mb = e.target.closest("[data-ag-marcar]");
   if(mb){
     apiPost("/api/admin/agenda/marcar",{id:mb.dataset.id, estado:mb.dataset.agMarcar})

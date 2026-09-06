@@ -250,14 +250,15 @@ const PORTAL = ORIGEN + '/alumnos/';
           /* Un día sin horas puede ser que esté lleno o que ella no atienda ese día de la
              semana. Decir "Completo" en su día libre sería mentir, así que se distingue por
              si ese día de la semana aparece alguna vez en la agenda. */
-          var etiqueta = libres.length ? (libres.length + (libres.length === 1 ? ' hora' : ' horas'))
-                       : (diasWork[dowLocal(d)] ? 'Completo' : 'Cerrado');
+          /* 6-set-2026, Andrés: nada de "10 horas" debajo de cada día. Solo se etiqueta el día
+             que NO se puede elegir (Completo / Cerrado); el que sí, se toca y ya. */
+          var etiqueta = libres.length ? '' : (diasWork[dowLocal(d)] ? 'Completo' : 'Cerrado');
           if (libres.length && primerLibre === null) primerLibre = clave;
           html += '<button type="button" class="hor-dia" data-dia="' + clave + '" aria-pressed="false"' +
                   (libres.length ? '' : ' disabled') + '>' +
                   '<span class="d-sem">' + sem + '</span>' +
                   '<span class="d-num">' + num + '</span>' +
-                  '<span class="d-est">' + etiqueta + '</span></button>';
+                  (etiqueta ? '<span class="d-est">' + etiqueta + '</span>' : '') + '</button>';
         }
         elDias.innerHTML = html;
         if (primerLibre) elegirDia(primerLibre);

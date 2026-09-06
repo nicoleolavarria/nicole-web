@@ -1,6 +1,6 @@
 self.addEventListener('push', function(e){
   var d = {}; try { d = e.data ? e.data.json() : {}; } catch(err) {}
-  e.waitUntil(self.registration.showNotification(d.title || 'ProfesorMVT CRM', {
+  e.waitUntil(self.registration.showNotification(d.title || 'Nicole Olavarría CRM', {
     body: d.body || '', icon: '/admin/crm/icon-192.png', badge: '/admin/crm/icon-192.png',
     data: { url: (d.url || '/admin/crm/') }
   }));

@@ -8,7 +8,7 @@ compatibility_flags = ["nodejs_compat"]
 account_id = "75cb4a4b2c79cc325e43d7ce7192fb28"
 
 [vars]
-VAPID_PUBLIC_KEY = ""
+VAPID_PUBLIC_KEY = "BPaa3vR6sUSw0MnJBv1GqZfaHROyku03u4DzJwVnigN3D3GSPOPGZrkgyCdDWCyf1gRDUECTJetzmpIvdVGt-Xg"
 
 [assets]
 directory = "./panel"

@@ -1,7 +1,7 @@
 /* Service worker del portal del alumno · Web Push */
 self.addEventListener('push', function(e){
   var d = {}; try { d = e.data ? e.data.json() : {}; } catch(err) {}
-  e.waitUntil(self.registration.showNotification(d.title || 'ProfesorMVT', {
+  e.waitUntil(self.registration.showNotification(d.title || 'Nicole Olavarría', {
     body: d.body || '',
     icon: '/apple-touch-icon.png',
     badge: '/favicon-32.png',

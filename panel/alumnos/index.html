@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- Portal de alumnos v3 (Dashboard 2.0) · ProfesorMVT — destino: public/alumnos/index.html -->
+<!-- Portal de alumnos v3 (Dashboard 2.0) · Nicole Olavarría — destino: public/alumnos/index.html -->
 <html lang="es">
 <head>
 <meta charset="UTF-8" />
@@ -559,6 +559,13 @@
         <div class="card stat"><div class="num" id="rCom">0</div><div class="lab">ya compraron</div></div>
       </div>
       <p class="note">Cuando un amigo compra su primer paquete con tu código, ganas <strong style="color:var(--cream)"><span id="txtRefSoles">S/50</span> de descuento</strong> para tu próxima compra.</p>
+      <div class="card hidden" id="cardPonerRef">
+        <div class="lab">// ¿TE INVITÓ ALGUIEN?</div>
+        <p class="note">Pon su código antes de tu primera compra y ella gana su descuento.</p>
+        <div class="field"><input type="text" id="inpPonerRef" maxlength="12" placeholder="CÓDIGO" autocapitalize="characters" autocomplete="off" /></div>
+        <div class="ctas"><button class="btn" id="btnPonerRef">Guardar código</button></div>
+      </div>
+      <p class="note hidden" id="notaRefPuesto">Llegaste con el código <strong id="txtRefPor"></strong>.</p>
     </section>
 
     <!-- ===== RECURSOS ===== -->
@@ -1375,6 +1382,18 @@ function renderReferidos(){
   var msg = "¡Aprende "+MARCA.rubro+" conmigo en "+MARCA.nombre+"! Usa mi código "+code+
     " al registrarte: "+location.origin+"/alumnos/?ref="+code;
   $("btnWaRef").href = "https://wa.me/?text="+encodeURIComponent(msg);
+  // ¿Le pusieron código a ella? Si no, y todavía no compra, puede ponerlo aquí.
+  var puede = !!(ME && ME.ref_puede_poner), padrino = (ME && ME.ref_por) || "";
+  $("cardPonerRef").classList.toggle("hidden", !puede);
+  $("notaRefPuesto").classList.toggle("hidden", !padrino);
+  if(padrino) $("txtRefPor").textContent = padrino;
+}
+function guardarRefPor(){
+  var v = ($("inpPonerRef").value || "").trim().toUpperCase();
+  if(v.length < 4){ toast("Escribe el código completo"); return; }
+  api("/api/cuenta/referido",{method:"POST",body:JSON.stringify({ref:v})})
+    .then(function(){ toast("Listo, código guardado"); return cargarMe(); })
+    .catch(function(e){ toast((e && e.message) || "No pude guardar ese código"); });
 }
 function copiarTexto(txt, okMsg){
   if(!txt) return;
@@ -1383,6 +1402,7 @@ function copiarTexto(txt, okMsg){
       .catch(function(){ prompt("Copia:", txt); });
   } else prompt("Copia:", txt);
 }
+$("btnPonerRef").addEventListener("click", guardarRefPor);
 $("btnCopiarRef").addEventListener("click",function(){
   copiarTexto((ME && ME.ref_code) || "", "Código copiado");
 });

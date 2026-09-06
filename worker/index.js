@@ -1,4 +1,5 @@
-/* API CRM ProfesorMVT v3 — Cloudflare Worker + D1
+/* API CRM Nicole Olavarría — Cloudflare Worker + D1
+   (white-label del sistema de MVT; la marca vive en el objeto MARCA y en la tabla `config`)
    Destino en el repo: worker/index.js
 
    CONSERVADO DE v2 (integrado en este merge):
@@ -53,6 +54,8 @@ const PAQUETES = {
 };
 const PRECIOS_DEFAULT = { "Paquete 4": 250, "Paquete 8": 450, "Paquete 12": 600, "Clase suelta": 70, "Clase de prueba": 50 };
 const SESION_DIAS = 30;
+const MARCA_LEAD = "NICOLE";   // etiqueta de `leads.marca` de esta instancia (antes venía quemada como "MVT")
+const WA_SENTINEL = "@wa.nicole"; // correo sintético para el lead que solo dejó WhatsApp
 const CREDITO_REFERIDO = 50; // S/ que gana el referidor cuando su amigo confirma su 1ª compra
 
 const json = (data, status) => new Response(JSON.stringify(data), {
@@ -165,7 +168,7 @@ function bloqueReferido(cuenta){
     '<div style="border-top:1px solid #e5e5e5;margin-top:26px;padding-top:16px">' +
       '<p style="margin:0 0 6px;font-size:14px"><b>Trae a un amigo y gana S/' + CREDITO_REFERIDO + '</b></p>' +
       '<p style="margin:0;font-size:13px;color:#555555">Comparte tu link personal. Cuando tu amigo compre su primer paquete, ganas S/' + CREDITO_REFERIDO + ' de crédito que se descuenta solo de tu próxima renovación.</p>' +
-      '<p style="margin:8px 0 0;font-size:13px"><a href="' + link + '" style="color:#e8501f;font-weight:bold">' + link + '</a></p>' +
+      '<p style="margin:8px 0 0;font-size:13px"><a href="' + link + '" style="color:#0a0a0a;font-weight:bold">' + link + '</a></p>' +
     '</div>';
   const text = '\n\nTrae a un amigo y gana S/' + CREDITO_REFERIDO + ': cuando compre su primer paquete, ganas S/' + CREDITO_REFERIDO + ' de crédito para tu próxima renovación. Tu link: ' + link;
   return { html: html, text: text };
@@ -609,7 +612,7 @@ async function correoBienvenidaLead(env, to){
     '<div style="font-family:Arial,Helvetica,sans-serif;max-width:480px;margin:0 auto;color:#1a1a1a;font-size:15px;line-height:1.6">' +
       '<p>Hola,</p>' +
       '<p>Aquí está tu guía <b>"De oyente a autor"</b>: las 3 herramientas para empezar a componer tu primera canción.</p>' +
-      '<p style="text-align:center;margin:26px 0"><a href="' + url + '" style="background:#e8501f;color:#ffffff;text-decoration:none;font-weight:bold;padding:14px 26px;border-radius:6px;display:inline-block">Descargar mi guía</a></p>' +
+      '<p style="text-align:center;margin:26px 0"><a href="' + url + '" style="background:#0a0a0a;color:#ffffff;text-decoration:none;font-weight:bold;padding:14px 26px;border-radius:6px;display:inline-block">Descargar mi guía</a></p>' +
       '<p>Componer se entrena, no es un don. Si quieres pasar de oyente a autor en serio, tu primera clase de prueba cuesta S/50 e incluye un plan armado a tu medida, con alguien que ha compuesto más de 200 canciones.</p>' +
       '<p>Un abrazo,<br><b>' + MARCA.profe + '</b><br>' + MARCA.nombre + '</p>' +
       '<p style="font-size:12px;color:#888888;margin-top:26px">' + dominioLimpio + ' · Canto, piano y composición para adultos</p>' +
@@ -631,7 +634,7 @@ async function correoBienvenidaAlumno(env, cu, compra){
   const ref = (cfg.referido_nudge_activo !== "0") ? bloqueReferido(cu) : { html: "", text: "" };
   const html =
     '<div style="font-family:Arial,Helvetica,sans-serif;max-width:480px;margin:0 auto;color:#1a1a1a;font-size:15px;line-height:1.6">' +
-      '<p>¡Bienvenido' + (nombre ? ' ' + nombre : '') + '! 🎸</p>' +
+      '<p>¡Bienvenido' + (nombre ? ' ' + nombre : '') + '! 🎵</p>' +
       '<p>Acabas de dar el paso y me alegra un montón tenerte. Tu paquete <b>' + nombrePaquete + '</b> ya está activo. Acá tienes todo para arrancar:</p>' +
       '<ul style="padding-left:18px">' +
         '<li><b>Tu portal:</b> <a href="' + portal + '">' + portal + '</a>, ahí ves tus clases, tu material y tu avance.</li>' +
@@ -644,7 +647,7 @@ async function correoBienvenidaAlumno(env, cu, compra){
   const text = '¡Bienvenido' + (nombre ? ' ' + nombre : '') + '!\n\nTu paquete ' + nombrePaquete + ' ya está activo. Para arrancar:\n- Tu portal: ' + portal + '\n' +
     '- Agenda escribiéndome por WhatsApp: ' + wa + '\n' +
     '\nCualquier cosa me escribes.\n\nUn abrazo,\n' + MARCA.profe + ' - ' + MARCA.nombre + ref.text;
-  return enviarCorreo(env, { to: cu.email, subject: "Ya estás dentro de " + MARCA.nombre + " 🎸", html: html, text: text });
+  return enviarCorreo(env, { to: cu.email, subject: "Ya estás dentro de " + MARCA.nombre + " 🎵", html: html, text: text });
 }
 
 /* ---------- Confirmar una compra (reutilizado por el CRM y por el webhook de Mercado Pago).
@@ -767,7 +770,7 @@ async function confirmarCompra(env, compra){
   else if (renovado && compra.paquete !== "Clase de prueba") { try { await correoGraciasRenovacion(env, cu, compra); } catch (e) {} }
   try {
     await avisarPushAlumno(env, cu.id, {
-      title: "Pago confirmado 🎸",
+      title: "Pago confirmado 🎵",
       body: "Tu paquete " + (compra.paquete || "") + " ya está activo. Reserva tu próxima clase.",
       url: MARCA.dominio + "/alumnos/#agenda"
     });
@@ -786,15 +789,14 @@ async function correoRenovacion(env, alumno, to, c){
   const portal = MARCA.dominio + "/alumnos/";
   const html =
     '<div style="font-family:Arial,Helvetica,sans-serif;max-width:480px;margin:0 auto;color:#1a1a1a;font-size:15px;line-height:1.6">' +
-      '<p>¡Hola' + (nombre ? ' ' + nombre : '') + '! 🎸</p>' +
+      '<p>¡Hola' + (nombre ? ' ' + nombre : '') + '! 🎵</p>' +
       '<p>' + frase + '. Para no cortar el ritmo justo cuando se empieza a notar el avance, renueva y seguimos:</p>' +
-      '<p style="text-align:center;margin:26px 0"><a href="' + portal + '" style="background:#e8501f;color:#ffffff;text-decoration:none;font-weight:bold;padding:14px 26px;border-radius:6px;display:inline-block">Renovar mi paquete</a></p>' +
-      '<p>Tip: si quieres el mejor precio por clase y asegurar tu cupo, el <b>Plan Estrella</b> (12 clases) es la mejor opción. Lo ves al renovar.</p>' +
+      '<p style="text-align:center;margin:26px 0"><a href="' + portal + '" style="background:#0a0a0a;color:#ffffff;text-decoration:none;font-weight:bold;padding:14px 26px;border-radius:6px;display:inline-block">Renovar mi paquete</a></p>' +
       '<p>Cualquier cosa me escribes directo.</p>' +
       '<p>Un abrazo,<br><b>' + MARCA.profe + '</b><br>' + MARCA.nombre + '</p>' +
     '</div>';
-  const text = '¡Hola' + (nombre ? ' ' + nombre : '') + '!\n\n' + frase + '. Para no cortar el ritmo, renueva aquí: ' + portal + '\n\nTip: el Plan Estrella (12 clases) es el mejor precio por clase.\n\nUn abrazo,\n' + MARCA.profe + ' - ' + MARCA.nombre;
-  return enviarCorreo(env, { to: to, subject: "Se te están acabando las clases 🎸", html: html, text: text });
+  const text = '¡Hola' + (nombre ? ' ' + nombre : '') + '!\n\n' + frase + '. Para no cortar el ritmo, renueva aquí: ' + portal + '\n\nUn abrazo,\n' + MARCA.profe + ' - ' + MARCA.nombre;
+  return enviarCorreo(env, { to: to, subject: "Se te están acabando las clases 🎵", html: html, text: text });
 }
 
 /* Resumen a Andres de a quien se le recordo renovar (via AVISOS, a su correo verificado, gratis) */
@@ -873,10 +875,10 @@ async function correoAvisoVencimiento(env, alumno, to, diasRestantes, restantes,
   const ref = bloqueReferido({ ref_code: refCode || "" });
   const html =
     '<div style="font-family:Arial,Helvetica,sans-serif;max-width:480px;margin:0 auto;color:#1a1a1a;font-size:15px;line-height:1.6">' +
-      '<p>Hola' + (nombre ? ' ' + nombre : '') + ' 🎸</p>' +
+      '<p>Hola' + (nombre ? ' ' + nombre : '') + ' 🎵</p>' +
       '<p>Tu paquete vence en ' + diasRestantes + ' día' + (diasRestantes === 1 ? '' : 's') + ' y todavía te quedan ' + restantes + ' clase' + (restantes === 1 ? '' : 's') + ' por usar.</p>' +
       '<p>Reserva tu horario para no perderlas. Si tienes un viaje o algo de salud que te está complicando venir, puedes congelar tu plazo desde el portal.</p>' +
-      '<p style="text-align:center;margin:26px 0"><a href="' + portal + '" style="background:#e8501f;color:#ffffff;text-decoration:none;font-weight:bold;padding:14px 26px;border-radius:6px;display:inline-block">Reservar mi clase</a></p>' +
+      '<p style="text-align:center;margin:26px 0"><a href="' + portal + '" style="background:#0a0a0a;color:#ffffff;text-decoration:none;font-weight:bold;padding:14px 26px;border-radius:6px;display:inline-block">Reservar mi clase</a></p>' +
       '<p>Un abrazo,<br><b>' + MARCA.profe + '</b><br>' + MARCA.nombre + '</p>' +
       ref.html +
     '</div>';
@@ -938,15 +940,15 @@ async function correoWinBack(env, alumno, to){
   const portal = MARCA.dominio + "/alumnos/";
   const html =
     '<div style="font-family:Arial,Helvetica,sans-serif;max-width:480px;margin:0 auto;color:#1a1a1a;font-size:15px;line-height:1.6">' +
-      '<p>Hola' + (nombre ? ' ' + nombre : '') + '! 🎸</p>' +
+      '<p>Hola' + (nombre ? ' ' + nombre : '') + '! 🎵</p>' +
       '<p>Terminaste tu paquete y aún no renuevas, así que te escribo por una sola razón: tu avance no tiene que parar justo cuando se empieza a notar.</p>' +
       '<p>Tu cupo sigue aquí. Cuando quieras, retomamos donde lo dejaste y seguimos sumando.</p>' +
-      '<p style="text-align:center;margin:26px 0"><a href="' + portal + '" style="background:#e8501f;color:#ffffff;text-decoration:none;font-weight:bold;padding:14px 26px;border-radius:6px;display:inline-block">Renovar y seguir</a></p>' +
+      '<p style="text-align:center;margin:26px 0"><a href="' + portal + '" style="background:#0a0a0a;color:#ffffff;text-decoration:none;font-weight:bold;padding:14px 26px;border-radius:6px;display:inline-block">Renovar y seguir</a></p>' +
       '<p>Si prefieres, respóndeme este correo y armamos el plan que mejor te calce.</p>' +
       '<p>Un abrazo,<br><b>' + MARCA.profe + '</b><br>' + MARCA.nombre + '</p>' +
     '</div>';
   const text = 'Hola' + (nombre ? ' ' + nombre : '') + '!\n\nTerminaste tu paquete y aún no renuevas. Tu avance no tiene que parar justo cuando se empieza a notar: tu cupo sigue aquí y cuando quieras retomamos donde lo dejaste.\n\nRenueva aquí: ' + portal + '\n\nSi prefieres, respóndeme y armamos el plan que mejor te calce.\n\nUn abrazo,\n' + MARCA.profe + ' - ' + MARCA.nombre;
-  return enviarCorreo(env, { to: to, subject: "Tu cupo sigue aquí 🎸", html: html, text: text });
+  return enviarCorreo(env, { to: to, subject: "Tu cupo sigue aquí 🎵", html: html, text: text });
 }
 
 /* Borrador de WhatsApp en la voz de Andrés (corto, cálido, directo) para el empujón personal. */
@@ -1030,11 +1032,11 @@ async function correoNurtureLead(env, to, paso){
     '</div>';
   };
   const boton = function(texto){
-    return '<p style="text-align:center;margin:26px 0"><a href="' + horarios + '" style="background:#e8501f;color:#ffffff;text-decoration:none;font-weight:bold;padding:14px 26px;border-radius:6px;display:inline-block">' + texto + '</a></p>';
+    return '<p style="text-align:center;margin:26px 0"><a href="' + horarios + '" style="background:#0a0a0a;color:#ffffff;text-decoration:none;font-weight:bold;padding:14px 26px;border-radius:6px;display:inline-block">' + texto + '</a></p>';
   };
   const wa = "https://wa.me/" + MARCA.whatsapp + "?text=" + encodeURIComponent("Hola! Vi tu correo sobre la clase de prueba y tengo una pregunta antes de reservar 🎤");
   const botonWsp = function(texto){
-    return '<p style="text-align:center;margin:0 0 26px"><a href="' + wa + '" style="color:#e8501f;text-decoration:underline;font-weight:bold">' + texto + '</a></p>';
+    return '<p style="text-align:center;margin:0 0 26px"><a href="' + wa + '" style="color:#0a0a0a;text-decoration:underline;font-weight:bold">' + texto + '</a></p>';
   };
   let subject, html, text;
   if (paso === 1){
@@ -1088,7 +1090,7 @@ async function procesarNurtureLeads(env){
   if (cfg.nurture_activo !== "1") return [];   // interruptor de seguridad: APAGADO por defecto
   const ultimoPaso = NURTURE_PASOS[NURTURE_PASOS.length - 1].paso;
   const { results: leads } = await env.DB.prepare(
-    "SELECT id, email, fecha, nurture_paso FROM leads WHERE marca = 'MVT' AND COALESCE(nurture_paso,0) < ?1"
+    "SELECT id, email, fecha, nurture_paso FROM leads WHERE marca = '" + MARCA_LEAD + "' AND COALESCE(nurture_paso,0) < ?1"
   ).bind(ultimoPaso).all();
   const ahora = Date.now();
   const enviados = []; let fallos = 0;
@@ -1133,7 +1135,7 @@ const PUENTE_WA_DESCUENTO = 50; // S/ de descuento sobre el primer mes
 
 function linkWhatsAppLead(){
   return "https://wa.me/" + MARCA.whatsapp + "?text=" +
-    encodeURIComponent("Hola " + MARCA.profe + "! Vi tu correo y quiero empezar con el descuento del primer mes 🎸");
+    encodeURIComponent("Hola " + MARCA.profe + "! Vi tu correo y quiero empezar con el descuento del primer mes 🎵");
 }
 
 /* Correo-oferta: los 2 paquetes mensuales con el precio del primer mes ya descontado y un
@@ -1204,11 +1206,11 @@ async function procesarPuenteWhatsApp(env){
   const corte = new Date(Date.now() - PUENTE_WA_DIA * 86400000).toISOString().slice(0, 10);
   const q = blast
     ? env.DB.prepare(
-        "SELECT id, email FROM leads WHERE marca = 'MVT' AND COALESCE(puente_wa,0) = 0 " +
+        "SELECT id, email FROM leads WHERE marca = '" + MARCA_LEAD + "' AND COALESCE(puente_wa,0) = 0 " +
         "AND email NOT LIKE '%andressalame%' ORDER BY fecha ASC LIMIT ?1"
       ).bind(disponible)
     : env.DB.prepare(
-        "SELECT id, email FROM leads WHERE marca = 'MVT' AND COALESCE(puente_wa,0) = 0 " +
+        "SELECT id, email FROM leads WHERE marca = '" + MARCA_LEAD + "' AND COALESCE(puente_wa,0) = 0 " +
         "AND COALESCE(nurture_paso,0) != 99 AND (COALESCE(nurture_paso,0) >= ?1 OR fecha <= ?2) " +
         "AND email NOT LIKE '%andressalame%' ORDER BY fecha ASC LIMIT ?3"
       ).bind(ultimoPaso, corte, disponible);
@@ -1386,7 +1388,7 @@ async function avisarReservaWeb(env, info){
    EXCLUYE 'pendiente' a propósito: esos YA pagaron por Yape/Plin y esperan la confirmación de
    Andrés; un "rescate" ahí sería un insulto. Dedupe con compras.rescate_enviado
    (0 pendiente, 1 enviado, 2 saltada). Encendido por defecto (config.rescate_activo). */
-const NOMBRES_PAQUETE = { "Paquete 4": "Plan Esencial", "Paquete 8": "Plan Intensivo", "Paquete 12": "Plan Estrella", "Clase suelta": "Clase suelta", "Clase de prueba": "Clase de prueba" };
+const NOMBRES_PAQUETE = { "Paquete 4": "Paquete de 4 clases", "Paquete 8": "Paquete de 8 clases", "Paquete 12": "Paquete de 12 clases", "Clase suelta": "Clase suelta", "Clase de prueba": "Clase de prueba" };
 
 /* ---------- Recibo de pago imprimible (portado de Batuta; universal, no fiscal) ---------- */
 const esc = (s) => String(s == null ? "" : s).replace(/[&<>"']/g, (m) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[m]));
@@ -1441,11 +1443,11 @@ async function correoRescateCompra(env, to, nombreCompleto, paquete){
   const nombrePaquete = NOMBRES_PAQUETE[paquete] || paquete || "tu paquete";
   const html =
     '<div style="font-family:Arial,Helvetica,sans-serif;max-width:480px;margin:0 auto;color:#1a1a1a;font-size:15px;line-height:1.6">' +
-      '<p>Hola' + (nombre ? ' ' + nombre : '') + ' 🎸</p>' +
+      '<p>Hola' + (nombre ? ' ' + nombre : '') + ' 🎵</p>' +
       '<p>Vi que empezaste tu compra de <b>' + nombrePaquete + '</b> y el pago no llegó a completarse. Pasa, y se arregla en un minuto.</p>' +
       '<p>Tu lugar sigue libre. En tu portal tienes Yape, Plin, transferencia y tarjeta, eliges el que te acomode y quedas listo para tu próxima clase:</p>' +
-      '<p style="text-align:center;margin:26px 0"><a href="' + portal + '" style="background:#e8501f;color:#ffffff;text-decoration:none;font-weight:bold;padding:14px 26px;border-radius:6px;display:inline-block">Completar mi compra</a></p>' +
-      '<p>Y si el pago se te complicó por cualquier cosa, <a href="' + wa + '" style="color:#e8501f;font-weight:bold">escríbeme por WhatsApp</a> y lo resolvemos juntos.</p>' +
+      '<p style="text-align:center;margin:26px 0"><a href="' + portal + '" style="background:#0a0a0a;color:#ffffff;text-decoration:none;font-weight:bold;padding:14px 26px;border-radius:6px;display:inline-block">Completar mi compra</a></p>' +
+      '<p>Y si el pago se te complicó por cualquier cosa, <a href="' + wa + '" style="color:#0a0a0a;font-weight:bold">escríbeme por WhatsApp</a> y lo resolvemos juntos.</p>' +
       '<p>Un abrazo,<br><b>' + MARCA.profe + '</b><br>' + MARCA.nombre + '</p>' +
     '</div>';
   const text = 'Hola' + (nombre ? ' ' + nombre : '') + '!\n\nVi que empezaste tu compra de ' + nombrePaquete + ' y el pago no llegó a completarse. Pasa, y se arregla en un minuto.\n\nTu lugar sigue libre. En tu portal tienes Yape, Plin, transferencia y tarjeta: ' + portal + '\n\nY si el pago se te complicó, escríbeme por WhatsApp: ' + wa + '\n\nUn abrazo,\n' + MARCA.profe + ' - ' + MARCA.nombre;
@@ -1515,11 +1517,11 @@ async function correoPedidoResena(env, to, nombreCompleto, token){
   const nombre = ((nombreCompleto || "").trim().split(/\s+/)[0]) || "";
   const base = MARCA.dominio + "/api/feedback?token=" + token + "&nota=";
   const btn = function(n){
-    return '<a href="' + base + n + '" style="display:inline-block;width:44px;height:44px;line-height:44px;margin:0 4px;background:#e8501f;color:#ffffff;text-decoration:none;font-weight:bold;font-size:18px;border-radius:6px;text-align:center">' + n + '</a>';
+    return '<a href="' + base + n + '" style="display:inline-block;width:44px;height:44px;line-height:44px;margin:0 4px;background:#0a0a0a;color:#ffffff;text-decoration:none;font-weight:bold;font-size:18px;border-radius:6px;text-align:center">' + n + '</a>';
   };
   const html =
     '<div style="font-family:Arial,Helvetica,sans-serif;max-width:480px;margin:0 auto;color:#1a1a1a;font-size:15px;line-height:1.6">' +
-      '<p>Hola' + (nombre ? ' ' + nombre : '') + ' 🎸</p>' +
+      '<p>Hola' + (nombre ? ' ' + nombre : '') + ' 🎵</p>' +
       '<p>Llevas ya varias clases conmigo y quiero saber cómo lo estás viviendo. Del 1 al 5, cómo van tus clases?</p>' +
       '<p style="text-align:center;margin:26px 0">' + btn(1) + btn(2) + btn(3) + btn(4) + btn(5) + '</p>' +
       '<p style="font-size:13px;color:#666666;text-align:center">1 = puede mejorar mucho · 5 = excelente</p>' +
@@ -1577,7 +1579,7 @@ function paginaFeedback(titulo, cuerpo){
     '<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>' + titulo + ' · ' + MARCA.nombre + '</title></head>' +
     '<body style="font-family:Arial,Helvetica,sans-serif;background:#faf7f2;color:#1a1a1a;margin:0;display:flex;min-height:100vh;align-items:center;justify-content:center">' +
     '<div style="max-width:420px;padding:32px;text-align:center">' +
-    '<p style="font-size:13px;letter-spacing:2px;color:#e8501f;font-weight:bold">' + MARCA.nombre.toUpperCase() + '</p>' +
+    '<p style="font-size:13px;letter-spacing:2px;color:#0a0a0a;font-weight:bold">' + MARCA.nombre.toUpperCase() + '</p>' +
     '<h1 style="font-size:22px;margin:8px 0 12px">' + titulo + '</h1>' +
     '<p style="font-size:15px;line-height:1.6;color:#444444">' + cuerpo + '</p>' +
     '</div></body></html>',
@@ -1600,15 +1602,15 @@ async function correoNudgeAsistencia(env, alumno, to, restantes){
   const frase = restantes === 1 ? "te queda 1 clase" : ("te quedan " + restantes + " clases");
   const html =
     '<div style="font-family:Arial,Helvetica,sans-serif;max-width:480px;margin:0 auto;color:#1a1a1a;font-size:15px;line-height:1.6">' +
-      '<p>Hola' + (nombre ? ' ' + nombre : '') + ' 🎸</p>' +
+      '<p>Hola' + (nombre ? ' ' + nombre : '') + ' 🎵</p>' +
       '<p>Va la mitad de tu mes y todavía ' + frase + ' por usar. Tu cupo ya está pagado y tu horario te espera.</p>' +
       '<p>El avance en música se construye con constancia, y la buena noticia es que recuperar el ritmo toma un solo clic:</p>' +
-      '<p style="text-align:center;margin:26px 0"><a href="' + agenda + '" style="background:#e8501f;color:#ffffff;text-decoration:none;font-weight:bold;padding:14px 26px;border-radius:6px;display:inline-block">Reservar mi próxima clase</a></p>' +
+      '<p style="text-align:center;margin:26px 0"><a href="' + agenda + '" style="background:#0a0a0a;color:#ffffff;text-decoration:none;font-weight:bold;padding:14px 26px;border-radius:6px;display:inline-block">Reservar mi próxima clase</a></p>' +
       '<p>Si un viaje o un tema de salud te está complicando venir, también puedes congelar tu plazo desde el portal.</p>' +
       '<p>Un abrazo,<br><b>' + MARCA.profe + '</b><br>' + MARCA.nombre + '</p>' +
     '</div>';
   const text = 'Hola' + (nombre ? ' ' + nombre : '') + '!\n\nVa la mitad de tu mes y todavía ' + frase + ' por usar. Tu cupo ya está pagado y tu horario te espera.\n\nReserva tu próxima clase aquí: ' + agenda + '\n\nSi un viaje o un tema de salud te complica venir, puedes congelar tu plazo desde el portal.\n\nUn abrazo,\n' + MARCA.profe + ' - ' + MARCA.nombre;
-  return enviarCorreo(env, { to: to, subject: (restantes === 1 ? "Te queda 1 clase" : "Te quedan " + restantes + " clases") + " y tu horario te espera 🎸", html: html, text: text });
+  return enviarCorreo(env, { to: to, subject: (restantes === 1 ? "Te queda 1 clase" : "Te quedan " + restantes + " clases") + " y tu horario te espera 🎵", html: html, text: text });
 }
 
 async function procesarNudgeAsistencia(env){
@@ -1687,16 +1689,16 @@ async function correoGraciasRenovacion(env, cu, compra){
   const link = MARCA.dominio + "/alumnos/?ref=" + cu.ref_code;
   const html =
     '<div style="font-family:Arial,Helvetica,sans-serif;max-width:480px;margin:0 auto;color:#1a1a1a;font-size:15px;line-height:1.6">' +
-      '<p>Hola' + (nombre ? ' ' + nombre : '') + ' 🎸</p>' +
+      '<p>Hola' + (nombre ? ' ' + nombre : '') + ' 🎵</p>' +
       '<p>Gracias por seguir un mes más. Tu <b>' + nombrePaquete + '</b> ya está renovado y eso dice mucho de ti: estás entrenando en serio.</p>' +
       '<p>Y como ya sabes de primera mano cómo funciona esto, te dejo tu link personal. Si un amigo tuyo quiere cantar, tocar o componer, pásaselo: cuando compre su primer paquete, tú ganas <b>S/' + CREDITO_REFERIDO + ' de crédito</b> que se descuenta solo de tu próxima renovación.</p>' +
-      '<p style="text-align:center;margin:26px 0"><a href="' + link + '" style="background:#e8501f;color:#ffffff;text-decoration:none;font-weight:bold;padding:14px 26px;border-radius:6px;display:inline-block">Compartir mi link</a></p>' +
+      '<p style="text-align:center;margin:26px 0"><a href="' + link + '" style="background:#0a0a0a;color:#ffffff;text-decoration:none;font-weight:bold;padding:14px 26px;border-radius:6px;display:inline-block">Compartir mi link</a></p>' +
       '<p style="font-size:13px;color:#666666;text-align:center">' + link + '</p>' +
       '<p>Nos vemos en clase. A seguir sumando.</p>' +
       '<p>Un abrazo,<br><b>' + MARCA.profe + '</b><br>' + MARCA.nombre + '</p>' +
     '</div>';
   const text = 'Hola' + (nombre ? ' ' + nombre : '') + '!\n\nGracias por seguir un mes más. Tu ' + nombrePaquete + ' ya está renovado y eso dice mucho de ti: estás entrenando en serio.\n\nTe dejo tu link personal de referidos. Si un amigo tuyo quiere cantar, tocar o componer, pásaselo: cuando compre su primer paquete, tú ganas S/' + CREDITO_REFERIDO + ' de crédito que se descuenta solo de tu próxima renovación.\n\nTu link: ' + link + '\n\nNos vemos en clase.\n\nUn abrazo,\n' + MARCA.profe + ' - ' + MARCA.nombre;
-  const ok = await enviarCorreo(env, { to: cu.email, subject: "Gracias por seguir un mes más 🎸 Tu link de referidos", html: html, text: text });
+  const ok = await enviarCorreo(env, { to: cu.email, subject: "Gracias por seguir un mes más 🎵 Tu link de referidos", html: html, text: text });
   if (ok){
     try { await env.DB.prepare("UPDATE alumnos SET referido_nudge_ciclo = ?1 WHERE id = ?2").bind(ciclo, al.id).run(); } catch (e) {}
   }
@@ -1714,25 +1716,36 @@ const CHATBOT_WA = "https://wa.me/" + MARCA.whatsapp;
 function chatbotSystem(cfg, precios){
   const dominioLimpio = MARCA.dominio.replace(/^https?:\/\//, "");
   const ciudad = MARCA.ciudad.split(",")[0];
+  const profe = (cfg && cfg.profe_nombre ? cfg.profe_nombre : MARCA.profe);
+  /* Solo se ofrece lo que tiene precio > 0: si un paquete está en 0 es que no está a la
+     venta, y antes el bot lo cantaba como "S/0" (regalando 12 clases). */
+  const linea = (etq, clave, cola) => (precios[clave] > 0 ? "- " + etq + ": S/" + precios[clave] + (cola || "") + "\n" : "");
   return (
-    "Eres el asistente virtual de " + MARCA.nombre + ", la marca de " + (cfg && cfg.profe_nombre ? cfg.profe_nombre : MARCA.profe) + ": clases 1 a 1 de canto (método MVT), piano y composición para ADULTOS, presenciales en " + ciudad + " (Lima) o en vivo online.\n\n" +
+    "Eres el asistente virtual de " + MARCA.nombre + ", " + profe + ": soprano, artista escénica y docente de canto. " +
+    "Da clases 1 a 1 de técnica vocal y lenguaje musical, presenciales en " + ciudad + " (Lima) o en vivo online. Cada sesión dura 1 hora.\n\n" +
+    "MODALIDADES (son tres, todas 1 a 1):\n" +
+    "- Descubrir mi voz: para principiantes o personas sin experiencia en técnica vocal.\n" +
+    "- Cantores: para personas con mediana experiencia en técnica vocal.\n" +
+    "- Lenguaje musical: teoría musical, entrenamiento auditivo y lectura de partituras.\n\n" +
     "PLANES Y PRECIOS (en soles, S/):\n" +
-    "- Clase de prueba: S/" + precios["Clase de prueba"] + ". Una sesión completa con diagnóstico vocal en PDF. NO es gratis: ese es el mejor punto de partida. Solo para cuentas nuevas.\n" +
-    "- Clase suelta: S/" + precios["Clase suelta"] + ".\n" +
-    "- Plan Esencial: S/" + precios["Paquete 4"] + " al mes (4 clases).\n" +
-    "- Plan Intensivo: S/" + precios["Paquete 8"] + " al mes (8 clases). El más elegido.\n" +
-    "- Plan Estrella: S/" + precios["Paquete 12"] + " (12 clases). El mejor precio por clase.\n\n" +
-    "PAGOS: desde Perú con Yape, Plin, Sip, tarjeta o transferencia (la tarjeta activa el paquete al instante). Desde el extranjero, con tarjeta o cripto.\n\n" +
+    linea("Clase de prueba", "Clase de prueba", ". Una sesión completa con diagnóstico vocal. NO es gratis: es el mejor punto de partida. Solo para cuentas nuevas.") +
+    linea("Clase suelta", "Clase suelta", ".") +
+    linea("Paquete de 4 clases", "Paquete 4", " al mes.") +
+    linea("Paquete de 8 clases", "Paquete 8", " al mes. El más elegido.") +
+    linea("Paquete de 12 clases", "Paquete 12", " al mes. El mejor precio por clase.") +
+    "\n" +
+    "PAGOS: desde Perú con Yape, Plin, tarjeta o transferencia (la tarjeta activa el paquete al instante). Desde el extranjero, con tarjeta.\n\n" +
     "CÓMO EMPIEZA UN ALUMNO: ve los horarios libres en " + dominioLimpio + "/horarios (sin cuenta), luego crea su cuenta en " + dominioLimpio + "/alumnos, paga su paquete o la clase de prueba, y reserva su clase. Todo self-service.\n\n" +
-    "DATOS DE MÉTODO: el canto usa el método MVT (coordinación del músculo vocal, cierre cordal, resonancia). El piano se enfoca en fuerza e independencia de dedos para tocar tus canciones rápido. La composición usa herramientas reales para escribir tus propias canciones. No necesitas saber música para empezar, y nunca es tarde para un adulto.\n\n" +
     "REGLAS DE CONVERSACIÓN (obligatorias):\n" +
-    "- Antes de soltar precios o planes, califica: pregunta qué le gustaría lograr y si lo quiere presencial u online. Recomienda el plan que encaje, no toda la lista.\n" +
-    "- Tono: español peruano de clase alta, limpio, cálido pero seco, empoderador. NUNCA uses 'pe' ni 'causa' ni vulgaridades. NUNCA uses guiones largos (em dash). Los signos de exclamación o pregunta van solo al cierre, nunca abras con signo invertido.\n" +
-    "- NUNCA prometas resultados garantizados ni inventes datos, números, reseñas o titulaciones. Si no sabes algo, dilo y ofrece el WhatsApp.\n" +
-    "- NUNCA menosprecies al alumno ni a " + MARCA.profe + ". Empodera siempre: aprender música es entrenamiento, no talento de nacimiento.\n" +
+    "- Antes de soltar precios o planes, califica: pregunta qué le gustaría lograr, cuánta experiencia tiene y si lo quiere presencial u online. Recomienda la modalidad y el plan que encajen, no toda la lista.\n" +
+    "- Tono: español peruano de clase alta, limpio, cálido pero seco, empoderador. NUNCA uses \'pe\' ni \'causa\' ni vulgaridades. NUNCA uses guiones largos (em dash). Los signos de exclamación o pregunta van solo al cierre, nunca abras con signo invertido.\n" +
+    "- NUNCA prometas resultados garantizados ni inventes datos, números, reseñas, precios o titulaciones. Si no sabes algo, dilo y ofrece el WhatsApp.\n" +
+    "- NUNCA menciones otras marcas, academias ni métodos con nombre propio. Aquí solo existe " + MARCA.nombre + ".\n" +
+    "- NUNCA ofrezcas piano, guitarra, producción ni composición: no forman parte de las clases.\n" +
+    "- NUNCA menosprecies al alumno ni a " + profe + ". Empodera siempre: cantar es entrenamiento, no talento de nacimiento.\n" +
     "- Respuestas cortas y claras, máximo 4 frases. Empuja a ver horarios o crear cuenta cuando tenga sentido.\n" +
-    "- Si la persona quiere agendar en firme, pide hablar con " + MARCA.profe + ", tiene una duda que no puedes resolver, o algo se sale de las clases, dale su WhatsApp: " + CHATBOT_WA + "\n" +
-    "Eres el asistente, no " + MARCA.profe + ". Si te preguntan, eres su asistente virtual."
+    "- Si la persona quiere agendar en firme, pide hablar con " + profe + ", tiene una duda que no puedes resolver, o algo se sale de las clases, dale su WhatsApp: " + CHATBOT_WA + "\n" +
+    "Eres el asistente, no " + profe + ". Si te preguntan, eres su asistente virtual."
   );
 }
 
@@ -2400,9 +2413,9 @@ async function correoRecordatorioClase(env, cuenta, reserva, cuando){
     '<div style="font-family:Arial,Helvetica,sans-serif;max-width:480px;margin:0 auto;color:#1a1a1a;font-size:15px;line-height:1.6">' +
       '<p>Hola' + (nombre ? ' ' + nombre : '') + ',</p>' +
       '<p>' + intro + '</p>' +
-      '<p style="font-size:18px;font-weight:bold;color:#e8501f;margin:14px 0">' + horaLima + '</p>' +
+      '<p style="font-size:18px;font-weight:bold;color:#0a0a0a;margin:14px 0">' + horaLima + '</p>' +
       '<p>Si necesitas moverla, hazlo desde tu portal con al menos 6 horas de anticipación y no se descuenta la clase: <a href="' + portal + '">' + portal + '</a></p>' +
-      '<p>Nos vemos. A romperla 🎸</p>' +
+      '<p>Nos vemos, a cantar.</p>' +
       '<p style="font-size:12px;color:#888;margin-top:24px">' + MARCA.nombre + '</p>' +
     '</div>';
   return enviarCorreo(env, { to: cuenta.email, subject: titulo + " — " + MARCA.nombre, html: html });
@@ -2425,7 +2438,7 @@ async function procesarRecordatoriosClase(env){
   ).bind(ventana2, ventana24).all()).results || [];
   for (const r of r24){
     const ok = await correoRecordatorioClase(env, { email: r._email, nombre: r._nombre }, r, "24h");
-    try { await avisarPushAlumno(env, r._cuenta_id, { title: "Tu clase es mañana 🎸", body: (r.curso ? r.curso + " · " : "") + hhmm(limaParts(new Date(Date.parse(r.inicio_utc)))) + " (hora Lima). Toca para ver tu agenda.", url: MARCA.dominio + "/alumnos/#agenda" }); } catch (e) {}
+    try { await avisarPushAlumno(env, r._cuenta_id, { title: "Tu clase es mañana 🎵", body: (r.curso ? r.curso + " · " : "") + hhmm(limaParts(new Date(Date.parse(r.inicio_utc)))) + " (hora Lima). Toca para ver tu agenda.", url: MARCA.dominio + "/alumnos/#agenda" }); } catch (e) {}
     if (ok){ await env.DB.prepare("UPDATE reservas SET aviso_24 = 1 WHERE id = ?1").bind(r.id).run(); enviados++; } else { fallos++; }
   }
   // T-2h: clases que caen dentro de las próximas 2h sin aviso de 2h.
@@ -2886,9 +2899,9 @@ export default {
               const nombre = ((cu.nombre || "").trim().split(/\s+/)[0]) || "";
               const html =
                 '<div style="font-family:Arial,Helvetica,sans-serif;max-width:480px;margin:0 auto;color:#1a1a1a;font-size:15px;line-height:1.6">' +
-                  '<p>Hola' + (nombre ? ' ' + nombre : '') + ' 🎸</p>' +
+                  '<p>Hola' + (nombre ? ' ' + nombre : '') + ' 🎵</p>' +
                   '<p>Pediste restablecer tu contraseña de ' + MARCA.nombre + '. Toca el botón para elegir una nueva.</p>' +
-                  '<p style="text-align:center;margin:26px 0"><a href="' + link + '" style="background:#e8501f;color:#ffffff;text-decoration:none;font-weight:bold;padding:14px 26px;border-radius:6px;display:inline-block">Elegir mi nueva contraseña</a></p>' +
+                  '<p style="text-align:center;margin:26px 0"><a href="' + link + '" style="background:#0a0a0a;color:#ffffff;text-decoration:none;font-weight:bold;padding:14px 26px;border-radius:6px;display:inline-block">Elegir mi nueva contraseña</a></p>' +
                   '<p style="font-size:13px;color:#666666">Este enlace expira en 30 minutos. Si no lo pediste, ignora este correo, tu cuenta sigue segura.</p>' +
                   '<p>Un abrazo,<br><b>' + MARCA.profe + '</b><br>' + MARCA.nombre + '</p>' +
                 '</div>';
@@ -2898,7 +2911,7 @@ export default {
               const nombre = ((cu.nombre || "").trim().split(/\s+/)[0]) || "";
               const html =
                 '<div style="font-family:Arial,Helvetica,sans-serif;max-width:480px;margin:0 auto;color:#1a1a1a;font-size:15px;line-height:1.6">' +
-                  '<p>Hola' + (nombre ? ' ' + nombre : '') + ' 🎸</p>' +
+                  '<p>Hola' + (nombre ? ' ' + nombre : '') + ' 🎵</p>' +
                   '<p>Tu cuenta de ' + MARCA.nombre + ' entra con el botón de Google, así que no tiene contraseña que restablecer.</p>' +
                   '<p>Entra desde el portal con el mismo botón "Continuar con Google" que usaste la primera vez.</p>' +
                   '<p>Un abrazo,<br><b>' + MARCA.profe + '</b><br>' + MARCA.nombre + '</p>' +
@@ -3210,6 +3223,25 @@ export default {
         return json({ ok: true });
       }
 
+      /* ============ CÓDIGO DE QUIEN LA INVITÓ, ya con la cuenta creada ============
+         Hasta ahora `ref_por` solo se escribía en /api/registro: quien no llegó por el link de
+         una amiga se quedaba sin el beneficio para siempre y no había dónde arreglarlo.
+         Se puede poner una sola vez y solo ANTES de la primera compra, que es cuando se paga
+         el crédito. La lógica del crédito vive en confirmarCompra y NO se toca. */
+      if (url.pathname === "/api/cuenta/referido" && request.method === "POST"){
+        const cu = await cuentaDeSesion(env, request);
+        if (!cu) return json({ error: "Sesión expirada" }, 401);
+        if (cu.ref_por) return json({ error: "Ya tienes un código puesto." }, 400);
+        if (cu.alumno_id) return json({ error: "El código se pone antes de tu primera compra." }, 400);
+        const b = await request.json().catch(() => ({}));
+        const code = await buscarRefCode(env, b.ref);
+        if (!code) return json({ error: "Ese código no existe. Revísalo con quien te invitó." }, 400);
+        if (cu.ref_code && code === cu.ref_code) return json({ error: "Ese es tu propio código." }, 400);
+        await env.DB.prepare("UPDATE cuentas SET ref_por = ?1 WHERE id = ?2 AND COALESCE(ref_por,'') = ''")
+          .bind(code, cu.id).run();
+        return json({ ok: true, ref_por: code });
+      }
+
       /* ============ PUSH del alumno (suscribir / quitar) ============ */
       if (url.pathname === "/api/push/suscribir" && request.method === "POST"){
         const cu = await cuentaDeSesion(env, request);
@@ -3317,6 +3349,10 @@ export default {
           precios,
           credito: Number(cu.credito) || 0,
           ref_code: refCode,
+          ref_por: cu.ref_por || "",
+          /* Puede poner el código de quien la invitó mientras no tenga padrino y no haya
+             comprado todavía: después ya no, el crédito se paga con la PRIMERA compra. */
+          ref_puede_poner: !(cu.ref_por || "") && !cu.alumno_id,
           referidos: {
             registrados: (refStats && Number(refStats.registrados)) || 0,
             compraron: (refStats && Number(refStats.compraron)) || 0
@@ -3719,9 +3755,9 @@ export default {
         const b = await request.json().catch(() => ({}));
         const pdf = MARCA.leadMagnetPdf;
         if (b.website) return json({ ok: true, pdf });   // honeypot: lo lleno un bot, se descarta en silencio
-        const marca = String(b.marca || "MVT").trim().slice(0, 20);
+        const marca = String(b.marca || MARCA_LEAD).trim().slice(0, 20);
         const fuente = String(b.fuente || "").trim().slice(0, 60);
-        const interes = String(b.interes || "composicion").trim().slice(0, 60);
+        const interes = String(b.interes || "canto").trim().slice(0, 60);
         const telefono = String(b.telefono || "").replace(/[^\d]/g, "").slice(0, 15);
         const nombre = String(b.nombre || "").trim().slice(0, 80);
         // Embudo phone-first (landing de clase de prueba): el dato principal es el WhatsApp,
@@ -3733,7 +3769,7 @@ export default {
         if (esPrueba){
           if (telefono.length < 8) return json({ error: "Deja un WhatsApp válido." }, 400);
           // clave de dedup: el correo si lo dio, si no un sintético por número.
-          if (!emailValido) email = "wa-" + telefono + "@wa.mvt";
+          if (!emailValido) email = "wa-" + telefono + WA_SENTINEL;
         } else {
           if (!emailValido) return json({ error: "Correo no valido." }, 400);
         }
@@ -3743,7 +3779,7 @@ export default {
             "INSERT INTO leads (id,email,marca,fuente,interes,fecha,telefono,nombre) VALUES (?1,?2,?3,?4,?5,?6,?7,?8)"
           ).bind(crypto.randomUUID(), email, marca, fuente, interes, hoy(), telefono, nombre).run();
           // PDF de bienvenida SOLO al embudo de la guía; el de prueba se cierra por WhatsApp.
-          if (marca === "MVT" && !esPrueba) ctx.waitUntil(correoBienvenidaLead(env, email));
+          if (marca === MARCA_LEAD && !esPrueba) ctx.waitUntil(correoBienvenidaLead(env, email));
           if (telefono) ctx.waitUntil(avisarLeadConTelefono(env, { email, telefono, interes, fuente, nombre, esPrueba }));
         } else if (telefono && !ya.telefono){
           // El lead ya existía (dejó el correo primero) y ahora suma su número: guardar + avisar.
@@ -3765,13 +3801,13 @@ export default {
         const dry = b.dry === true;
         const rows = await env.DB.prepare(
           "SELECT id, email, COALESCE(nombre,'') AS nombre FROM leads " +
-          "WHERE marca='MVT' AND interes='composicion' AND COALESCE(nurture_paso,0) != 50 " +
-          "AND email LIKE '%@%' AND email NOT LIKE 'wa-%@wa.mvt' " +
+          "WHERE marca='" + MARCA_LEAD + "' AND interes='composicion' AND COALESCE(nurture_paso,0) != 50 " +
+          "AND email LIKE '%@%' AND email NOT LIKE 'wa-%" + WA_SENTINEL + "' " +
           "ORDER BY fecha ASC LIMIT ?1"
         ).bind(limite).all();
         const lista = (rows && rows.results) || [];
         const restantesRow = await env.DB.prepare(
-          "SELECT COUNT(*) c FROM leads WHERE marca='MVT' AND interes='composicion' AND COALESCE(nurture_paso,0) != 50 AND email LIKE '%@%' AND email NOT LIKE 'wa-%@wa.mvt'"
+          "SELECT COUNT(*) c FROM leads WHERE marca='" + MARCA_LEAD + "' AND interes='composicion' AND COALESCE(nurture_paso,0) != 50 AND email LIKE '%@%' AND email NOT LIKE 'wa-%" + WA_SENTINEL + "'"
         ).first();
         if (dry) return json({ ok: true, dry: true, en_esta_tanda: lista.length, pendientes_total: restantesRow ? restantesRow.c : 0, muestra: lista.slice(0, 3).map(function(r){ return r.email; }) });
         let enviados = 0;
@@ -3785,7 +3821,7 @@ export default {
               '<p>Hace unas semanas te bajaste mi guía de composición. Espero que te haya servido para arrancar tus canciones.</p>' +
               '<p>Te escribo por algo puntual: si además te pica <b>aprender a cantar bien de verdad</b> (o tocar piano), tengo una clase de prueba con diagnóstico de tu voz. En 45 minutos sabes exactamente qué entrenar, con un plan claro.</p>' +
               '<p>No es cuestión de talento ni de edad: cantar bien es coordinación, y se entrena. Varios de mis alumnos empezaron creyendo que ya era tarde.</p>' +
-              '<p style="text-align:center;margin:26px 0"><a href="' + prueba + '" style="background:#e8501f;color:#ffffff;text-decoration:none;font-weight:bold;padding:14px 26px;border-radius:6px;display:inline-block">Reservar mi clase de prueba</a></p>' +
+              '<p style="text-align:center;margin:26px 0"><a href="' + prueba + '" style="background:#0a0a0a;color:#ffffff;text-decoration:none;font-weight:bold;padding:14px 26px;border-radius:6px;display:inline-block">Reservar mi clase de prueba</a></p>' +
               '<p>O respóndeme este correo con tu WhatsApp y coordinamos directo. La clase de prueba cuesta S/50 e incluye tu diagnóstico.</p>' +
               '<p>Un abrazo,<br><b>' + MARCA.profe + '</b><br>' + MARCA.nombre + '</p>' +
               '<p style="font-size:12px;color:#888888;margin-top:26px">' + MARCA.dominio.replace(/^https?:\/\//, "") + ' · Canto, piano y composición para adultos</p>' +
@@ -3874,7 +3910,7 @@ export default {
           return new Response(
             "<!doctype html><meta charset=utf-8><meta name=viewport content='width=device-width,initial-scale=1'>" +
             "<body style='font-family:system-ui,sans-serif;background:#0d0b0a;color:#f3ede0;display:flex;min-height:90vh;align-items:center;justify-content:center;text-align:center;padding:24px'>" +
-            "<div><h2 style='color:" + (ok ? "#3fb950" : "#e8501f") + ";font-size:20px'>" + msg + "</h2>" +
+            "<div><h2 style='color:" + (ok ? "#3fb950" : "#8a1a1a") + ";font-size:20px'>" + msg + "</h2>" +
             "<p style='color:#8a8276'>Ya puedes cerrar esta pestaña y volver al CRM.</p></div>",
             { headers: { "content-type": "text/html; charset=utf-8", "cache-control": "no-store" } }
           );
@@ -3898,7 +3934,7 @@ export default {
           env.DB.prepare("INSERT INTO config (clave,valor) VALUES ('gcal_nonce','') ON CONFLICT(clave) DO UPDATE SET valor=''")
         ]);
         _gcalTok = { value: "", exp: 0 };
-        return pagina(true, "¡Google Calendar conectado! 🎸");
+        return pagina(true, "¡Google Calendar conectado! 🎵");
       }
 
       /* ============ AGENDA: slots libres (alumno logueado) ============ */
@@ -3969,7 +4005,7 @@ export default {
 
         /* El lead vive en su tabla aunque nunca llegue a alumna: es el CRM de Nicole.
            Sin correo, la clave de dedupe es sintética por número (mismo truco que /api/lead). */
-        const emailLead = email || ("wa-" + waFull + "@wa.nicole");
+        const emailLead = email || ("wa-" + waFull + WA_SENTINEL);
         try {
           const ya = await env.DB.prepare(
             "SELECT id, COALESCE(telefono,'') AS telefono FROM leads WHERE email = ?1 AND marca = ?2"
@@ -4175,7 +4211,7 @@ export default {
           await env.DB.prepare("UPDATE reservas SET gcal_event_id = '' WHERE id = ?1").bind(vieja.id).run();
         }
 
-        return json({ ok: true, id: ridN, inicio_utc: isoN, mensaje: "Listo, moví tu clase 🎸" });
+        return json({ ok: true, id: ridN, inicio_utc: isoN, mensaje: "Listo, moví tu clase 🎵" });
       }
 
       /* ============ AGENDA: cancelar / reprogramar una clase ============

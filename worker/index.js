@@ -43,6 +43,9 @@ const MARCA = {
   statementDescriptor: "NICOLE OLAVARRIA",      // máx 22 chars, extracto de la tarjeta
   vapidSubject: "mailto:andressalame@gmail.com",
   leadMagnetPdf: "/recursos/guia.pdf",
+  /* Pie de los correos. Antes decía "Canto, piano y composición para adultos", que es la
+     oferta de MVT: ella da técnica vocal y lenguaje musical, y nada de piano. */
+  tagline: "Clases 1 a 1 de técnica vocal y lenguaje musical",
 };
 
 const PAQUETES = {
@@ -606,19 +609,19 @@ async function enviarCorreo(env, { to, subject, html, text, from }){
 
 /* Correo de bienvenida + entrega de la guia cuando alguien deja su correo (lead magnet) */
 async function correoBienvenidaLead(env, to){
-  const url = MARCA.dominio + MARCA.leadMagnetPdf;
+  const url = MARCA.dominio + "/horarios";   // su PDF nunca existió (404): mando a los horarios
   const dominioLimpio = MARCA.dominio.replace(/^https?:\/\//, "");
   const html =
     '<div style="font-family:Arial,Helvetica,sans-serif;max-width:480px;margin:0 auto;color:#1a1a1a;font-size:15px;line-height:1.6">' +
       '<p>Hola,</p>' +
-      '<p>Aquí está tu guía <b>"De oyente a autor"</b>: las 3 herramientas para empezar a componer tu primera canción.</p>' +
-      '<p style="text-align:center;margin:26px 0"><a href="' + url + '" style="background:#0a0a0a;color:#ffffff;text-decoration:none;font-weight:bold;padding:14px 26px;border-radius:6px;display:inline-block">Descargar mi guía</a></p>' +
-      '<p>Componer se entrena, no es un don. Si quieres pasar de oyente a autor en serio, tu primera clase de prueba cuesta S/50 e incluye un plan armado a tu medida, con alguien que ha compuesto más de 200 canciones.</p>' +
+      '<p>Gracias por dejarme tu correo. Cuando quieras damos el siguiente paso.</p>' +
+      '<p style="text-align:center;margin:26px 0"><a href="' + url + '" style="background:#0a0a0a;color:#ffffff;text-decoration:none;font-weight:bold;padding:14px 26px;border-radius:6px;display:inline-block">Ver los horarios libres</a></p>' +
+      '<p>Cantar es coordinación y se entrena, no es un don. En tu primera clase hacemos el diagnóstico de tu voz y sale tu plan a la medida.</p>' +
       '<p>Un abrazo,<br><b>' + MARCA.profe + '</b><br>' + MARCA.nombre + '</p>' +
-      '<p style="font-size:12px;color:#888888;margin-top:26px">' + dominioLimpio + ' · Canto, piano y composición para adultos</p>' +
+      '<p style="font-size:12px;color:#888888;margin-top:26px">' + dominioLimpio + ' · ' + MARCA.tagline + '</p>' +
     '</div>';
-  const text = 'Hola,\n\nAquí está tu guía "De oyente a autor": ' + url + '\n\nComponer se entrena, no es un don. Si quieres pasar de oyente a autor en serio, tu primera clase de prueba cuesta S/50 e incluye un plan a tu medida.\n\nUn abrazo,\n' + MARCA.profe + ' - ' + MARCA.nombre + '\n' + dominioLimpio;
-  return enviarCorreo(env, { to: to, subject: "Tu guía de composición", html: html, text: text });
+  const text = 'Hola,\n\nGracias por dejarme tu correo. Los horarios libres están acá: ' + url + '\n\nCantar es coordinación y se entrena, no es un don. En tu primera clase hacemos el diagnóstico de tu voz y sale tu plan a la medida.\n\nUn abrazo,\n' + MARCA.profe + ' - ' + MARCA.nombre + '\n' + dominioLimpio;
+  return enviarCorreo(env, { to: to, subject: "Gracias por escribirme", html: html, text: text });
 }
 
 /* Correo de bienvenida al alumno cuando se confirma su PRIMERA compra (onboarding automatico) */
@@ -1028,7 +1031,7 @@ async function correoNurtureLead(env, to, paso){
     return '<div style="font-family:Arial,Helvetica,sans-serif;max-width:480px;margin:0 auto;color:#1a1a1a;font-size:15px;line-height:1.6">' +
       inner +
       '<p>Un abrazo,<br><b>' + MARCA.profe + '</b><br>' + MARCA.nombre + '</p>' +
-      '<p style="font-size:12px;color:#888888;margin-top:26px">' + dominioLimpio + ' · Canto, piano y composición para adultos</p>' +
+      '<p style="font-size:12px;color:#888888;margin-top:26px">' + dominioLimpio + ' · ' + MARCA.tagline + '</p>' +
     '</div>';
   };
   const boton = function(texto){
@@ -1152,19 +1155,19 @@ async function correoPuenteWhatsApp(env, to, precios){
   const html =
     '<div style="font-family:Arial,Helvetica,sans-serif;max-width:480px;margin:0 auto;color:#1a1a1a;font-size:15px;line-height:1.6">' +
       '<p>Hola,</p>' +
-      '<p>Soy ' + MARCA.profe + ', el de la guía <b>"De oyente a autor"</b>. Voy al grano: quiero que pases de leer la guía a entrenar de verdad, así que tienes <b>S/' + PUENTE_WA_DESCUENTO + ' de descuento en tu primer mes de clases</b> si empiezas este mes.</p>' +
-      '<p>Canto, piano o composición. Siempre 1 a 1, presencial en ' + MARCA.ciudad.split(",")[0] + ' u online en vivo.</p>' +
+      '<p>Soy ' + MARCA.profe + '. Voy al grano: quiero que pases de la idea a entrenar de verdad, así que tienes <b>S/' + PUENTE_WA_DESCUENTO + ' de descuento en tu primer mes de clases</b> si empiezas este mes.</p>' +
+      '<p>Técnica vocal o lenguaje musical. Siempre 1 a 1, presencial en ' + MARCA.ciudad.split(",")[0] + ' u online en vivo.</p>' +
       '<ul style="padding-left:18px">' +
         '<li><b>4 clases al mes:</b> <s style="color:#888888">S/' + p4 + '</s> <b>S/' + d4 + '</b> tu primer mes</li>' +
         '<li style="margin-top:6px"><b>8 clases al mes:</b> <s style="color:#888888">S/' + p8 + '</s> <b>S/' + d8 + '</b> tu primer mes (el que más eligen mis alumnos)</li>' +
       '</ul>' +
       '<p style="text-align:center;margin:26px 0"><a href="' + wa + '" style="background:#25D366;color:#ffffff;text-decoration:none;font-weight:bold;padding:14px 26px;border-radius:6px;display:inline-block">Quiero mi descuento</a></p>' +
       '<p>Me escribes por WhatsApp, me cuentas qué quieres lograr y cuadramos tu horario. Sin vueltas.</p>' +
-      '<p>Y si este no es tu momento, todo bien: la guía es tuya y aquí me tienes cuando quieras :)</p>' +
+      '<p>Y si este no es tu momento, todo bien: aquí me tienes cuando quieras :)</p>' +
       '<p>Un abrazo,<br><b>' + MARCA.profe + '</b><br>' + MARCA.nombre + '</p>' +
-      '<p style="font-size:12px;color:#888888;margin-top:26px">' + dominioLimpio + ' · Canto, piano y composición para adultos</p>' +
+      '<p style="font-size:12px;color:#888888;margin-top:26px">' + dominioLimpio + ' · ' + MARCA.tagline + '</p>' +
     '</div>';
-  const text = 'Hola,\n\nSoy ' + MARCA.profe + ', el de la guía "De oyente a autor". Voy al grano: quiero que pases de leer la guía a entrenar de verdad, así que tienes S/' + PUENTE_WA_DESCUENTO + ' de descuento en tu primer mes de clases si empiezas este mes.\n\nCanto, piano o composición. Siempre 1 a 1, presencial en ' + MARCA.ciudad.split(",")[0] + ' u online en vivo.\n\n- 4 clases al mes: S/' + d4 + ' tu primer mes (precio normal S/' + p4 + ')\n- 8 clases al mes: S/' + d8 + ' tu primer mes (precio normal S/' + p8 + ', el que más eligen mis alumnos)\n\nEscríbeme por WhatsApp y cuadramos tu horario: ' + wa + '\n\nY si este no es tu momento, todo bien: la guía es tuya y aquí me tienes cuando quieras :)\n\nUn abrazo,\n' + MARCA.profe + ' - ' + MARCA.nombre + '\n' + dominioLimpio;
+  const text = 'Hola,\n\nSoy ' + MARCA.profe + '. Voy al grano: quiero que pases de la idea a entrenar de verdad, así que tienes S/' + PUENTE_WA_DESCUENTO + ' de descuento en tu primer mes de clases si empiezas este mes.\n\nTécnica vocal o lenguaje musical. Siempre 1 a 1, presencial en ' + MARCA.ciudad.split(",")[0] + ' u online en vivo.\n\n- 4 clases al mes: S/' + d4 + ' tu primer mes (precio normal S/' + p4 + ')\n- 8 clases al mes: S/' + d8 + ' tu primer mes (precio normal S/' + p8 + ', el que más eligen mis alumnos)\n\nEscríbeme por WhatsApp y cuadramos tu horario: ' + wa + '\n\nY si este no es tu momento, todo bien: aquí me tienes cuando quieras :)\n\nUn abrazo,\n' + MARCA.profe + ' - ' + MARCA.nombre + '\n' + dominioLimpio;
   return enviarCorreo(env, { to: to, subject: "S/" + PUENTE_WA_DESCUENTO + " de descuento en tu primer mes de clases :)", html: html, text: text });
 }
 
@@ -1266,10 +1269,9 @@ async function avisarLeadConTelefono(env, info){
   // WhatsApp abre con el mensaje hacia el lead, revisa y envía. Sin bots no oficiales
   // (riesgo de ban del número); respuesta experta e instantánea sin escribir.
   const curso = (info.interes || "canto");
-  const multiple = curso.indexOf(" ") >= 0;   // "canto y piano", "canto, piano y composición", etc.
+  const multiple = curso.indexOf(" ") >= 0;   // "canto y lenguaje musical", etc.
   const diag = multiple ? "Vemos en qué punto estás en cada uno y armamos un plan claro."
-             : curso === "piano" ? "Te hago un diagnóstico de dónde estás y salimos con un plan claro."
-             : curso === "composicion" ? "Vemos en qué punto estás y armamos un plan claro."
+             : curso === "lenguaje" ? "Vemos en qué punto estás y armamos un plan claro."
              : "Te hago el diagnóstico de tu voz y salimos con un plan claro.";
   let subject, text, msgLead;
   if (info.esPrueba){
@@ -1286,10 +1288,10 @@ async function avisarLeadConTelefono(env, info){
       "Se enviará: \"" + msgLead + "\"\n";
   } else {
     subject = "🔥 Lead con WhatsApp: " + info.email;
-    msgLead = "Hola! Soy " + MARCA.profe + " de " + MARCA.nombre + " :) Vi que descargaste la guía. Cuéntame, qué te gustaría lograr con la música: cantar, tocar piano o componer? Si quieres, te armo una clase de prueba con diagnóstico.";
+    msgLead = "Hola! Soy " + MARCA.profe + " de " + MARCA.nombre + " :) Vi que dejaste tus datos. Cuéntame, qué te gustaría lograr con tu voz? Si quieres, te armo una clase de prueba con diagnóstico.";
     const waCierre = "https://wa.me/" + d + "?text=" + encodeURIComponent(msgLead);
     text =
-      "Un lead dejó su WhatsApp al bajar la guía. Respóndele mientras está caliente:\n\n" +
+      "Un lead dejó su WhatsApp. Respóndele mientras está caliente:\n\n" +
       "Correo:   " + info.email + "\n" +
       "Interés:  " + (info.interes || "-") + " · Fuente: " + (info.fuente || "-") + "\n\n" +
       "👉 RESPONDER CON 1 CLIC (abre tu WhatsApp con el mensaje ya escrito):\n" +
@@ -1835,7 +1837,7 @@ function onboardingSystemAdmin(){
     "Abajo del menú: 'Datos y respaldo' (Exportar JSON, Backup servidor, CSV alumnos, CSV emails) y 'Cambiar clave'.\n\n" +
 
     "CÓMO AGREGAR UN ALUMNO: pestaña Alumnos > botón para abrir el modal 'Nuevo alumno'. Campos: Nombre, WhatsApp " +
-    "(con 51 delante), Curso(s) por checkbox (canto/piano/composición, puede marcar varios), Paquete (Clase de " +
+    "(con 51 delante), Curso(s) por checkbox (hoy hay uno solo: Canto), Paquete (Clase de " +
     "prueba / Clase suelta / Paquete 4 / Paquete 8 / Paquete 12), Fecha de compra, Estado de pago (Pagado o " +
     "Pendiente), Nota de horario (texto libre, opcional, solo para recordar algo manual) y Notas. Al guardar, si " +
     "puso Pagado ya queda activo con sus clases del paquete y 30 días de plazo para usarlas.\n\n" +
@@ -3004,7 +3006,7 @@ export default {
 
         let nombre, esAdmin, cuentaId;
         if (who.admin){
-          nombre = "Profe Andrés"; esAdmin = 1; cuentaId = null;
+          nombre = "Profe " + MARCA.profe; esAdmin = 1; cuentaId = null;
         } else {
           if (!who.cu.alumno_id) return json({ error: "El chat se abre cuando activas tu primer paquete 🙂" }, 403);
           nombre = who.cu.nombre; esAdmin = 0; cuentaId = who.cu.id;
@@ -3071,7 +3073,7 @@ export default {
           if (!/^[0-9a-fA-F-]{8,64}$/.test(hilo)) return json({ error: "Conversación no válida" }, 400);
           const dest = await env.DB.prepare("SELECT id FROM cuentas WHERE id = ?1").bind(hilo).first();
           if (!dest) return json({ error: "Esa cuenta no existe" }, 404);
-          nombre = "Profe Andrés"; esAdmin = 1; cuentaId = null;
+          nombre = "Profe " + MARCA.profe; esAdmin = 1; cuentaId = null;
         } else {
           if (!who.cu.alumno_id) return json({ error: "El chat con el profe se abre cuando activas tu primer paquete 🙂" }, 403);
           hilo = who.cu.id;
@@ -3824,7 +3826,7 @@ export default {
               '<p style="text-align:center;margin:26px 0"><a href="' + prueba + '" style="background:#0a0a0a;color:#ffffff;text-decoration:none;font-weight:bold;padding:14px 26px;border-radius:6px;display:inline-block">Reservar mi clase de prueba</a></p>' +
               '<p>O respóndeme este correo con tu WhatsApp y coordinamos directo. La clase de prueba cuesta S/50 e incluye tu diagnóstico.</p>' +
               '<p>Un abrazo,<br><b>' + MARCA.profe + '</b><br>' + MARCA.nombre + '</p>' +
-              '<p style="font-size:12px;color:#888888;margin-top:26px">' + MARCA.dominio.replace(/^https?:\/\//, "") + ' · Canto, piano y composición para adultos</p>' +
+              '<p style="font-size:12px;color:#888888;margin-top:26px">' + MARCA.dominio.replace(/^https?:\/\//, "") + ' · ' + MARCA.tagline + '</p>' +
             '</div>';
           const text = hola + '\n\nHace unas semanas te bajaste mi guía de composición. Si además te pica aprender a cantar bien de verdad (o tocar piano), tengo una clase de prueba con diagnóstico de tu voz: en 45 min sabes qué entrenar, con un plan claro.\n\nNo es talento ni edad: cantar bien es coordinación, y se entrena.\n\nReserva tu clase de prueba: ' + prueba + '\nO respóndeme con tu WhatsApp y coordinamos. Cuesta S/50 e incluye tu diagnóstico.\n\nUn abrazo,\n' + MARCA.profe + ' - ' + MARCA.nombre;
           const ok = await enviarCorreo(env, { to: r.email, subject: "Componer está bueno. Cantar bien lo cambia todo :)", html: html, text: text });
@@ -3894,7 +3896,7 @@ export default {
         }
         const ip = request.headers.get("CF-Connecting-IP") || "";
         if (await chatbotPasoTope(env, ip)){
-          return json({ reply: "Recibiste varias respuestas seguidas. Para seguir, escríbele directo a Andrés por WhatsApp: " + CHATBOT_WA });
+          return json({ reply: "Recibiste varias respuestas seguidas. Para seguir, escríbele directo a " + MARCA.profe + " por WhatsApp: " + CHATBOT_WA });
         }
         const reply = await responderChatbot(env, mensajes);
         return json({ reply: reply });

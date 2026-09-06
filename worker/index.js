@@ -2093,7 +2093,7 @@ async function limpiarBackupsViejos(env){
    ═══════════════════════════════════════════════════════════════════════════ */
 const LIMA_OFFSET_MS = 5 * 3600 * 1000;
 const CLASE_MIN = 60;             // duración de la clase
-const HORIZONTE_SEMANAS = 4;      // hasta cuándo se puede reservar adelante
+const HORIZONTE_SEMANAS = 5;      // hasta cuándo se puede reservar adelante
 const SERIE_SEMANAS = 4;          // una reserva fija aparta las próximas 4 semanas ("de 4 en 4")
 const ANTICIPACION_MIN_H = 12;    // no se puede reservar con menos de 12h de anticipación
 const CANCELA_MIN_H = 4;          // default; el profesor puede cambiarlo en Ajustes (reprog_min_h)

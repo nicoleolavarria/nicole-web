@@ -2590,6 +2590,228 @@ function chocaConBusy(busy, ms){
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
+   AGENDA PRIVADA (26-sep-2026, pedido de Andrés para Nicole)
+   Dos enlaces que Nicole comparte cuando quiere, sin aparecer en el menú ni en Google:
+     · /horarios-disponibles?k=…  → el alumno aparta un horario fijo por 4 semanas de frente
+                                     (tomar un martes 10:00 aparta los 4 martes siguientes).
+     · /horarios-libres?k=…       → solo muestra horas sueltas libres para pedirle a Nicole
+                                     una reprogramación por WhatsApp (ella decide y mueve).
+   Reglas: horario de trabajo 10–13 y 15–21 (clases de 1 h que empiezan 10, 11, 12, 15…20),
+   máximo 6 h de clase al día, 12 h de anticipación. Todo editable en config sin redeploy:
+     priv_horas "10:00,11:00,…"  ·  priv_dias "1,2,3,4,5,6" (0 = domingo)  ·  priv_tope_h "6".
+   El tope cuenta reservas del CRM + bloques ocupados de su Google Calendar dentro del
+   horario de trabajo (sus clases antiguas viven ahí), sin contar dos veces la misma hora.
+   ═══════════════════════════════════════════════════════════════════════════ */
+const PRIV_HORAS_DEFAULT = ["10:00","11:00","12:00","15:00","16:00","17:00","18:00","19:00","20:00"];
+const PRIV_DIAS_DEFAULT = [1, 2, 3, 4, 5, 6];
+const PRIV_TOPE_DEFAULT = 6;
+const PRIV_SEMANAS = 4;
+const PRIV_VENTANA_DIAS = 31;
+
+function privCfg(cfg){
+  const horas = String((cfg && cfg.priv_horas) || "").split(",").map(s => s.trim())
+    .filter(s => /^\d{1,2}:\d{2}$/.test(s)).map(s => s.padStart(5, "0"));
+  const dias = String((cfg && cfg.priv_dias) || "").split(",").map(s => parseInt(s, 10))
+    .filter(n => n >= 0 && n <= 6);
+  const t = parseInt(cfg && cfg.priv_tope_h, 10);
+  return {
+    horas: horas.length ? horas : PRIV_HORAS_DEFAULT,
+    dias: dias.length ? dias : PRIV_DIAS_DEFAULT,
+    tope: (Number.isFinite(t) && t >= 1 && t <= 12) ? t : PRIV_TOPE_DEFAULT
+  };
+}
+function privTokenOk(cfg, clave, k){
+  const real = String((cfg && cfg[clave]) || "");
+  return real.length >= 16 && safeEq(String(k || ""), real);
+}
+function privEsSlotDeTrabajo(pc, ms){
+  const p = limaParts(new Date(ms));
+  return pc.dias.includes(p.dow) && pc.horas.includes(hhmm(p));
+}
+
+/* Foto de la ocupación entre dos instantes: qué horas exactas están tomadas y cuántas
+   horas de clase lleva cada día (Lima). */
+async function privOcupacion(env, pc, desdeMs, hastaMs){
+  const desdeIso = new Date(desdeMs - 12 * 3600000).toISOString();
+  const hastaIso = new Date(hastaMs + 36 * 3600000).toISOString();
+  const marcas = ESTADOS_ACTIVOS.map(e => "'" + e + "'").join(",");
+  const { results } = await env.DB.prepare(
+    "SELECT inicio_utc, fin_utc, COALESCE(tipo,'') AS tipo FROM reservas WHERE estado IN (" + marcas + ") " +
+    "AND inicio_utc >= ?1 AND inicio_utc <= ?2"
+  ).bind(desdeIso, hastaIso).all();
+  const tomadas = [];                    // [iniMs, finMs] de reservas (incluye bloqueos personales)
+  const clasesPorDia = new Map();        // fecha -> Set de claves de hora ocupadas por clases
+  const sumar = (ms) => {
+    const f = fechaLimaDe(new Date(ms).toISOString());
+    if (!clasesPorDia.has(f)) clasesPorDia.set(f, new Set());
+    clasesPorDia.get(f).add(ms);
+  };
+  for (const r of (results || [])){
+    const a = Date.parse(r.inicio_utc), b = Date.parse(r.fin_utc) || (a + CLASE_MIN * 60000);
+    if (!Number.isFinite(a)) continue;
+    tomadas.push([a, b]);
+    if (r.tipo !== "bloqueo") sumar(a);
+  }
+  const busy = await gcalBusy(env, desdeIso, hastaIso);
+  // Horas de trabajo que su Google Calendar marca ocupadas cuentan como clase para el tope.
+  const p0 = limaParts(new Date(desdeMs));
+  const base = limaToUtc(p0.y, p0.m, p0.d, "00:00").getTime();
+  const dias = Math.ceil((hastaMs - base) / 86400000) + 1;
+  for (let i = 0; i <= dias; i++){
+    const p = limaParts(new Date(base + i * 86400000));
+    if (!pc.dias.includes(p.dow)) continue;
+    for (const h of pc.horas){
+      const ms = limaToUtc(p.y, p.m, p.d, h).getTime();
+      if (chocaConBusy(busy, ms)) sumar(ms);
+    }
+  }
+  const choca = (ms) => {
+    const fin = ms + CLASE_MIN * 60000;
+    for (const t of tomadas){ if (ms < t[1] && fin > t[0]) return true; }
+    return chocaConBusy(busy, ms);
+  };
+  const horasDelDia = (ms) => {
+    const s = clasesPorDia.get(fechaLimaDe(new Date(ms).toISOString()));
+    return s ? s.size : 0;
+  };
+  return { choca, horasDelDia };
+}
+
+function privLibre(pc, oc, ms, now){
+  if (ms <= now + ANTICIPACION_MIN_H * 3600000) return false;
+  if (!privEsSlotDeTrabajo(pc, ms)) return false;
+  if (oc.choca(ms)) return false;
+  if (oc.horasDelDia(ms) >= pc.tope) return false;
+  return true;
+}
+
+/* Horas de trabajo de los próximos PRIV_VENTANA_DIAS días (instantes ms). */
+function privCandidatos(pc, now){
+  const p0 = limaParts(new Date(now));
+  const base = limaToUtc(p0.y, p0.m, p0.d, "00:00").getTime();
+  const out = [];
+  for (let i = 0; i <= PRIV_VENTANA_DIAS; i++){
+    const p = limaParts(new Date(base + i * 86400000));
+    if (!pc.dias.includes(p.dow)) continue;
+    for (const h of pc.horas) out.push(limaToUtc(p.y, p.m, p.d, h).getTime());
+  }
+  return out;
+}
+
+/* Inicios de serie válidos: las 4 semanas deben estar libres y bajo el tope. */
+async function privSeries(env){
+  const cfg = await loadConfig(env);
+  const pc = privCfg(cfg);
+  const now = Date.now();
+  const hasta = now + (PRIV_VENTANA_DIAS + 7 * PRIV_SEMANAS) * 86400000;
+  const oc = await privOcupacion(env, pc, now, hasta);
+  const series = [];
+  for (const ms of privCandidatos(pc, now)){
+    const fechas = [];
+    let ok = true;
+    for (let w = 0; w < PRIV_SEMANAS; w++){
+      const t = ms + w * 7 * 86400000;
+      if (!privLibre(pc, oc, t, now)){ ok = false; break; }
+      fechas.push(new Date(t).toISOString());
+    }
+    if (ok) series.push({ inicio: fechas[0], fechas });
+  }
+  return { series, pc };
+}
+
+async function privLibres(env){
+  const cfg = await loadConfig(env);
+  const pc = privCfg(cfg);
+  const now = Date.now();
+  const oc = await privOcupacion(env, pc, now, now + PRIV_VENTANA_DIAS * 86400000);
+  return privCandidatos(pc, now).filter(ms => privLibre(pc, oc, ms, now)).map(ms => new Date(ms).toISOString());
+}
+
+function escHtml(s){ return String(s || "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])); }
+
+/* Correo al alumno con sus 4 fechas: para que no se le pierda el horario. */
+async function privCorreoAlumno(env, { email, nombre, fechas }){
+  const lineas = fechas.map(iso => { const c = cuandoLima(iso); return c.dia + " · " + c.hora; });
+  const c0 = cuandoLima(fechas[0]);
+  const subject = "Tus clases con " + MARCA.profe + ": " + DIAS_LARGO[limaParts(new Date(Date.parse(fechas[0]))).dow] + "s " + c0.hora;
+  const text =
+    "Hola " + nombre + ",\n\n" +
+    "Quedaron separadas tus clases con " + MARCA.profe + " (hora de Lima):\n\n" +
+    lineas.map((l, i) => (i + 1) + ". " + l).join("\n") + "\n\n" +
+    "Cada clase dura 1 hora. Si necesitas mover alguna, escríbele a " + MARCA.profe +
+    " por WhatsApp: https://wa.me/" + MARCA.whatsapp + "\n\n" +
+    "Guarda este correo para tener tus horarios a la mano.\n\n— " + MARCA.nombre;
+  const html =
+    "<p>Hola " + escHtml(nombre) + ",</p>" +
+    "<p>Quedaron separadas tus clases con " + escHtml(MARCA.profe) + " (hora de Lima):</p><ol>" +
+    lineas.map(l => "<li>" + escHtml(l) + "</li>").join("") + "</ol>" +
+    "<p>Cada clase dura 1 hora. Si necesitas mover alguna, escríbele a " + escHtml(MARCA.profe) +
+    " por <a href=\"https://wa.me/" + MARCA.whatsapp + "\">WhatsApp</a>.</p>" +
+    "<p>Guarda este correo para tener tus horarios a la mano.</p><p>— " + escHtml(MARCA.nombre) + "</p>";
+  return enviarCorreo(env, { to: email, subject, text, html });
+}
+
+async function privAvisarNicole(env, { nombre, email, whatsapp, fechas, correoOk }){
+  const lineas = fechas.map(iso => { const c = cuandoLima(iso); return "- " + c.dia + " · " + c.hora; }).join("\n");
+  const destino = MARCA.correoProfesora || MARCA.correoAdmin;
+  const subject = "Nuevo horario fijo: " + nombre + " (4 clases)";
+  const cuerpo =
+    nombre + " separó 4 clases desde tu enlace privado:\n\n" + lineas + "\n\n" +
+    "Correo:   " + email + (correoOk ? "  (ya le llegó su confirmación)" : "  (OJO: no se pudo enviar su correo de confirmación)") + "\n" +
+    (whatsapp ? ("WhatsApp: +" + whatsapp + "  (https://wa.me/" + whatsapp + ")\n") : "") +
+    "\nLas ves en tu panel: " + MARCA.dominio + "/admin/crm/\n";
+  try { await avisarPush(env, { title: "Horario fijo nuevo", body: nombre + " · " + cuandoLima(fechas[0]).dia, url: MARCA.dominio + "/admin/crm/" }); } catch (e) {}
+  let ok = false;
+  if (env.AVISOS){
+    try {
+      const msg = createMimeMessage();
+      msg.setSender({ name: "Avisos " + MARCA.nombre, addr: MARCA.correoAvisos });
+      msg.setRecipient(destino);
+      msg.setSubject(subject);
+      msg.addMessage({ contentType: "text/plain", data: cuerpo });
+      await env.AVISOS.send(new EmailMessage(MARCA.correoAvisos, destino, msg.asRaw()));
+      ok = true;
+    } catch (e) { ok = false; }
+  }
+  if (!ok) await enviarCorreo(env, { to: destino, subject, text: cuerpo, from: { name: "Avisos " + MARCA.nombre, email: MARCA.correoAvisos } });
+}
+
+/* Vista previa de lo que hay en su Google Calendar (para importar alumnos y contar clases).
+   Solo lectura. Agrupa por título del evento. */
+async function privPreviaGcal(env, dias){
+  const tok = await gcalAccessToken(env);
+  if (!tok) return { conectado: false, alumnos: [] };
+  const cfg = await loadConfig(env);
+  const calId = cfg.gcal_calendar_id || "primary";
+  const now = Date.now();
+  const qs = new URLSearchParams({
+    timeMin: new Date(now).toISOString(), timeMax: new Date(now + dias * 86400000).toISOString(),
+    singleEvents: "true", orderBy: "startTime", maxResults: "2500"
+  });
+  const r = await fetch("https://www.googleapis.com/calendar/v3/calendars/" + encodeURIComponent(calId) + "/events?" + qs,
+    { headers: { authorization: "Bearer " + tok } });
+  if (!r.ok) return { conectado: true, error: "Google respondió " + r.status, alumnos: [] };
+  const d = await r.json().catch(() => ({}));
+  const grupos = new Map();
+  for (const ev of (d.items || [])){
+    if (!ev.start || !ev.start.dateTime) continue;          // eventos de día completo no son clases
+    const titulo = String(ev.summary || "(sin título)").trim();
+    if (!grupos.has(titulo)) grupos.set(titulo, []);
+    grupos.get(titulo).push(ev.start.dateTime);
+  }
+  const alumnos = [...grupos.entries()].map(([titulo, inicios]) => {
+    const pat = new Map();
+    for (const iso of inicios){
+      const p = limaParts(new Date(Date.parse(iso)));
+      const k = DIAS_FIJO[p.dow] + " " + hhmm(p);
+      pat.set(k, (pat.get(k) || 0) + 1);
+    }
+    return { titulo, clases_futuras: inicios.length, horario: [...pat.keys()], proxima: inicios[0] };
+  }).sort((a, b) => b.clases_futuras - a.clases_futuras);
+  return { conectado: true, dias, alumnos };
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
    MONITOREO + ALARMAS. Las dependencias que corren solas (Google Calendar para
    el freebusy, Resend para los correos) hoy fallan en silencio. Estas funciones
    detectan la caída y AVISAN a Andrés (push + correo por AVISOS, que es un canal
@@ -2756,6 +2978,8 @@ async function ensureSchema(env){
     if (!tieneLeadWa) await env.DB.prepare("ALTER TABLE reservas ADD COLUMN lead_whatsapp TEXT DEFAULT ''").run();
     const tieneOrigenRsv = (infoReservas.results || []).some(c => c.name === "origen");
     if (!tieneOrigenRsv) await env.DB.prepare("ALTER TABLE reservas ADD COLUMN origen TEXT DEFAULT ''").run();
+    const tieneLeadEmail = (infoReservas.results || []).some(c => c.name === "lead_email");
+    if (!tieneLeadEmail) await env.DB.prepare("ALTER TABLE reservas ADD COLUMN lead_email TEXT DEFAULT ''").run();
 
     /* El índice único que impide dos reservas en el mismo instante nació sin 'pendiente'; sin
        este arreglo, dos personas podían quedarse con la misma hora desde la web. Se recrea solo
@@ -2792,7 +3016,7 @@ export default {
     }
     /* Preflight de la reserva pública: el navegador pregunta antes del POST con JSON. Solo se le
        abre la puerta a los dos dominios de Nicole (el resto sigue cayendo en el 204 pelado). */
-    if (request.method === "OPTIONS" && url.pathname === "/api/agenda/reservar-publico"){
+    if (request.method === "OPTIONS" && (url.pathname === "/api/agenda/reservar-publico" || url.pathname === "/api/agenda/privado/reservar")){
       const o = origenWeb(request);
       const r = new Response(null, { status: 204 });
       if (o){
@@ -4038,6 +4262,101 @@ export default {
         return conCors(json({ ok: true, id: rid, dia: c.dia, hora: c.hora }), origen);
       }
 
+      /* ===== AGENDA PRIVADA (enlaces que Nicole comparte a mano; ver helpers arriba) ===== */
+      if (url.pathname === "/api/agenda/privado/series" && request.method === "GET"){
+        const origen = origenWeb(request);
+        const cfg = await loadConfig(env);
+        if (!privTokenOk(cfg, "priv_token_reserva", url.searchParams.get("k"))){
+          return conCors(json({ error: "Este enlace no es válido. Pídele a Nicole el suyo." }, 403), origen);
+        }
+        const { series, pc } = await privSeries(env);
+        return conCors(json({ series, semanas: PRIV_SEMANAS, tope_h: pc.tope }), origen);
+      }
+
+      if (url.pathname === "/api/agenda/privado/libres" && request.method === "GET"){
+        const origen = origenWeb(request);
+        const cfg = await loadConfig(env);
+        if (!privTokenOk(cfg, "priv_token_libres", url.searchParams.get("k"))){
+          return conCors(json({ error: "Este enlace no es válido. Pídele a Nicole el suyo." }, 403), origen);
+        }
+        return conCors(json({ slots: await privLibres(env), whatsapp: MARCA.whatsapp }), origen);
+      }
+
+      if (url.pathname === "/api/agenda/privado/reservar" && request.method === "POST"){
+        const origen = origenWeb(request);
+        const b = await request.json().catch(() => ({}));
+        const cfg = await loadConfig(env);
+        if (!privTokenOk(cfg, "priv_token_reserva", b.k)){
+          return conCors(json({ error: "Este enlace no es válido. Pídele a Nicole el suyo." }, 403), origen);
+        }
+        if (b.website) return conCors(json({ ok: true }), origen);   // honeypot
+
+        const nombre = String(b.nombre || "").trim().replace(/\s+/g, " ").slice(0, 60);
+        if (nombre.length < 2) return conCors(json({ error: "Escribe tu nombre." }, 400), origen);
+        const email = String(b.email || "").trim().toLowerCase().slice(0, 120);
+        if (!emailOk(email)) return conCors(json({ error: "Escribe un correo válido: ahí te llegan tus horarios." }, 400), origen);
+        let d = String(b.whatsapp || "").replace(/[^\d]/g, "");
+        if (d.length === 11 && d.startsWith("51")) d = d.slice(2);
+        if (d && !/^9\d{8}$/.test(d)) return conCors(json({ error: "Ese WhatsApp no parece peruano. Son 9 números y empiezan con 9, o déjalo en blanco." }, 400), origen);
+        const waFull = d ? "51" + d : "";
+
+        const ip = request.headers.get("CF-Connecting-IP") || "";
+        if (ip && await pasoTopeDia(env, "rsvpriv:" + ip, 6)){
+          return conCors(json({ error: "Ya separaste varios horarios hoy. Si necesitas otro, escríbele a Nicole." }, 429), origen);
+        }
+
+        // Revalidar las 4 semanas en el servidor (el navegador pudo quedarse con una foto vieja).
+        const pc = privCfg(cfg);
+        const now = Date.now();
+        const inicio = Date.parse(String(b.inicio_utc || ""));
+        if (!Number.isFinite(inicio)) return conCors(json({ error: "Elige un horario." }, 400), origen);
+        const oc = await privOcupacion(env, pc, now, inicio + 7 * PRIV_SEMANAS * 86400000);
+        const fechas = [];
+        for (let w = 0; w < PRIV_SEMANAS; w++){
+          const t = inicio + w * 7 * 86400000;
+          if (!privLibre(pc, oc, t, now)){
+            return conCors(json({ error: "Ese horario ya no está libre las 4 semanas. Elige otro." }, 409), origen);
+          }
+          fechas.push(new Date(t).toISOString());
+        }
+
+        const serie = crypto.randomUUID();
+        const nowIso = new Date().toISOString();
+        const filas = fechas.map(iso => ({ id: crypto.randomUUID(), iso, fin: new Date(Date.parse(iso) + CLASE_MIN * 60000).toISOString() }));
+        try {
+          // batch = todo o nada: si una semana la toma otra persona en el mismo segundo, no queda media serie.
+          await env.DB.batch(filas.map(f => env.DB.prepare(
+            "INSERT INTO reservas (id,alumno_id,inicio_utc,fin_utc,tipo,serie_id,estado,curso,nota,ciclo,creada,lead_nombre,lead_whatsapp,lead_email,origen) " +
+            "VALUES (?1,NULL,?2,?3,'fija',?4,'reservada','','',1,?5,?6,?7,?8,'link-privado')"
+          ).bind(f.id, f.iso, f.fin, serie, nowIso, nombre, waFull, email)));
+        } catch (e){
+          return conCors(json({ error: "Justo tomaron una de esas semanas. Elige otro horario." }, 409), origen);
+        }
+
+        // CRM: el alumno queda como lead con su correo real.
+        try {
+          const ya = await env.DB.prepare("SELECT id FROM leads WHERE email = ?1 AND marca = ?2").bind(email, MARCA_LEAD).first();
+          if (!ya){
+            await env.DB.prepare(
+              "INSERT INTO leads (id,email,marca,fuente,interes,fecha,telefono,nombre,nurture_paso) VALUES (?1,?2,?3,'link-privado','clase',?4,?5,?6,99)"
+            ).bind(crypto.randomUUID(), email, MARCA_LEAD, hoy(), waFull, nombre).run();
+          }
+        } catch (e) { /* la reserva ya entró */ }
+
+        const correoOk = await privCorreoAlumno(env, { email, nombre, fechas });
+        ctx.waitUntil((async () => {
+          for (const f of filas){
+            try {
+              const eid = await gcalCrearEvento(env, { inicio_utc: f.iso, fin_utc: f.fin, curso: "", alumnoNombre: nombre, email: "" });
+              if (eid) await env.DB.prepare("UPDATE reservas SET gcal_event_id = ?1 WHERE id = ?2").bind(eid, f.id).run();
+            } catch (e) {}
+          }
+          await privAvisarNicole(env, { nombre, email, whatsapp: waFull, fechas, correoOk });
+        })());
+
+        return conCors(json({ ok: true, fechas, correo: correoOk }), origen);
+      }
+
       /* ===== AGENDA: feed ICS de las clases (para suscribirlo en Google Calendar) =====
          Es el puente SIN OAuth: Google Calendar → "Otros calendarios" → "Desde URL". Solo
          lectura, protegido por el mismo token de los avisos (la URL es la llave, como en
@@ -4335,6 +4654,26 @@ export default {
           return json({ error: "No autorizado" }, 401);
         }
 
+        /* ----- enlaces privados de agenda: los crea si faltan y los devuelve ----- */
+        if (url.pathname === "/api/admin/links-privados" && request.method === "GET"){
+          const cfg = await loadConfig(env);
+          const out = {};
+          for (const [clave, ruta] of [["priv_token_reserva", "/horarios-disponibles"], ["priv_token_libres", "/horarios-libres"]]){
+            let t = String(cfg[clave] || "");
+            if (t.length < 16){
+              t = randHex(12);
+              await env.DB.prepare("INSERT INTO config (clave, valor) VALUES (?1, ?2) ON CONFLICT(clave) DO UPDATE SET valor = excluded.valor").bind(clave, t).run();
+            }
+            out[clave] = "https://www.nicoleolavarria.com" + ruta + "?k=" + t;
+          }
+          const pc = privCfg(cfg);
+          return json({ reservar: out.priv_token_reserva, libres: out.priv_token_libres, reglas: pc });
+        }
+        /* ----- vista previa de su Google Calendar para importar alumnos ----- */
+        if (url.pathname === "/api/admin/previa-gcal" && request.method === "GET"){
+          const dias = Math.min(90, Math.max(7, parseInt(url.searchParams.get("dias") || "35", 10) || 35));
+          return json(await privPreviaGcal(env, dias));
+        }
         /* ----- logout: si el Bearer es un token de sesión (no el ADMIN_TOKEN crudo), la borra ----- */
         if (url.pathname === "/api/admin/logout" && request.method === "POST"){
           const auth = request.headers.get("authorization") || "";

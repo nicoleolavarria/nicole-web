@@ -1,0 +1,312 @@
+---
+/* HORARIOS DISPONIBLES (privado). Enlace que Nicole comparte a mano: no está en el menú,
+   ni en el sitemap, y lleva noindex. Sin ?k= válido el worker no entrega nada.
+   Un horario = el mismo día y hora 4 semanas seguidas (lo aparta el worker de una vez). */
+import { obtenerWeb, ORIGEN } from '../lib/web-data.mjs';
+import { headerHtml, pieHtml, estiloCss, fuentesHref, mezclar } from '../lib/web-render.mjs';
+
+const { web } = await obtenerWeb();
+const data = mezclar(web);
+const cssExtra = estiloCss(data);
+const hrefFuentes = fuentesHref(data);
+---
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Separa tu horario del mes — Nicole Olavarría</title>
+  <meta name="description" content="Enlace privado para que los alumnos de Nicole separen su horario fijo del mes." />
+  <meta name="robots" content="noindex, nofollow" />
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+  <link rel="icon" href="/favicon-32.png" sizes="32x32" type="image/png" />
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:ital,wght@0,300;0,400;0,500;1,300;1,400&display=swap" rel="stylesheet" />
+  {hrefFuentes && <link href={hrefFuentes} rel="stylesheet" id="fuentesNicole" />}
+  <link rel="stylesheet" href="/styles/global.css" />
+  {cssExtra && <style id="estiloNicole" set:html={cssExtra} />}
+  <style is:global>
+    /* El rosa lo eligió Nicole. Aquí es el color de lo elegido, no del fondo:
+       marca la fecha y la hora que la persona acaba de tocar. */
+    :root { --rosa: #fee1f2; }
+
+    .hor-wrap { max-width: min(680px, var(--ancho)); margin: 0 auto; padding: 44px 20px 72px; }
+    @media (min-width: 700px) { .hor-wrap { padding: 72px 40px 96px; } }
+
+    .hor-wrap h1 { margin-bottom: 10px; }
+    .hor-intro { font-size: calc(14px * var(--esc)); line-height: 1.65; color: var(--muted); margin-bottom: 6px; }
+    .hor-tz { font-size: calc(12.5px * var(--esc)); color: var(--muted); margin: 10px 0 0; }
+
+    .hor-paso { margin-top: 34px; }
+    .hor-paso > h2 {
+      font-family: var(--font-titulo); font-size: calc(11px * var(--esc));
+      letter-spacing: .12em; text-transform: uppercase; color: var(--muted);
+      border-bottom: 1px solid var(--line); padding-bottom: 8px; margin-bottom: 16px;
+    }
+
+    /* --- tira de días --- */
+    .hor-dias { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 10px; -webkit-overflow-scrolling: touch; }
+    .hor-dias::-webkit-scrollbar { height: 3px; }
+    .hor-dias::-webkit-scrollbar-thumb { background: var(--line); }
+    .hor-dia {
+      flex: 0 0 auto; min-width: 74px; min-height: 78px;
+      display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px;
+      border: 1px solid var(--line); background: var(--bg); color: var(--fg);
+      font-family: var(--font-cuerpo); cursor: pointer; padding: 10px 8px;
+      transition: border-color .12s, background .12s;
+    }
+    .hor-dia .d-sem { font-size: calc(11px * var(--esc)); letter-spacing: .08em; text-transform: lowercase; color: var(--muted); }
+    .hor-dia .d-num { font-size: calc(21px * var(--esc)); line-height: 1.1; }
+    .hor-dia .d-est { font-size: calc(10px * var(--esc)); letter-spacing: .06em; color: var(--muted); }
+    .hor-dia[aria-pressed="true"] { background: var(--rosa); border-color: var(--fg); }
+    .hor-dia[aria-pressed="true"] .d-sem, .hor-dia[aria-pressed="true"] .d-est { color: var(--fg); }
+    .hor-dia:disabled { cursor: default; opacity: .45; }
+
+    /* --- horas --- */
+    .hor-horas { display: grid; grid-template-columns: repeat(auto-fill, minmax(112px, 1fr)); gap: 10px; }
+    .hor-hora {
+      min-height: 52px; border: 1px solid var(--line); background: var(--bg); color: var(--fg);
+      font-family: var(--font-cuerpo); font-size: calc(15px * var(--esc)); cursor: pointer;
+      transition: border-color .12s, background .12s;
+    }
+    .hor-hora:hover { border-color: var(--fg); }
+    .hor-hora[aria-pressed="true"] { background: var(--rosa); border-color: var(--fg); }
+
+    /* --- tarjeta de reserva --- */
+    .hor-card { border: 1px solid var(--fg); padding: 22px 20px; margin-top: 26px; background: var(--bg); }
+    .hor-card .elegido { font-size: calc(17px * var(--esc)); line-height: 1.45; margin-bottom: 4px; }
+    .hor-card .elegido-sub { font-size: calc(12.5px * var(--esc)); color: var(--muted); margin-bottom: 18px; }
+    .hor-campo { margin-bottom: 14px; }
+    .hor-campo label { display: block; font-size: calc(12px * var(--esc)); letter-spacing: .06em; color: var(--muted); margin-bottom: 6px; }
+    .hor-campo input {
+      width: 100%; min-height: 50px; padding: 0 12px; box-sizing: border-box;
+      border: 1px solid var(--line); background: var(--bg); color: var(--fg);
+      font-family: var(--font-cuerpo); font-size: calc(15px * var(--esc));
+    }
+    .hor-campo input:focus { outline: none; border-color: var(--fg); }
+    .hor-hp { position: absolute; left: -9999px; width: 1px; height: 1px; overflow: hidden; }
+
+    .hor-btn {
+      width: 100%; min-height: 54px; border: 1px solid var(--fg); background: var(--fg); color: var(--bg);
+      font-family: var(--font-cuerpo); font-size: calc(15px * var(--esc)); letter-spacing: .04em; cursor: pointer;
+    }
+    .hor-btn:disabled { opacity: .5; cursor: default; }
+    .hor-error {
+      margin-top: 14px; padding: 12px 14px; border: 1px solid var(--fg);
+      font-size: calc(13.5px * var(--esc)); line-height: 1.5;
+    }
+    .hor-portal { margin-top: 18px; font-size: calc(13px * var(--esc)); color: var(--muted); }
+
+    /* --- confirmación --- */
+    .hor-listo { border: 1px solid var(--fg); background: var(--rosa); padding: 34px 24px; text-align: center; margin-top: 26px; }
+    .hor-listo .tick { display: block; margin: 0 auto 16px; }
+    .hor-listo h2 { font-family: var(--font-titulo); font-size: calc(24px * var(--esc) * var(--esc-tit)); margin-bottom: 12px; border: 0; padding: 0; letter-spacing: 0; text-transform: none; color: var(--fg); }
+    .hor-listo p { font-size: calc(15px * var(--esc)); line-height: 1.6; margin-bottom: 8px; }
+    .hor-listo .cuando { font-size: calc(17px * var(--esc)); }
+
+    .hor-vacio { font-size: calc(13.5px * var(--esc)); color: var(--muted); line-height: 1.6; }
+  </style>
+  <style is:global>
+    .hor-serie { list-style: none; padding: 0; margin: 0 0 18px; display: grid; gap: 6px; }
+    .hor-serie li { font-size: calc(14px * var(--esc)); line-height: 1.5; padding: 8px 12px; border: 1px solid var(--line); }
+    .hor-opcional { color: var(--muted); font-weight: normal; }
+    .hor-wa { display: flex; align-items: center; justify-content: center; text-decoration: none; }
+  </style>
+</head>
+<body data-pagina="horarios">
+  <Fragment set:html={headerHtml(data)} />
+  <main>
+    <div class="hor-wrap">
+      <h1>Separa tu horario del mes</h1>
+      <p class="hor-intro">
+        Elige el día y la hora de tu primera clase. Se separan ese día y las tres semanas
+        siguientes a la misma hora: cuatro clases de una hora. Al terminar te llega un correo con las cuatro fechas.
+      </p>
+      <p class="hor-tz" id="tzNota" hidden></p>
+
+      <section class="hor-paso" id="pasoDias">
+        <h2>1 · El día de tu primera clase</h2>
+        <div class="hor-dias" id="dias" aria-live="polite"><p class="hor-vacio">Cargando la agenda…</p></div>
+      </section>
+
+      <section class="hor-paso" id="pasoHoras" hidden>
+        <h2>2 · La hora</h2>
+        <div class="hor-horas" id="horas"></div>
+      </section>
+
+      <section id="pasoForm" hidden>
+        <div class="hor-card">
+          <p class="elegido" id="elegido"></p>
+          <p class="elegido-sub">Se separan estas cuatro clases:</p>
+          <ol class="hor-serie" id="serie"></ol>
+          <form id="formReserva" novalidate>
+            <div class="hor-campo">
+              <label for="f_nombre">Tu nombre</label>
+              <input id="f_nombre" name="nombre" type="text" autocomplete="name" maxlength="60" required />
+            </div>
+            <div class="hor-campo">
+              <label for="f_email">Tu correo (ahí te llegan tus horarios)</label>
+              <input id="f_email" name="email" type="email" autocomplete="email" maxlength="120" required />
+            </div>
+            <div class="hor-campo">
+              <label for="f_wa">Tu WhatsApp <span class="hor-opcional">(opcional)</span></label>
+              <input id="f_wa" name="whatsapp" type="tel" inputmode="numeric" autocomplete="tel" placeholder="999 888 777" maxlength="15" />
+            </div>
+            <div class="hor-hp" aria-hidden="true">
+              <label for="f_web">No llenar</label>
+              <input id="f_web" name="website" type="text" tabindex="-1" autocomplete="off" />
+            </div>
+            <button class="hor-btn" type="submit" id="btnReservar">Separar mis 4 clases</button>
+          </form>
+          <div class="hor-error" id="errorBox" hidden></div>
+        </div>
+      </section>
+
+      <section id="pasoListo" hidden>
+        <div class="hor-listo">
+          <svg class="tick" width="38" height="38" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <circle cx="12" cy="12" r="10"></circle><path d="M8 12.5l2.5 2.5L16 9.5"></path>
+          </svg>
+          <h2>Listo, quedaron separadas</h2>
+          <ol class="hor-serie" id="listoSerie"></ol>
+          <p id="listoCorreo"></p>
+        </div>
+      </section>
+    </div>
+  </main>
+  <Fragment set:html={pieHtml(data)} />
+
+  <script is:inline define:vars={{ ORIGEN }}>
+    (function () {
+      var toggle = document.querySelector('.menu-toggle');
+      var nav = document.querySelector('header nav');
+      if (!toggle || !nav) return;
+      toggle.addEventListener('click', function () {
+        var open = toggle.getAttribute('aria-expanded') === 'true';
+        toggle.setAttribute('aria-expanded', String(!open));
+        nav.classList.toggle('open', !open);
+      });
+    })();
+    (function () {
+      var API = ORIGEN + '/api/agenda/privado';
+      var LIMA = 'America/Lima';
+      var tz = LIMA;
+      try { tz = Intl.DateTimeFormat().resolvedOptions().timeZone || LIMA; } catch (e) {}
+      var K = new URLSearchParams(location.search).get('k') || '';
+      function fmt(iso, opts) { return new Intl.DateTimeFormat('es-PE', Object.assign({ timeZone: tz }, opts)).format(new Date(iso)); }
+      function claveLocal(d) { return new Intl.DateTimeFormat('en-CA', { timeZone: tz, year: 'numeric', month: '2-digit', day: '2-digit' }).format(d); }
+      function largo(iso) { return fmt(iso, { weekday: 'long', day: 'numeric', month: 'long' }) + ' · ' + fmt(iso, { hour: 'numeric', minute: '2-digit' }); }
+      function notaTz() {
+        if (tz === LIMA) return;
+        var n = document.getElementById('tzNota');
+        n.textContent = 'Las horas se muestran en tu hora local (' + tz.replace(/_/g, ' ') + '). Nicole está en Lima.';
+        n.hidden = false;
+      }
+      function pintarDias(elDias, porDia, alElegir) {
+        var claves = Object.keys(porDia).sort();
+        elDias.innerHTML = claves.map(function (c) {
+          var iso = porDia[c][0];
+          return '<button type="button" class="hor-dia" data-dia="' + c + '" aria-pressed="false">' +
+            '<span class="d-sem">' + fmt(iso, { weekday: 'short' }).replace('.', '') + '</span>' +
+            '<span class="d-num">' + fmt(iso, { day: 'numeric' }) + '</span>' +
+            '<span class="d-est">' + fmt(iso, { month: 'short' }).replace('.', '') + '</span></button>';
+        }).join('');
+        elDias.onclick = function (e) {
+          var b = e.target.closest('.hor-dia');
+          if (!b) return;
+          elDias.querySelectorAll('.hor-dia').forEach(function (x) { x.setAttribute('aria-pressed', String(x === b)); });
+          alElegir(b.dataset.dia);
+        };
+        if (claves.length) elDias.querySelector('.hor-dia').click();
+      }
+      function pintarHoras(elHoras, isos, alElegir) {
+        elHoras.innerHTML = isos.map(function (iso) {
+          return '<button type="button" class="hor-hora" data-iso="' + iso + '" aria-pressed="false">' + fmt(iso, { hour: 'numeric', minute: '2-digit' }) + '</button>';
+        }).join('');
+        elHoras.onclick = function (e) {
+          var b = e.target.closest('.hor-hora');
+          if (!b) return;
+          elHoras.querySelectorAll('.hor-hora').forEach(function (x) { x.setAttribute('aria-pressed', String(x === b)); });
+          alElegir(b.dataset.iso);
+        };
+      }
+      var elDias = document.getElementById('dias'), elHoras = document.getElementById('horas');
+      var pasoHoras = document.getElementById('pasoHoras'), pasoForm = document.getElementById('pasoForm');
+      var pasoListo = document.getElementById('pasoListo'), errorBox = document.getElementById('errorBox');
+      var btn = document.getElementById('btnReservar');
+      var porDia = {}, fechasDe = {}, elegido = null;
+
+      function error(msg) { errorBox.textContent = msg; errorBox.hidden = false; }
+      function lista(el, fechas) { el.innerHTML = fechas.map(function (f) { return '<li>' + largo(f) + '</li>'; }).join(''); }
+
+      function alDia(clave) {
+        elegido = null; pasoForm.hidden = true; errorBox.hidden = true;
+        pintarHoras(elHoras, porDia[clave] || [], alHora);
+        pasoHoras.hidden = false;
+      }
+      function alHora(iso) {
+        elegido = iso; errorBox.hidden = true;
+        var dia = fmt(iso, { weekday: 'long' });
+        document.getElementById('elegido').textContent = 'Todos los ' + dia + ' a las ' + fmt(iso, { hour: 'numeric', minute: '2-digit' });
+        lista(document.getElementById('serie'), fechasDe[iso]);
+        pasoForm.hidden = false;
+        pasoForm.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      }
+
+      document.getElementById('formReserva').addEventListener('submit', function (e) {
+        e.preventDefault();
+        if (!elegido) { error('Elige primero una hora.'); return; }
+        var nombre = document.getElementById('f_nombre').value.trim();
+        var email = document.getElementById('f_email').value.trim();
+        var wa = document.getElementById('f_wa').value.replace(/[^\d]/g, '');
+        if (nombre.length < 2) { error('Escribe tu nombre.'); return; }
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)) { error('Escribe un correo válido: ahí te llegan tus horarios.'); return; }
+        if (wa.length === 11 && wa.indexOf('51') === 0) wa = wa.slice(2);
+        if (wa && !/^9\d{8}$/.test(wa)) { error('Ese WhatsApp no parece peruano. Son 9 números y empiezan con 9, o déjalo en blanco.'); return; }
+        btn.disabled = true; btn.textContent = 'Separando…'; errorBox.hidden = true;
+        fetch(API + '/reservar', {
+          method: 'POST', headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ k: K, inicio_utc: elegido, nombre: nombre, email: email, whatsapp: wa, website: document.getElementById('f_web').value })
+        })
+          .then(function (r) { return r.json().then(function (d) { return { ok: r.ok, d: d }; }); })
+          .then(function (res) {
+            btn.disabled = false; btn.textContent = 'Separar mis 4 clases';
+            if (!res.ok || !res.d.ok) { error(res.d.error || 'No se pudo separar el horario. Intenta de nuevo.'); if (res.d.error && res.d.error.indexOf('libre') > -1) cargar(); return; }
+            lista(document.getElementById('listoSerie'), res.d.fechas || fechasDe[elegido]);
+            document.getElementById('listoCorreo').textContent = res.d.correo
+              ? 'Te enviamos estas fechas a ' + email + '.'
+              : 'Guarda esta pantalla: Nicole ya tiene tu reserva y te escribirá para confirmarte.';
+            document.getElementById('pasoDias').hidden = true; pasoHoras.hidden = true; pasoForm.hidden = true;
+            pasoListo.hidden = false; pasoListo.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          })
+          .catch(function () { btn.disabled = false; btn.textContent = 'Separar mis 4 clases'; error('No hay conexión con la agenda. Revisa tu internet e intenta de nuevo.'); });
+      });
+
+      function cargar() {
+        if (!K) { elDias.innerHTML = '<p class="hor-vacio">Este enlace está incompleto. Pídele a Nicole el suyo.</p>'; return; }
+        fetch(API + '/series?k=' + encodeURIComponent(K))
+          .then(function (r) { return r.json(); })
+          .then(function (d) {
+            if (d.error) { elDias.innerHTML = '<p class="hor-vacio">' + d.error + '</p>'; return; }
+            porDia = {}; fechasDe = {};
+            (d.series || []).forEach(function (s) {
+              var c = claveLocal(new Date(s.inicio));
+              (porDia[c] = porDia[c] || []).push(s.inicio);
+              fechasDe[s.inicio] = s.fechas;
+            });
+            if (!Object.keys(porDia).length) {
+              elDias.innerHTML = '<p class="hor-vacio">Este mes ya no quedan horarios con cuatro semanas libres. Escríbele a Nicole por <a href="https://wa.me/51955127656">WhatsApp</a>.</p>';
+              return;
+            }
+            notaTz();
+            pintarDias(elDias, porDia, alDia);
+          })
+          .catch(function () { elDias.innerHTML = '<p class="hor-vacio">No pudimos cargar la agenda. Intenta de nuevo en un momento.</p>'; });
+      }
+      cargar();
+    })();
+  </script>
+</body>
+</html>

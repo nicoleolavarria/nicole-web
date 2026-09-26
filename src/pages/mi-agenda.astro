@@ -1,0 +1,307 @@
+---
+/* MI AGENDA (privado, solo Nicole). Panel mínimo: ver clases, moverlas, cancelarlas,
+   agregar alumnos con las clases que les quedan y pasar su Google Calendar. */
+import { obtenerWeb, ORIGEN } from '../lib/web-data.mjs';
+import { headerHtml, pieHtml, estiloCss, fuentesHref, mezclar } from '../lib/web-render.mjs';
+
+const { web } = await obtenerWeb();
+const data = mezclar(web);
+const cssExtra = estiloCss(data);
+const hrefFuentes = fuentesHref(data);
+---
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Mi agenda — Nicole Olavarría</title>
+  <meta name="description" content="Agenda privada de Nicole." />
+  <meta name="robots" content="noindex, nofollow" />
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+  <link rel="icon" href="/favicon-32.png" sizes="32x32" type="image/png" />
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:ital,wght@0,300;0,400;0,500;1,300;1,400&display=swap" rel="stylesheet" />
+  {hrefFuentes && <link href={hrefFuentes} rel="stylesheet" id="fuentesNicole" />}
+  <link rel="stylesheet" href="/styles/global.css" />
+  {cssExtra && <style id="estiloNicole" set:html={cssExtra} />}
+  <style is:global>
+    /* El rosa lo eligió Nicole. Aquí es el color de lo elegido, no del fondo:
+       marca la fecha y la hora que la persona acaba de tocar. */
+    :root { --rosa: #fee1f2; }
+
+    .hor-wrap { max-width: min(680px, var(--ancho)); margin: 0 auto; padding: 44px 20px 72px; }
+    @media (min-width: 700px) { .hor-wrap { padding: 72px 40px 96px; } }
+
+    .hor-wrap h1 { margin-bottom: 10px; }
+    .hor-intro { font-size: calc(14px * var(--esc)); line-height: 1.65; color: var(--muted); margin-bottom: 6px; }
+    .hor-tz { font-size: calc(12.5px * var(--esc)); color: var(--muted); margin: 10px 0 0; }
+
+    .hor-paso { margin-top: 34px; }
+    .hor-paso > h2 {
+      font-family: var(--font-titulo); font-size: calc(11px * var(--esc));
+      letter-spacing: .12em; text-transform: uppercase; color: var(--muted);
+      border-bottom: 1px solid var(--line); padding-bottom: 8px; margin-bottom: 16px;
+    }
+
+    /* --- tira de días --- */
+    .hor-dias { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 10px; -webkit-overflow-scrolling: touch; }
+    .hor-dias::-webkit-scrollbar { height: 3px; }
+    .hor-dias::-webkit-scrollbar-thumb { background: var(--line); }
+    .hor-dia {
+      flex: 0 0 auto; min-width: 74px; min-height: 78px;
+      display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px;
+      border: 1px solid var(--line); background: var(--bg); color: var(--fg);
+      font-family: var(--font-cuerpo); cursor: pointer; padding: 10px 8px;
+      transition: border-color .12s, background .12s;
+    }
+    .hor-dia .d-sem { font-size: calc(11px * var(--esc)); letter-spacing: .08em; text-transform: lowercase; color: var(--muted); }
+    .hor-dia .d-num { font-size: calc(21px * var(--esc)); line-height: 1.1; }
+    .hor-dia .d-est { font-size: calc(10px * var(--esc)); letter-spacing: .06em; color: var(--muted); }
+    .hor-dia[aria-pressed="true"] { background: var(--rosa); border-color: var(--fg); }
+    .hor-dia[aria-pressed="true"] .d-sem, .hor-dia[aria-pressed="true"] .d-est { color: var(--fg); }
+    .hor-dia:disabled { cursor: default; opacity: .45; }
+
+    /* --- horas --- */
+    .hor-horas { display: grid; grid-template-columns: repeat(auto-fill, minmax(112px, 1fr)); gap: 10px; }
+    .hor-hora {
+      min-height: 52px; border: 1px solid var(--line); background: var(--bg); color: var(--fg);
+      font-family: var(--font-cuerpo); font-size: calc(15px * var(--esc)); cursor: pointer;
+      transition: border-color .12s, background .12s;
+    }
+    .hor-hora:hover { border-color: var(--fg); }
+    .hor-hora[aria-pressed="true"] { background: var(--rosa); border-color: var(--fg); }
+
+    /* --- tarjeta de reserva --- */
+    .hor-card { border: 1px solid var(--fg); padding: 22px 20px; margin-top: 26px; background: var(--bg); }
+    .hor-card .elegido { font-size: calc(17px * var(--esc)); line-height: 1.45; margin-bottom: 4px; }
+    .hor-card .elegido-sub { font-size: calc(12.5px * var(--esc)); color: var(--muted); margin-bottom: 18px; }
+    .hor-campo { margin-bottom: 14px; }
+    .hor-campo label { display: block; font-size: calc(12px * var(--esc)); letter-spacing: .06em; color: var(--muted); margin-bottom: 6px; }
+    .hor-campo input {
+      width: 100%; min-height: 50px; padding: 0 12px; box-sizing: border-box;
+      border: 1px solid var(--line); background: var(--bg); color: var(--fg);
+      font-family: var(--font-cuerpo); font-size: calc(15px * var(--esc));
+    }
+    .hor-campo input:focus { outline: none; border-color: var(--fg); }
+    .hor-hp { position: absolute; left: -9999px; width: 1px; height: 1px; overflow: hidden; }
+
+    .hor-btn {
+      width: 100%; min-height: 54px; border: 1px solid var(--fg); background: var(--fg); color: var(--bg);
+      font-family: var(--font-cuerpo); font-size: calc(15px * var(--esc)); letter-spacing: .04em; cursor: pointer;
+    }
+    .hor-btn:disabled { opacity: .5; cursor: default; }
+    .hor-error {
+      margin-top: 14px; padding: 12px 14px; border: 1px solid var(--fg);
+      font-size: calc(13.5px * var(--esc)); line-height: 1.5;
+    }
+    .hor-portal { margin-top: 18px; font-size: calc(13px * var(--esc)); color: var(--muted); }
+
+    /* --- confirmación --- */
+    .hor-listo { border: 1px solid var(--fg); background: var(--rosa); padding: 34px 24px; text-align: center; margin-top: 26px; }
+    .hor-listo .tick { display: block; margin: 0 auto 16px; }
+    .hor-listo h2 { font-family: var(--font-titulo); font-size: calc(24px * var(--esc) * var(--esc-tit)); margin-bottom: 12px; border: 0; padding: 0; letter-spacing: 0; text-transform: none; color: var(--fg); }
+    .hor-listo p { font-size: calc(15px * var(--esc)); line-height: 1.6; margin-bottom: 8px; }
+    .hor-listo .cuando { font-size: calc(17px * var(--esc)); }
+
+    .hor-vacio { font-size: calc(13.5px * var(--esc)); color: var(--muted); line-height: 1.6; }
+  </style>
+  <style is:global>
+    .hor-serie { list-style: none; padding: 0; margin: 0 0 18px; display: grid; gap: 6px; }
+    .hor-serie li { font-size: calc(14px * var(--esc)); line-height: 1.5; padding: 8px 12px; border: 1px solid var(--line); }
+    .hor-opcional { color: var(--muted); font-weight: normal; }
+    .hor-wa { display: flex; align-items: center; justify-content: center; text-decoration: none; }
+  </style>
+  <style is:global>
+    .ag-sec { margin-top: 38px; }
+    .ag-sec > h2 { font-family: var(--font-titulo); font-size: calc(11px * var(--esc)); letter-spacing: .12em; text-transform: uppercase; color: var(--muted); border-bottom: 1px solid var(--line); padding-bottom: 8px; margin-bottom: 14px; }
+    .ag-dia { font-size: calc(13px * var(--esc)); color: var(--muted); margin: 18px 0 8px; text-transform: capitalize; }
+    .ag-clase { border: 1px solid var(--line); padding: 12px 14px; margin-bottom: 8px; display: grid; gap: 10px; }
+    .ag-clase .quien { font-size: calc(16px * var(--esc)); }
+    .ag-clase .quien small { display: block; color: var(--muted); font-size: calc(12.5px * var(--esc)); margin-top: 2px; }
+    .ag-acciones { display: flex; gap: 8px; flex-wrap: wrap; }
+    .ag-btn { min-height: 44px; padding: 0 16px; border: 1px solid var(--fg); background: var(--bg); color: var(--fg); font-family: var(--font-cuerpo); font-size: calc(14px * var(--esc)); cursor: pointer; }
+    .ag-btn.lleno { background: var(--fg); color: var(--bg); }
+    .ag-btn.peligro[data-seguro="1"] { background: #b3261e; border-color: #b3261e; color: #fff; }
+    .ag-mover { display: grid; gap: 8px; }
+    .ag-mover select, .ag-form input, .ag-form select { width: 100%; min-height: 48px; padding: 0 10px; box-sizing: border-box; border: 1px solid var(--line); background: var(--bg); color: var(--fg); font-family: var(--font-cuerpo); font-size: calc(15px * var(--esc)); }
+    .ag-form { display: grid; gap: 12px; border: 1px solid var(--line); padding: 16px; }
+    .ag-form label { display: grid; gap: 6px; font-size: calc(12.5px * var(--esc)); color: var(--muted); }
+    .ag-fila { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .ag-alumno { display: flex; justify-content: space-between; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--line); font-size: calc(15px * var(--esc)); }
+    .ag-alumno b { font-weight: 500; white-space: nowrap; }
+    .ag-msg { margin-top: 10px; padding: 10px 12px; border: 1px solid var(--fg); font-size: calc(14px * var(--esc)); }
+    .ag-vacio { color: var(--muted); font-size: calc(14px * var(--esc)); line-height: 1.6; }
+  </style>
+</head>
+<body data-pagina="horarios">
+  <main>
+    <div class="hor-wrap">
+      <h1>Mi agenda</h1>
+      <p class="hor-intro">Tus clases de las próximas semanas. Desde aquí puedes moverlas, cancelarlas y agregar alumnos.</p>
+
+      <section class="ag-sec">
+        <h2>Próximas clases</h2>
+        <div id="clases"><p class="ag-vacio">Cargando…</p></div>
+      </section>
+
+      <section class="ag-sec">
+        <h2>Tus alumnos</h2>
+        <div id="alumnos"></div>
+      </section>
+
+      <section class="ag-sec">
+        <h2>Agregar un alumno</h2>
+        <form class="ag-form" id="formAgregar" novalidate>
+          <label>Nombre<input id="a_nombre" type="text" maxlength="60" required /></label>
+          <div class="ag-fila">
+            <label>WhatsApp (opcional)<input id="a_wa" type="tel" inputmode="numeric" maxlength="15" /></label>
+            <label>Correo (opcional)<input id="a_email" type="email" maxlength="120" /></label>
+          </div>
+          <div class="ag-fila">
+            <label>Día de su próxima clase<input id="a_fecha" type="date" required /></label>
+            <label>Hora<select id="a_hora"></select></label>
+          </div>
+          <label>¿Cuántas clases le quedan?<input id="a_n" type="number" min="1" max="24" value="4" required /></label>
+          <button class="ag-btn lleno" type="submit">Agregar alumno</button>
+          <div class="ag-msg" id="msgAgregar" hidden></div>
+        </form>
+      </section>
+
+      <section class="ag-sec">
+        <h2>Pasar tu Google Calendar</h2>
+        <p class="ag-vacio">Revisa las clases que ya tienes en tu Google Calendar y pásalas aquí con un toque, para que nadie reserve encima.</p>
+        <button class="ag-btn" id="btnGcal" type="button">Revisar mi calendario</button>
+        <div id="gcal"></div>
+      </section>
+    </div>
+  </main>
+
+  <script is:inline define:vars={{ ORIGEN }}>
+    (function () {
+      var API = ORIGEN + '/api/agenda/panel';
+      var K = new URLSearchParams(location.search).get('k') || '';
+      var LIMA = 'America/Lima';
+      var libres = [], horas = [];
+      function f(iso, o) { return new Intl.DateTimeFormat('es-PE', Object.assign({ timeZone: LIMA }, o)).format(new Date(iso)); }
+      function hora(iso) { return f(iso, { hour: 'numeric', minute: '2-digit' }); }
+      function dia(iso) { return f(iso, { weekday: 'long', day: 'numeric', month: 'long' }); }
+      function esc(s) { return String(s || '').replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+      function get(ruta) { return fetch(API + ruta + (ruta.indexOf('?') > -1 ? '&' : '?') + 'k=' + encodeURIComponent(K)).then(function (r) { return r.json(); }); }
+      function post(ruta, datos) {
+        datos.k = K;
+        return fetch(API + ruta, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(datos) }).then(function (r) { return r.json(); });
+      }
+      function confirmar(btn, accion) {
+        if (btn.dataset.seguro === '1') { accion(); return; }
+        var txt = btn.textContent;
+        btn.dataset.seguro = '1'; btn.textContent = '¿Segura? Toca otra vez';
+        setTimeout(function () { btn.dataset.seguro = ''; btn.textContent = txt; }, 4000);
+      }
+
+      function pintarClases(clases) {
+        var el = document.getElementById('clases');
+        if (!clases.length) { el.innerHTML = '<p class="ag-vacio">No tienes clases en las próximas semanas.</p>'; return; }
+        var html = '', ultimo = '';
+        clases.forEach(function (c) {
+          var d = dia(c.inicio_utc);
+          if (d !== ultimo) { html += '<p class="ag-dia">' + d + '</p>'; ultimo = d; }
+          var sub = [];
+          if (c.whatsapp) sub.push('<a href="https://wa.me/' + esc(c.whatsapp) + '">WhatsApp</a>');
+          if (c.email) sub.push(esc(c.email));
+          html += '<div class="ag-clase" data-id="' + esc(c.id) + '"><div class="quien">' + hora(c.inicio_utc) + ' · ' + esc(c.nombre || 'Sin nombre') +
+            (sub.length ? '<small>' + sub.join(' · ') + '</small>' : '') + '</div>' +
+            '<div class="ag-acciones"><button class="ag-btn" data-accion="mover" type="button">Mover</button>' +
+            '<button class="ag-btn peligro" data-accion="cancelar" type="button">Cancelar</button></div><div class="ag-mover-box"></div></div>';
+        });
+        el.innerHTML = html;
+      }
+      function pintarAlumnos(alumnos) {
+        var el = document.getElementById('alumnos');
+        if (!alumnos.length) { el.innerHTML = '<p class="ag-vacio">Todavía no hay alumnos con clases.</p>'; return; }
+        el.innerHTML = alumnos.sort(function (a, b) { return a.nombre.localeCompare(b.nombre); }).map(function (a) {
+          return '<div class="ag-alumno"><span>' + esc(a.nombre) + '</span><b>' + (a.restantes === 1 ? 'le queda 1 clase' : 'le quedan ' + a.restantes + ' clases') + '</b></div>';
+        }).join('');
+      }
+
+      document.getElementById('clases').addEventListener('click', function (e) {
+        var btn = e.target.closest('button'); if (!btn) return;
+        var fila = btn.closest('.ag-clase'), id = fila.dataset.id;
+        if (btn.dataset.accion === 'cancelar') {
+          confirmar(btn, function () {
+            btn.disabled = true;
+            post('/cancelar', { id: id }).then(function (d) { if (d.ok) cargar(); else { btn.disabled = false; alerta(fila, d.error); } });
+          });
+        }
+        if (btn.dataset.accion === 'mover') {
+          var box = fila.querySelector('.ag-mover-box');
+          if (box.innerHTML) { box.innerHTML = ''; return; }
+          var ops = libres.map(function (iso) { return '<option value="' + iso + '">' + dia(iso) + ' · ' + hora(iso) + '</option>'; }).join('');
+          box.innerHTML = '<div class="ag-mover"><select>' + ops + '</select><button class="ag-btn lleno" data-accion="confirmar" type="button">Mover aquí</button></div>';
+        }
+        if (btn.dataset.accion === 'confirmar') {
+          var sel = fila.querySelector('select');
+          btn.disabled = true;
+          post('/mover', { id: id, nuevo_inicio: sel.value }).then(function (d) { if (d.ok) cargar(); else { btn.disabled = false; alerta(fila, d.error); } });
+        }
+      });
+      function alerta(el, msg) { var m = document.createElement('div'); m.className = 'ag-msg'; m.textContent = msg || 'No se pudo. Intenta otra vez.'; el.appendChild(m); }
+
+      document.getElementById('formAgregar').addEventListener('submit', function (e) {
+        e.preventDefault();
+        var msg = document.getElementById('msgAgregar');
+        var fecha = document.getElementById('a_fecha').value, h = document.getElementById('a_hora').value;
+        if (!fecha) { msg.textContent = 'Elige el día de su próxima clase.'; msg.hidden = false; return; }
+        var inicio = new Date(fecha + 'T' + h + ':00-05:00').toISOString();
+        post('/agregar', {
+          nombre: document.getElementById('a_nombre').value, whatsapp: document.getElementById('a_wa').value,
+          email: document.getElementById('a_email').value, inicio_utc: inicio, clases: document.getElementById('a_n').value
+        }).then(function (d) {
+          if (d.error) { msg.textContent = d.error; msg.hidden = false; return; }
+          msg.textContent = 'Listo: ' + d.creadas.length + ' clases agregadas' + (d.chocan.length ? '. Ojo: ' + d.chocan.length + ' chocaban con otra clase y no se agregaron.' : '.');
+          msg.hidden = false;
+          document.getElementById('formAgregar').reset();
+          cargar();
+        });
+      });
+
+      document.getElementById('btnGcal').addEventListener('click', function () {
+        var el = document.getElementById('gcal');
+        el.innerHTML = '<p class="ag-vacio">Revisando…</p>';
+        get('/gcal').then(function (d) {
+          if (!d.conectado) { el.innerHTML = '<p class="ag-vacio">Tu Google Calendar no está conectado a tu agenda. Pídele a Andrés que lo conecte.</p>'; return; }
+          if (!d.alumnos || !d.alumnos.length) { el.innerHTML = '<p class="ag-vacio">No hay clases nuevas en tu calendario para pasar.</p>'; return; }
+          window.__gcal = d.alumnos;
+          el.innerHTML = d.alumnos.map(function (a, i) {
+            return '<div class="ag-clase"><div class="quien">' + esc(a.titulo) + '<small>' + esc(a.horario.join(', ')) + ' · ' + a.clases_futuras + ' clases próximas</small></div>' +
+              '<div class="ag-acciones"><button class="ag-btn lleno" data-i="' + i + '" type="button">Pasar al sistema</button></div></div>';
+          }).join('');
+        });
+      });
+      document.getElementById('gcal').addEventListener('click', function (e) {
+        var btn = e.target.closest('button[data-i]'); if (!btn) return;
+        var a = window.__gcal[+btn.dataset.i];
+        btn.disabled = true; btn.textContent = 'Pasando…';
+        post('/agregar', { nombre: a.titulo, fechas: a.eventos, desde_gcal: true }).then(function (d) {
+          btn.textContent = d.error ? d.error : ('Listo · ' + d.creadas.length + ' clases');
+          cargar();
+        });
+      });
+
+      function cargar() {
+        if (!K) { document.getElementById('clases').innerHTML = '<p class="ag-vacio">Este enlace está incompleto.</p>'; return; }
+        get('').then(function (d) {
+          if (d.error) { document.getElementById('clases').innerHTML = '<p class="ag-vacio">' + esc(d.error) + '</p>'; return; }
+          libres = d.libres || [];
+          horas = (d.reglas && d.reglas.horas) || [];
+          document.getElementById('a_hora').innerHTML = horas.map(function (h) { return '<option value="' + h + '">' + h + '</option>'; }).join('');
+          pintarClases(d.clases || []);
+          pintarAlumnos(d.alumnos || []);
+        }).catch(function () { document.getElementById('clases').innerHTML = '<p class="ag-vacio">No se pudo cargar tu agenda. Revisa tu internet.</p>'; });
+      }
+      cargar();
+    })();
+  </script>
+</body>
+</html>

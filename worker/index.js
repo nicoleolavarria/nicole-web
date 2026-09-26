@@ -2797,17 +2797,24 @@ async function privPreviaGcal(env, dias){
     if (!ev.start || !ev.start.dateTime) continue;          // eventos de día completo no son clases
     const titulo = String(ev.summary || "(sin título)").trim();
     if (!grupos.has(titulo)) grupos.set(titulo, []);
-    grupos.get(titulo).push(ev.start.dateTime);
+    grupos.get(titulo).push({ id: ev.id || "", inicio: new Date(Date.parse(ev.start.dateTime)).toISOString() });
   }
-  const alumnos = [...grupos.entries()].map(([titulo, inicios]) => {
+  // Horas que ya están en el sistema: no se ofrecen para importar de nuevo.
+  const { results: ya } = await env.DB.prepare(
+    "SELECT inicio_utc FROM reservas WHERE estado IN ('reservada','pendiente','completada') AND inicio_utc >= ?1"
+  ).bind(new Date(now).toISOString()).all();
+  const enSistema = new Set((ya || []).map(r => r.inicio_utc));
+  const alumnos = [...grupos.entries()].map(([titulo, evs]) => {
+    const eventos = evs.filter(e => !enSistema.has(e.inicio));
+    const inicios = eventos.map(e => e.inicio);
     const pat = new Map();
     for (const iso of inicios){
       const p = limaParts(new Date(Date.parse(iso)));
       const k = DIAS_FIJO[p.dow] + " " + hhmm(p);
       pat.set(k, (pat.get(k) || 0) + 1);
     }
-    return { titulo, clases_futuras: inicios.length, horario: [...pat.keys()], proxima: inicios[0] };
-  }).sort((a, b) => b.clases_futuras - a.clases_futuras);
+    return { titulo, clases_futuras: inicios.length, horario: [...pat.keys()], proxima: inicios[0] || "", eventos };
+  }).filter(a => a.clases_futuras > 0).sort((a, b) => b.clases_futuras - a.clases_futuras);
   return { conectado: true, dias, alumnos };
 }
 
@@ -3016,7 +3023,7 @@ export default {
     }
     /* Preflight de la reserva pública: el navegador pregunta antes del POST con JSON. Solo se le
        abre la puerta a los dos dominios de Nicole (el resto sigue cayendo en el 204 pelado). */
-    if (request.method === "OPTIONS" && (url.pathname === "/api/agenda/reservar-publico" || url.pathname === "/api/agenda/privado/reservar")){
+    if (request.method === "OPTIONS" && (url.pathname === "/api/agenda/reservar-publico" || url.pathname === "/api/agenda/privado/reservar" || url.pathname.startsWith("/api/agenda/panel/"))){
       const o = origenWeb(request);
       const r = new Response(null, { status: 204 });
       if (o){
@@ -4360,6 +4367,115 @@ export default {
         return conCors(json({ ok: true, fechas, correo: correoOk }), origen);
       }
 
+      /* ===== MI AGENDA (panel mínimo de Nicole, 26-sep-2026) =====
+         Una sola página privada (/mi-agenda?k=…) para ver sus clases, moverlas, cancelarlas,
+         agregar alumnos con las clases que les quedan y pasar su Google Calendar al sistema.
+         Sin login: la llave es el enlace (config priv_token_panel). */
+      if (url.pathname.startsWith("/api/agenda/panel")){
+        const origen = origenWeb(request);
+        const esPost = request.method === "POST";
+        const b = esPost ? await request.json().catch(() => ({})) : {};
+        const cfg = await loadConfig(env);
+        if (!privTokenOk(cfg, "priv_token_panel", esPost ? b.k : url.searchParams.get("k"))){
+          return conCors(json({ error: "Este enlace no es válido." }, 403), origen);
+        }
+        const ahoraIso = new Date().toISOString();
+
+        if (url.pathname === "/api/agenda/panel" && !esPost){
+          const hasta = new Date(Date.now() + 70 * 86400000).toISOString();
+          const { results } = await env.DB.prepare(
+            "SELECT r.id, r.inicio_utc, r.tipo, r.estado, r.serie_id, COALESCE(r.origen,'') AS origen, " +
+            "COALESCE(NULLIF(r.lead_nombre,''), a.nombre, '') AS nombre, COALESCE(NULLIF(r.lead_email,''), '') AS email, " +
+            "COALESCE(NULLIF(r.lead_whatsapp,''), '') AS whatsapp " +
+            "FROM reservas r LEFT JOIN alumnos a ON a.id = r.alumno_id " +
+            "WHERE r.estado IN ('reservada','pendiente') AND COALESCE(r.tipo,'') != 'bloqueo' AND r.inicio_utc >= ?1 AND r.inicio_utc <= ?2 " +
+            "ORDER BY r.inicio_utc ASC"
+          ).bind(new Date(Date.now() - 2 * 3600000).toISOString(), hasta).all();
+          const clases = results || [];
+          const porAlumno = new Map();
+          for (const c of clases){
+            const k = (c.email || c.nombre || "?").toLowerCase();
+            if (!porAlumno.has(k)) porAlumno.set(k, { nombre: c.nombre, email: c.email, whatsapp: c.whatsapp, restantes: 0, proxima: c.inicio_utc });
+            if (c.inicio_utc >= ahoraIso) porAlumno.get(k).restantes++;
+          }
+          return conCors(json({ clases, alumnos: [...porAlumno.values()], libres: await privLibres(env), reglas: privCfg(cfg) }), origen);
+        }
+
+        if (url.pathname === "/api/agenda/panel/gcal" && !esPost){
+          return conCors(json(await privPreviaGcal(env, 42)), origen);
+        }
+
+        if (url.pathname === "/api/agenda/panel/cancelar" && esPost){
+          const r = await env.DB.prepare("SELECT id, gcal_event_id FROM reservas WHERE id = ?1 AND estado IN ('reservada','pendiente')").bind(String(b.id || "")).first();
+          if (!r) return conCors(json({ error: "No encuentro esa clase." }, 404), origen);
+          await env.DB.prepare("UPDATE reservas SET estado = 'cancelada', cancelada_utc = ?2, cancelada_por = 'profesor' WHERE id = ?1").bind(r.id, ahoraIso).run();
+          ctx.waitUntil((async () => {
+            if (r.gcal_event_id && await gcalBorrarEvento(env, r.gcal_event_id)){
+              await env.DB.prepare("UPDATE reservas SET gcal_event_id = '' WHERE id = ?1").bind(r.id).run();
+            }
+          })());
+          return conCors(json({ ok: true }), origen);
+        }
+
+        if (url.pathname === "/api/agenda/panel/mover" && esPost){
+          const r = await env.DB.prepare(
+            "SELECT id, gcal_event_id, COALESCE(lead_nombre,'') AS nombre, COALESCE(lead_email,'') AS email FROM reservas WHERE id = ?1 AND estado IN ('reservada','pendiente')"
+          ).bind(String(b.id || "")).first();
+          if (!r) return conCors(json({ error: "No encuentro esa clase." }, 404), origen);
+          const t = Date.parse(String(b.nuevo_inicio || ""));
+          const pc = privCfg(cfg);
+          const oc = await privOcupacion(env, pc, Date.now(), t + 86400000);
+          if (!Number.isFinite(t) || !privLibre(pc, oc, t, Date.now() - ANTICIPACION_MIN_H * 3600000)){
+            return conCors(json({ error: "Esa hora ya no está libre. Elige otra." }, 409), origen);
+          }
+          const nIso = new Date(t).toISOString(), nFin = new Date(t + CLASE_MIN * 60000).toISOString();
+          try {
+            await env.DB.prepare("UPDATE reservas SET inicio_utc = ?2, fin_utc = ?3, aviso_24 = 0, aviso_2 = 0 WHERE id = ?1").bind(r.id, nIso, nFin).run();
+          } catch (e){ return conCors(json({ error: "Esa hora ya está tomada." }, 409), origen); }
+          ctx.waitUntil((async () => {
+            if (r.gcal_event_id) await gcalBorrarEvento(env, r.gcal_event_id);
+            const eid = await gcalCrearEvento(env, { inicio_utc: nIso, fin_utc: nFin, curso: "", alumnoNombre: r.nombre, email: r.email });
+            await env.DB.prepare("UPDATE reservas SET gcal_event_id = ?2 WHERE id = ?1").bind(r.id, eid || "").run();
+          })());
+          return conCors(json({ ok: true, inicio: nIso }), origen);
+        }
+
+        /* Agregar alumno con horario fijo y N clases (sirve para pasar a los alumnos actuales).
+           desde_gcal: los eventos ya existen en su Google Calendar → no se duplican. */
+        if (url.pathname === "/api/agenda/panel/agregar" && esPost){
+          const nombre = String(b.nombre || "").trim().replace(/\s+/g, " ").slice(0, 60);
+          if (nombre.length < 2) return conCors(json({ error: "Escribe el nombre del alumno." }, 400), origen);
+          const email = String(b.email || "").trim().toLowerCase().slice(0, 120);
+          if (email && !emailOk(email)) return conCors(json({ error: "Ese correo no se ve bien." }, 400), origen);
+          let wa = String(b.whatsapp || "").replace(/[^\d]/g, "");
+          if (wa.length === 9) wa = "51" + wa;
+          const serie = crypto.randomUUID();
+          const creadas = [], chocan = [];
+          // Dos formas: lista exacta de fechas (desde Google Calendar) o primera clase + cuántas.
+          let fechas = Array.isArray(b.fechas) ? b.fechas.map(x => ({ iso: String(x.inicio || x), eid: String(x.id || "") })) : [];
+          if (!fechas.length){
+            const t0 = Date.parse(String(b.inicio_utc || ""));
+            const n = Math.min(24, Math.max(1, parseInt(b.clases, 10) || 0));
+            if (!Number.isFinite(t0)) return conCors(json({ error: "Elige el día y la hora de su próxima clase." }, 400), origen);
+            for (let i = 0; i < n; i++) fechas.push({ iso: new Date(t0 + i * 7 * 86400000).toISOString(), eid: "" });
+          }
+          for (const f of fechas.slice(0, 24)){
+            const t = Date.parse(f.iso);
+            if (!Number.isFinite(t)) continue;
+            const iso = new Date(t).toISOString(), fin = new Date(t + CLASE_MIN * 60000).toISOString();
+            try {
+              await env.DB.prepare(
+                "INSERT INTO reservas (id,alumno_id,inicio_utc,fin_utc,tipo,serie_id,estado,curso,nota,ciclo,creada,lead_nombre,lead_whatsapp,lead_email,origen,gcal_event_id) " +
+                "VALUES (?1,NULL,?2,?3,'fija',?4,'reservada','','',1,?5,?6,?7,?8,?9,?10)"
+              ).bind(crypto.randomUUID(), iso, fin, serie, ahoraIso, nombre, wa, email, b.desde_gcal ? "importada-gcal" : "panel", f.eid).run();
+              creadas.push(iso);
+            } catch (e){ chocan.push(iso); }
+          }
+          return conCors(json({ ok: creadas.length > 0, creadas, chocan }), origen);
+        }
+        return conCors(json({ error: "No encontrado" }, 404), origen);
+      }
+
       /* ===== AGENDA: feed ICS de las clases (para suscribirlo en Google Calendar) =====
          Es el puente SIN OAuth: Google Calendar → "Otros calendarios" → "Desde URL". Solo
          lectura, protegido por el mismo token de los avisos (la URL es la llave, como en
@@ -4661,7 +4777,7 @@ export default {
         if (url.pathname === "/api/admin/links-privados" && request.method === "GET"){
           const cfg = await loadConfig(env);
           const out = {};
-          for (const [clave, ruta] of [["priv_token_reserva", "/horarios-disponibles"], ["priv_token_libres", "/horarios-libres"]]){
+          for (const [clave, ruta] of [["priv_token_reserva", "/horarios-disponibles"], ["priv_token_libres", "/horarios-libres"], ["priv_token_panel", "/mi-agenda"]]){
             let t = String(cfg[clave] || "");
             if (t.length < 16){
               t = randHex(12);
@@ -4670,7 +4786,7 @@ export default {
             out[clave] = "https://www.nicoleolavarria.com" + ruta + "?k=" + t;
           }
           const pc = privCfg(cfg);
-          return json({ reservar: out.priv_token_reserva, libres: out.priv_token_libres, reglas: pc });
+          return json({ reservar: out.priv_token_reserva, libres: out.priv_token_libres, panel: out.priv_token_panel, reglas: pc });
         }
         /* ----- vista previa de su Google Calendar para importar alumnos ----- */
         if (url.pathname === "/api/admin/previa-gcal" && request.method === "GET"){

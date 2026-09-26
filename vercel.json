@@ -7,7 +7,7 @@
   "trailingSlash": false,
   "headers": [
     {
-      "source": "/horarios-(disponibles|libres)(.*)",
+      "source": "/(horarios-disponibles|horarios-libres|mi-agenda)(.*)",
       "headers": [
         {
           "key": "X-Robots-Tag",

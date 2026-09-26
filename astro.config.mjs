@@ -9,7 +9,7 @@ export default defineConfig({
   integrations: [
     sitemap({
       /* Enlaces privados de agenda (26-sep-2026): no van al sitemap. */
-      filter: (page) => !/\/(horarios-(disponibles|libres)|mi-agenda)/.test(page),
+      filter: (page) => !/\/(horarios-(disponibles|libres)|reprogramaciones|mi-agenda)/.test(page),
       /* Vercel sirve el sitio SIN barra final (vercel.json: cleanUrls + trailingSlash:false),
          pero Astro construye en carpetas y el sitemap sale con "/sesiones/". Se normaliza
          acá para que cada <loc> sea exactamente la URL que responde 200. La raíz se queda

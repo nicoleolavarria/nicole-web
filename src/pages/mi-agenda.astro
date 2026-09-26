@@ -141,6 +141,14 @@ const hrefFuentes = fuentesHref(data);
       <h1>Mi agenda</h1>
       <p class="hor-intro">Tus clases de las próximas semanas. Desde aquí puedes moverlas, cancelarlas y agregar alumnos.</p>
 
+      <section id="pinBox" hidden>
+        <form class="ag-form" id="formPin" novalidate>
+          <label>Tu PIN de 6 números<input id="pin" type="password" inputmode="numeric" autocomplete="current-password" maxlength="6" /></label>
+          <button class="ag-btn lleno" type="submit">Entrar</button>
+          <div class="ag-msg" id="pinMsg" hidden></div>
+        </form>
+      </section>
+
       <section class="ag-sec">
         <h2>Próximas clases</h2>
         <div id="clases"><p class="ag-vacio">Cargando…</p></div>
@@ -182,6 +190,7 @@ const hrefFuentes = fuentesHref(data);
     (function () {
       var API = ORIGEN + '/api/agenda/panel';
       var K = new URLSearchParams(location.search).get('k') || '';
+      try { if (!K) K = localStorage.getItem('miAgendaPin') || ''; } catch (e) {}
       var LIMA = 'America/Lima';
       var libres = [], horas = [];
       function f(iso, o) { return new Intl.DateTimeFormat('es-PE', Object.assign({ timeZone: LIMA }, o)).format(new Date(iso)); }
@@ -290,9 +299,12 @@ const hrefFuentes = fuentesHref(data);
       });
 
       function cargar() {
-        if (!K) { document.getElementById('clases').innerHTML = '<p class="ag-vacio">Este enlace está incompleto.</p>'; return; }
+        if (!K) { pedirPin(''); return; }
         get('').then(function (d) {
-          if (d.error) { document.getElementById('clases').innerHTML = '<p class="ag-vacio">' + esc(d.error) + '</p>'; return; }
+          if (d.error) { try { localStorage.removeItem('miAgendaPin'); } catch (e) {} K = ''; pedirPin(d.error); return; }
+          try { if (/^\d{6}$/.test(K)) localStorage.setItem('miAgendaPin', K); } catch (e) {}
+          document.getElementById('pinBox').hidden = true;
+          document.querySelectorAll('.ag-sec').forEach(function (x) { x.hidden = false; });
           libres = d.libres || [];
           horas = (d.reglas && d.reglas.horas) || [];
           document.getElementById('a_hora').innerHTML = horas.map(function (h) { return '<option value="' + h + '">' + h + '</option>'; }).join('');
@@ -300,6 +312,17 @@ const hrefFuentes = fuentesHref(data);
           pintarAlumnos(d.alumnos || []);
         }).catch(function () { document.getElementById('clases').innerHTML = '<p class="ag-vacio">No se pudo cargar tu agenda. Revisa tu internet.</p>'; });
       }
+      function pedirPin(msg) {
+        document.querySelectorAll('.ag-sec').forEach(function (x) { x.hidden = true; });
+        document.getElementById('pinBox').hidden = false;
+        document.getElementById('pinMsg').textContent = msg || '';
+        document.getElementById('pinMsg').hidden = !msg;
+      }
+      document.getElementById('formPin').addEventListener('submit', function (e) {
+        e.preventDefault();
+        K = document.getElementById('pin').value.replace(/[^\d]/g, '');
+        cargar();
+      });
       cargar();
     })();
   </script>

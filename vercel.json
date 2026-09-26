@@ -7,7 +7,7 @@
   "trailingSlash": false,
   "headers": [
     {
-      "source": "/(horarios-disponibles|horarios-libres|mi-agenda)(.*)",
+      "source": "/(horarios-disponibles|reprogramaciones|mi-agenda)(.*)",
       "headers": [
         {
           "key": "X-Robots-Tag",
@@ -18,6 +18,13 @@
           "value": "no-referrer"
         }
       ]
+    }
+  ],
+  "redirects": [
+    {
+      "source": "/horarios-libres",
+      "destination": "/reprogramaciones",
+      "permanent": false
     }
   ]
 }

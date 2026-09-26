@@ -285,8 +285,7 @@ const hrefFuentes = fuentesHref(data);
       });
 
       function cargar() {
-        if (!K) { elDias.innerHTML = '<p class="hor-vacio">Este enlace está incompleto. Pídele a Nicole el suyo.</p>'; return; }
-        fetch(API + '/series?k=' + encodeURIComponent(K))
+        fetch(API + '/series' + (K ? '?k=' + encodeURIComponent(K) : ''))
           .then(function (r) { return r.json(); })
           .then(function (d) {
             if (d.error) { elDias.innerHTML = '<p class="hor-vacio">' + d.error + '</p>'; return; }

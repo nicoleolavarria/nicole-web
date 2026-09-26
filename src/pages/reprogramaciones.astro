@@ -14,7 +14,7 @@ const hrefFuentes = fuentesHref(data);
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Horas libres para reprogramar — Nicole Olavarría</title>
+  <title>Reprogramaciones — Nicole Olavarría</title>
   <meta name="description" content="Enlace privado con las horas libres de Nicole para reprogramar una clase." />
   <meta name="robots" content="noindex, nofollow" />
   <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
@@ -209,8 +209,7 @@ const hrefFuentes = fuentesHref(data);
         pasoPedir.hidden = false;
         pasoPedir.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
       }
-      if (!K) { elDias.innerHTML = '<p class="hor-vacio">Este enlace está incompleto. Pídele a Nicole el suyo.</p>'; return; }
-      fetch(API + '/libres?k=' + encodeURIComponent(K))
+      fetch(API + '/libres' + (K ? '?k=' + encodeURIComponent(K) : ''))
         .then(function (r) { return r.json(); })
         .then(function (d) {
           if (d.error) { elDias.innerHTML = '<p class="hor-vacio">' + d.error + '</p>'; return; }

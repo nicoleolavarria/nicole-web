@@ -2622,7 +2622,15 @@ function privCfg(cfg){
 }
 function privTokenOk(cfg, clave, k){
   const real = String((cfg && cfg[clave]) || "");
-  return real.length >= 16 && safeEq(String(k || ""), real);
+  if (real.length >= 16 && safeEq(String(k || ""), real)) return true;
+  // Enlaces cortos (26-sep, pedido de Andrés): con priv_sin_clave='1', las páginas de reserva y
+  // de horas libres funcionan sin ?k= (siguen fuera de Google y del menú). El panel NUNCA:
+  // Mi agenda acepta su token largo o el PIN de 6 dígitos de Nicole.
+  if (clave === "priv_token_panel"){
+    const pin = String((cfg && cfg.priv_pin_panel) || "");
+    return /^\d{6}$/.test(pin) && safeEq(String(k || ""), pin);
+  }
+  return !k && String((cfg && cfg.priv_sin_clave) || "") === "1";
 }
 function privEsSlotDeTrabajo(pc, ms){
   const p = limaParts(new Date(ms));
@@ -4377,7 +4385,11 @@ export default {
         const b = esPost ? await request.json().catch(() => ({})) : {};
         const cfg = await loadConfig(env);
         if (!privTokenOk(cfg, "priv_token_panel", esPost ? b.k : url.searchParams.get("k"))){
-          return conCors(json({ error: "Este enlace no es válido." }, 403), origen);
+          const ipP = request.headers.get("CF-Connecting-IP") || "";
+          if (ipP && await pasoTopeDia(env, "panelmal:" + ipP, 15)){
+            return conCors(json({ error: "Demasiados intentos. Prueba mañana o pídele ayuda a Andrés." }, 429), origen);
+          }
+          return conCors(json({ error: "Ese PIN no es correcto." }, 403), origen);
         }
         const ahoraIso = new Date().toISOString();
 

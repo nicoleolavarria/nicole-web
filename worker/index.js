@@ -4343,16 +4343,19 @@ export default {
           }
         } catch (e) { /* la reserva ya entró */ }
 
-        const correoOk = await privCorreoAlumno(env, { email, nombre, fechas });
-        ctx.waitUntil((async () => {
-          for (const f of filas){
-            try {
-              const eid = await gcalCrearEvento(env, { inicio_utc: f.iso, fin_utc: f.fin, curso: "", alumnoNombre: nombre, email: "" });
-              if (eid) await env.DB.prepare("UPDATE reservas SET gcal_event_id = ?1 WHERE id = ?2").bind(eid, f.id).run();
-            } catch (e) {}
-          }
-          await privAvisarNicole(env, { nombre, email, whatsapp: waFull, fechas, correoOk });
-        })());
+        /* Correo al alumno: Resend si está configurado; además, si su Google Calendar está
+           conectado, cada clase va como invitación al correo del alumno (Google se la envía).
+           Cualquiera de los dos basta para que no se le pierda el horario. */
+        const resendOk = await privCorreoAlumno(env, { email, nombre, fechas });
+        let invitaciones = 0;
+        for (const f of filas){
+          try {
+            const eid = await gcalCrearEvento(env, { inicio_utc: f.iso, fin_utc: f.fin, curso: "", alumnoNombre: nombre, email });
+            if (eid){ invitaciones++; await env.DB.prepare("UPDATE reservas SET gcal_event_id = ?1 WHERE id = ?2").bind(eid, f.id).run(); }
+          } catch (e) {}
+        }
+        const correoOk = resendOk || invitaciones > 0;
+        ctx.waitUntil(privAvisarNicole(env, { nombre, email, whatsapp: waFull, fechas, correoOk }));
 
         return conCors(json({ ok: true, fechas, correo: correoOk }), origen);
       }

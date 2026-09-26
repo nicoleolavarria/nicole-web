@@ -2599,8 +2599,8 @@ function chocaConBusy(busy, ms){
    Reglas: horario de trabajo 10–13 y 15–21 (clases de 1 h que empiezan 10, 11, 12, 15…20),
    máximo 6 h de clase al día, 12 h de anticipación. Todo editable en config sin redeploy:
      priv_horas "10:00,11:00,…"  ·  priv_dias "1,2,3,4,5,6" (0 = domingo)  ·  priv_tope_h "6".
-   El tope cuenta reservas del CRM + bloques ocupados de su Google Calendar dentro del
-   horario de trabajo (sus clases antiguas viven ahí), sin contar dos veces la misma hora.
+   El tope cuenta solo las clases del sistema; lo ocupado en su Google Calendar bloquea la hora
+   pero no suma al tope (un evento personal no es una clase).
    ═══════════════════════════════════════════════════════════════════════════ */
 const PRIV_HORAS_DEFAULT = ["10:00","11:00","12:00","15:00","16:00","17:00","18:00","19:00","20:00"];
 const PRIV_DIAS_DEFAULT = [1, 2, 3, 4, 5, 6];
@@ -2660,19 +2660,10 @@ async function privOcupacion(env, pc, desdeMs, hastaMs){
     tomadas.push([a, b]);
     if (r.tipo !== "bloqueo") sumar(a);
   }
+  /* Google Calendar solo BLOQUEA la hora (no se reserva encima de nada suyo), pero NO cuenta
+     para el tope de 6 h: un evento personal no es una clase. El tope se cuenta solo con las
+     clases que están en el sistema (reservas + las que Nicole pase desde su calendario). */
   const busy = await gcalBusy(env, desdeIso, hastaIso);
-  // Horas de trabajo que su Google Calendar marca ocupadas cuentan como clase para el tope.
-  const p0 = limaParts(new Date(desdeMs));
-  const base = limaToUtc(p0.y, p0.m, p0.d, "00:00").getTime();
-  const dias = Math.ceil((hastaMs - base) / 86400000) + 1;
-  for (let i = 0; i <= dias; i++){
-    const p = limaParts(new Date(base + i * 86400000));
-    if (!pc.dias.includes(p.dow)) continue;
-    for (const h of pc.horas){
-      const ms = limaToUtc(p.y, p.m, p.d, h).getTime();
-      if (chocaConBusy(busy, ms)) sumar(ms);
-    }
-  }
   const choca = (ms) => {
     const fin = ms + CLASE_MIN * 60000;
     for (const t of tomadas){ if (ms < t[1] && fin > t[0]) return true; }
@@ -4152,7 +4143,7 @@ export default {
             "<!doctype html><meta charset=utf-8><meta name=viewport content='width=device-width,initial-scale=1'>" +
             "<body style='font-family:system-ui,sans-serif;background:#0d0b0a;color:#f3ede0;display:flex;min-height:90vh;align-items:center;justify-content:center;text-align:center;padding:24px'>" +
             "<div><h2 style='color:" + (ok ? "#3fb950" : "#8a1a1a") + ";font-size:20px'>" + msg + "</h2>" +
-            "<p style='color:#8a8276'>Ya puedes cerrar esta pestaña y volver al CRM.</p></div>",
+            "<p style='color:#8a8276'>Ya puedes cerrar esta pestaña y volver a tu agenda.</p></div>",
             { headers: { "content-type": "text/html; charset=utf-8", "cache-control": "no-store" } }
           );
         };
@@ -4410,7 +4401,22 @@ export default {
             if (!porAlumno.has(k)) porAlumno.set(k, { nombre: c.nombre, email: c.email, whatsapp: c.whatsapp, restantes: 0, proxima: c.inicio_utc });
             if (c.inicio_utc >= ahoraIso) porAlumno.get(k).restantes++;
           }
-          return conCors(json({ clases, alumnos: [...porAlumno.values()], libres: await privLibres(env), reglas: privCfg(cfg) }), origen);
+          const gcal = { cliente: !!(cfg.gcal_client_id && cfg.gcal_client_secret), conectado: !!cfg.gcal_refresh_token };
+          return conCors(json({ clases, alumnos: [...porAlumno.values()], libres: await privLibres(env), reglas: privCfg(cfg), gcal }), origen);
+        }
+
+        /* Conectar su Google Calendar desde Mi agenda (mismo OAuth que el CRM). */
+        if (url.pathname === "/api/agenda/panel/google" && esPost){
+          if (!cfg.gcal_client_id || !cfg.gcal_client_secret){
+            return conCors(json({ error: "Falta configurar la conexión con Google. Avísale a Andrés." }, 400), origen);
+          }
+          const nonce = randHex(16);
+          await env.DB.prepare("INSERT INTO config (clave,valor) VALUES ('gcal_nonce',?1) ON CONFLICT(clave) DO UPDATE SET valor=?1").bind(nonce).run();
+          const u = "https://accounts.google.com/o/oauth2/v2/auth?" + new URLSearchParams({
+            client_id: cfg.gcal_client_id, redirect_uri: GCAL_REDIRECT, response_type: "code",
+            scope: GCAL_SCOPE, access_type: "offline", prompt: "consent", state: nonce, include_granted_scopes: "true"
+          }).toString();
+          return conCors(json({ url: u }), origen);
         }
 
         if (url.pathname === "/api/agenda/panel/gcal" && !esPost){

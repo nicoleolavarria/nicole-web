@@ -180,6 +180,8 @@ const hrefFuentes = fuentesHref(data);
       <section class="ag-sec">
         <h2>Pasar tu Google Calendar</h2>
         <p class="ag-vacio">Revisa las clases que ya tienes en tu Google Calendar y pásalas aquí con un toque, para que nadie reserve encima.</p>
+        <p class="ag-vacio" id="notaGcal" hidden></p>
+        <button class="ag-btn lleno" id="btnConectar" type="button" hidden>Conectar mi Google Calendar</button>
         <button class="ag-btn" id="btnGcal" type="button">Revisar mi calendario</button>
         <div id="gcal"></div>
       </section>
@@ -275,6 +277,13 @@ const hrefFuentes = fuentesHref(data);
         });
       });
 
+      document.getElementById('btnConectar').addEventListener('click', function () {
+        var w = window.open('', '_blank');
+        post('/google', {}).then(function (d) {
+          if (d.url) { if (w) w.location = d.url; else location.href = d.url; }
+          else { if (w) w.close(); document.getElementById('notaGcal').textContent = d.error || 'No se pudo abrir Google.'; document.getElementById('notaGcal').hidden = false; }
+        });
+      });
       document.getElementById('btnGcal').addEventListener('click', function () {
         var el = document.getElementById('gcal');
         el.innerHTML = '<p class="ag-vacio">Revisando…</p>';
@@ -308,6 +317,11 @@ const hrefFuentes = fuentesHref(data);
           libres = d.libres || [];
           horas = (d.reglas && d.reglas.horas) || [];
           document.getElementById('a_hora').innerHTML = horas.map(function (h) { return '<option value="' + h + '">' + h + '</option>'; }).join('');
+          var g = d.gcal || {};
+          var bg = document.getElementById('btnGcal'), bc = document.getElementById('btnConectar'), ng = document.getElementById('notaGcal');
+          bg.hidden = !g.conectado; bc.hidden = !!g.conectado || !g.cliente;
+          ng.textContent = g.conectado ? '' : (g.cliente ? 'Primero conecta tu Google Calendar (se hace una sola vez).' : 'La conexión con Google todavía no está configurada. Avísale a Andrés.');
+          ng.hidden = !!g.conectado;
           pintarClases(d.clases || []);
           pintarAlumnos(d.alumnos || []);
         }).catch(function () { document.getElementById('clases').innerHTML = '<p class="ag-vacio">No se pudo cargar tu agenda. Revisa tu internet.</p>'; });

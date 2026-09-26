@@ -27,7 +27,7 @@ if npx wrangler secret list 2>/dev/null | grep -q RESEND_API_KEY; then echo "   
 
 echo "④ Web (Vercel vía GitHub)…"
 git add -A worker/index.js src/pages astro.config.mjs vercel.json bin/deploy-agenda-privada.sh
-git commit -m "Agenda privada: enlaces cortos, reprogramaciones y PIN para Mi agenda" || true
+git commit -m "Agenda privada: reservas y reprogramaciones con confirmación de Nicole, WhatsApp y Google Calendar" || true
 git push
 
 cat <<FIN

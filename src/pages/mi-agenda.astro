@@ -149,6 +149,11 @@ const hrefFuentes = fuentesHref(data);
         </form>
       </section>
 
+      <section class="ag-sec" id="secPend" hidden>
+        <h2>Por confirmar</h2>
+        <div id="pendientes"></div>
+      </section>
+
       <section class="ag-sec">
         <h2>Próximas clases</h2>
         <div id="clases"><p class="ag-vacio">Cargando…</p></div>
@@ -228,6 +233,34 @@ const hrefFuentes = fuentesHref(data);
         });
         el.innerHTML = html;
       }
+      function pintarPendientes(ps) {
+        var sec = document.getElementById('secPend'), el = document.getElementById('pendientes');
+        sec.hidden = !ps.length;
+        el.innerHTML = ps.map(function (p) {
+          var detalle = p.tipo === 'reprogramacion'
+            ? 'Quiere cambiar su clase del ' + dia(p.original) + ' · ' + hora(p.original) + '<br>al ' + dia(p.fechas[0]) + ' · ' + hora(p.fechas[0])
+            : 'Horario fijo: ' + p.fechas.map(function (f) { return dia(f) + ' · ' + hora(f); }).join('<br>');
+          var contacto = p.whatsapp ? ' · <a href="https://wa.me/' + esc(p.whatsapp) + '">WhatsApp</a>' : '';
+          return '<div class="ag-clase" data-clave="' + esc(p.clave) + '"><div class="quien">' + esc(p.nombre) +
+            '<small>' + (p.tipo === 'reprogramacion' ? 'Reprogramación' : 'Nuevo horario') + contacto + '</small>' +
+            '<small style="margin-top:8px;color:var(--fg)">' + detalle + '</small></div>' +
+            '<div class="ag-acciones"><button class="ag-btn lleno" data-accion="aceptar" type="button">Aceptar</button>' +
+            '<button class="ag-btn peligro" data-accion="rechazar" type="button">Rechazar</button></div></div>';
+        }).join('');
+      }
+      document.getElementById('pendientes').addEventListener('click', function (e) {
+        var btn = e.target.closest('button'); if (!btn) return;
+        var fila = btn.closest('.ag-clase'), clave = fila.dataset.clave;
+        var hacer = function () {
+          btn.disabled = true;
+          post('/' + btn.dataset.accion, { clave: clave }).then(function (d) {
+            if (d.error) { btn.disabled = false; alerta(fila, d.error); return; }
+            if (btn.dataset.accion === 'aceptar' && !d.en_calendario) alerta(fila, 'Aceptado. Ojo: no se pudo poner en tu Google Calendar.');
+            setTimeout(cargar, d.en_calendario ? 0 : 1500);
+          });
+        };
+        if (btn.dataset.accion === 'rechazar') confirmar(btn, hacer); else hacer();
+      });
       function pintarAlumnos(alumnos) {
         var el = document.getElementById('alumnos');
         if (!alumnos.length) { el.innerHTML = '<p class="ag-vacio">Todavía no hay alumnos con clases.</p>'; return; }
@@ -322,6 +355,7 @@ const hrefFuentes = fuentesHref(data);
           bg.hidden = !g.conectado; bc.hidden = !!g.conectado || !g.cliente;
           ng.textContent = g.conectado ? '' : (g.cliente ? 'Primero conecta tu Google Calendar (se hace una sola vez).' : 'La conexión con Google todavía no está configurada. Avísale a Andrés.');
           ng.hidden = !!g.conectado;
+          pintarPendientes(d.pendientes || []);
           pintarClases(d.clases || []);
           pintarAlumnos(d.alumnos || []);
         }).catch(function () { document.getElementById('clases').innerHTML = '<p class="ag-vacio">No se pudo cargar tu agenda. Revisa tu internet.</p>'; });

@@ -1,6 +1,6 @@
 ---
-/* HORAS LIBRES (privado). Solo muestra horas sueltas libres; el alumno le pide a Nicole
-   por WhatsApp el cambio y ella lo hace (decisión de Andrés, 25-sep-2026). */
+/* REPROGRAMACIONES (privado, flujo 2 · 26-sep-2026): el alumno ubica su clase con su correo,
+   elige nueva hora libre; queda una solicitud pendiente que Nicole acepta en Mi agenda. */
 import { obtenerWeb, ORIGEN } from '../lib/web-data.mjs';
 import { headerHtml, pieHtml, estiloCss, fuentesHref, mezclar } from '../lib/web-render.mjs';
 
@@ -111,7 +111,7 @@ const hrefFuentes = fuentesHref(data);
     .hor-serie { list-style: none; padding: 0; margin: 0 0 18px; display: grid; gap: 6px; }
     .hor-serie li { font-size: calc(14px * var(--esc)); line-height: 1.5; padding: 8px 12px; border: 1px solid var(--line); }
     .hor-opcional { color: var(--muted); font-weight: normal; }
-    .hor-wa { display: flex; align-items: center; justify-content: center; text-decoration: none; }
+    .hor-wa { display: flex; align-items: center; justify-content: center; text-decoration: none; margin-top: 12px; }
   </style>
 </head>
 <body data-pagina="horarios">
@@ -119,24 +119,49 @@ const hrefFuentes = fuentesHref(data);
   <main>
     <div class="hor-wrap">
       <h1>Reprogramar una clase</h1>
-      <p class="hor-intro">
-        Estas son las horas libres de Nicole. Elige la que te acomode y envíale tu pedido por WhatsApp:
-        ella mueve tu clase y te confirma.
-      </p>
+      <p class="hor-intro">Escribe el correo con el que separaste tus clases, elige la que quieres mover y el nuevo horario. Nicole te confirma el cambio.</p>
       <p class="hor-tz" id="tzNota" hidden></p>
-      <section class="hor-paso">
-        <h2>1 · El día</h2>
-        <div class="hor-dias" id="dias" aria-live="polite"><p class="hor-vacio">Cargando la agenda…</p></div>
+
+      <section class="hor-paso" id="paso1">
+        <h2>1 · Tu correo</h2>
+        <form class="hor-card" id="formEmail" novalidate style="margin-top:0">
+          <div class="hor-campo"><label for="r_email">Correo con el que separaste tus clases</label><input id="r_email" type="email" autocomplete="email" maxlength="120" /></div>
+          <button class="hor-btn" type="submit" id="btnBuscar">Ver mis clases</button>
+          <div class="hor-error" id="err1" hidden></div>
+        </form>
       </section>
+
+      <section class="hor-paso" id="paso2" hidden>
+        <h2>2 · La clase que quieres cambiar</h2>
+        <div class="hor-horas" id="misClases" style="grid-template-columns:1fr"></div>
+      </section>
+
+      <section class="hor-paso" id="paso3" hidden>
+        <h2>3 · El nuevo día</h2>
+        <div class="hor-dias" id="dias" aria-live="polite"></div>
+      </section>
+
       <section class="hor-paso" id="pasoHoras" hidden>
-        <h2>2 · La hora</h2>
+        <h2>4 · La nueva hora</h2>
         <div class="hor-horas" id="horas"></div>
       </section>
+
       <section id="pasoPedir" hidden>
         <div class="hor-card">
-          <p class="elegido" id="elegido"></p>
-          <p class="elegido-sub">Clase de 1 hora. El horario queda tomado cuando Nicole te confirme.</p>
-          <a class="hor-btn hor-wa" id="btnWa" href="#" target="_blank" rel="noopener">Pedirle este horario a Nicole</a>
+          <p class="elegido-sub">Tu cambio:</p>
+          <ol class="hor-serie" id="resumen"></ol>
+          <button class="hor-btn" type="button" id="btnPedir">Pedir el cambio</button>
+          <div class="hor-error" id="err2" hidden></div>
+        </div>
+      </section>
+
+      <section id="pasoListo" hidden>
+        <div class="hor-listo">
+          <h2>Listo, cambio pedido</h2>
+          <ol class="hor-serie" id="listoResumen"></ol>
+          <p id="listoCorreo"></p>
+          <p>Último paso: envíale el cambio a Nicole por WhatsApp para que te lo confirme. Mientras tanto, tu clase original sigue en pie.</p>
+          <a class="hor-btn hor-wa" id="btnWaListo" href="#" target="_blank" rel="noopener">Enviar a Nicole por WhatsApp</a>
         </div>
       </section>
     </div>
@@ -144,16 +169,6 @@ const hrefFuentes = fuentesHref(data);
   <Fragment set:html={pieHtml(data)} />
 
   <script is:inline define:vars={{ ORIGEN }}>
-    (function () {
-      var toggle = document.querySelector('.menu-toggle');
-      var nav = document.querySelector('header nav');
-      if (!toggle || !nav) return;
-      toggle.addEventListener('click', function () {
-        var open = toggle.getAttribute('aria-expanded') === 'true';
-        toggle.setAttribute('aria-expanded', String(!open));
-        nav.classList.toggle('open', !open);
-      });
-    })();
     (function () {
       var API = ORIGEN + '/api/agenda/privado';
       var LIMA = 'America/Lima';
@@ -197,30 +212,64 @@ const hrefFuentes = fuentesHref(data);
           alElegir(b.dataset.iso);
         };
       }
-      var elDias = document.getElementById('dias'), elHoras = document.getElementById('horas');
-      var pasoHoras = document.getElementById('pasoHoras'), pasoPedir = document.getElementById('pasoPedir');
-      var porDia = {}, wa = '51955127656';
-      function alDia(clave) { pasoPedir.hidden = true; pintarHoras(elHoras, porDia[clave] || [], alHora); pasoHoras.hidden = false; }
-      function alHora(iso) {
-        var limaTxt = new Intl.DateTimeFormat('es-PE', { timeZone: LIMA, weekday: 'long', day: 'numeric', month: 'long', hour: 'numeric', minute: '2-digit' }).format(new Date(iso));
-        document.getElementById('elegido').textContent = largo(iso);
-        document.getElementById('btnWa').href = 'https://wa.me/' + wa + '?text=' +
-          encodeURIComponent('Hola Nicole, quisiera reprogramar mi clase para el ' + limaTxt + ' (hora de Lima). ¿Se puede?');
-        pasoPedir.hidden = false;
-        pasoPedir.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-      }
-      fetch(API + '/libres' + (K ? '?k=' + encodeURIComponent(K) : ''))
-        .then(function (r) { return r.json(); })
-        .then(function (d) {
-          if (d.error) { elDias.innerHTML = '<p class="hor-vacio">' + d.error + '</p>'; return; }
-          if (d.whatsapp) wa = d.whatsapp;
+      var qk = K ? '&k=' + encodeURIComponent(K) : '';
+      var email = '', original = null, nuevo = null, porDia = {};
+      function $(id) { return document.getElementById(id); }
+      function err(id, m) { $(id).textContent = m; $(id).hidden = !m; }
+
+      $('formEmail').addEventListener('submit', function (e) {
+        e.preventDefault();
+        email = $('r_email').value.trim().toLowerCase();
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)) { err('err1', 'Escribe un correo válido.'); return; }
+        err('err1', '');
+        fetch(API + '/mis-clases?email=' + encodeURIComponent(email) + qk).then(function (r) { return r.json(); }).then(function (d) {
+          if (d.error) { err('err1', d.error); return; }
+          if (!d.clases || !d.clases.length) { err('err1', 'No encontramos clases próximas con ese correo. Revisa que sea el mismo con el que separaste, o escríbele a Nicole.'); return; }
+          $('misClases').innerHTML = d.clases.map(function (c) {
+            return '<button type="button" class="hor-hora" data-id="' + c.id + '" data-iso="' + c.inicio + '" aria-pressed="false">' + largo(c.inicio) + '</button>';
+          }).join('');
+          $('paso2').hidden = false;
+          $('paso2').scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }).catch(function () { err('err1', 'No hay conexión. Intenta de nuevo.'); });
+      });
+
+      $('misClases').addEventListener('click', function (e) {
+        var b = e.target.closest('.hor-hora'); if (!b) return;
+        $('misClases').querySelectorAll('.hor-hora').forEach(function (x) { x.setAttribute('aria-pressed', String(x === b)); });
+        original = { id: b.dataset.id, iso: b.dataset.iso };
+        fetch(API + '/libres' + (K ? '?k=' + encodeURIComponent(K) : '')).then(function (r) { return r.json(); }).then(function (d) {
           porDia = {};
           (d.slots || []).forEach(function (iso) { var c = claveLocal(new Date(iso)); (porDia[c] = porDia[c] || []).push(iso); });
-          if (!Object.keys(porDia).length) { elDias.innerHTML = '<p class="hor-vacio">No hay horas libres en las próximas semanas. Escríbele a Nicole por <a href="https://wa.me/51955127656">WhatsApp</a>.</p>'; return; }
-          notaTz();
-          pintarDias(elDias, porDia, alDia);
-        })
-        .catch(function () { elDias.innerHTML = '<p class="hor-vacio">No pudimos cargar la agenda. Intenta de nuevo en un momento.</p>'; });
+          if (!Object.keys(porDia).length) { $('dias').innerHTML = '<p class="hor-vacio">No hay horas libres en las próximas semanas. Escríbele a Nicole.</p>'; }
+          else { notaTz(); pintarDias($('dias'), porDia, alDia); }
+          $('paso3').hidden = false;
+        });
+      });
+      function alDia(clave) { $('pasoPedir').hidden = true; pintarHoras($('horas'), porDia[clave] || [], alHora); $('pasoHoras').hidden = false; }
+      function alHora(iso) {
+        nuevo = iso;
+        $('resumen').innerHTML = '<li>Cambiar: ' + largo(original.iso) + '</li><li>Por: ' + largo(iso) + '</li>';
+        $('pasoPedir').hidden = false;
+        $('pasoPedir').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      }
+      $('btnPedir').addEventListener('click', function () {
+        var btn = $('btnPedir'); btn.disabled = true; btn.textContent = 'Enviando…'; err('err2', '');
+        fetch(API + '/reprogramar', { method: 'POST', headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ k: K, email: email, reserva_id: original.id, nuevo_inicio: nuevo }) })
+          .then(function (r) { return r.json(); })
+          .then(function (d) {
+            btn.disabled = false; btn.textContent = 'Pedir el cambio';
+            if (!d.ok) { err('err2', d.error || 'No se pudo. Intenta de nuevo.'); return; }
+            $('listoResumen').innerHTML = $('resumen').innerHTML;
+            $('listoCorreo').textContent = d.correo ? 'Te enviamos el detalle a ' + email + '.' : '';
+            var waUrl = 'https://wa.me/' + (d.whatsapp || '51955127656') + '?text=' + encodeURIComponent(d.wa_texto || '');
+            $('btnWaListo').href = waUrl;
+            ['paso1', 'paso2', 'paso3', 'pasoHoras', 'pasoPedir'].forEach(function (x) { $(x).hidden = true; });
+            $('pasoListo').hidden = false;
+            setTimeout(function () { location.href = waUrl; }, 1800);
+          })
+          .catch(function () { btn.disabled = false; btn.textContent = 'Pedir el cambio'; err('err2', 'No hay conexión. Intenta de nuevo.'); });
+      });
     })();
   </script>
 </body>

@@ -112,7 +112,7 @@ const hrefFuentes = fuentesHref(data);
     .hor-serie { list-style: none; padding: 0; margin: 0 0 18px; display: grid; gap: 6px; }
     .hor-serie li { font-size: calc(14px * var(--esc)); line-height: 1.5; padding: 8px 12px; border: 1px solid var(--line); }
     .hor-opcional { color: var(--muted); font-weight: normal; }
-    .hor-wa { display: flex; align-items: center; justify-content: center; text-decoration: none; }
+    .hor-wa { display: flex; align-items: center; justify-content: center; text-decoration: none; margin-top: 12px; }
   </style>
 </head>
 <body data-pagina="horarios">
@@ -122,7 +122,7 @@ const hrefFuentes = fuentesHref(data);
       <h1>Separa tu horario del mes</h1>
       <p class="hor-intro">
         Elige el día y la hora de tu primera clase. Se separan ese día y las tres semanas
-        siguientes a la misma hora: cuatro clases de una hora. Al terminar te llega un correo con las cuatro fechas.
+        siguientes a la misma hora: cuatro clases de una hora. Al terminar te llega un correo con las cuatro fechas y le envías tu horario a Nicole por WhatsApp para que te lo confirme.
       </p>
       <p class="hor-tz" id="tzNota" hidden></p>
 
@@ -169,9 +169,11 @@ const hrefFuentes = fuentesHref(data);
           <svg class="tick" width="38" height="38" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
             <circle cx="12" cy="12" r="10"></circle><path d="M8 12.5l2.5 2.5L16 9.5"></path>
           </svg>
-          <h2>Listo, quedaron separadas</h2>
+          <h2>Listo, quedaron apartadas</h2>
           <ol class="hor-serie" id="listoSerie"></ol>
           <p id="listoCorreo"></p>
+          <p>Último paso: envíale tu horario a Nicole por WhatsApp para que te lo confirme.</p>
+          <a class="hor-btn hor-wa" id="btnWaListo" href="#" target="_blank" rel="noopener">Enviar a Nicole por WhatsApp</a>
         </div>
       </section>
     </div>
@@ -277,7 +279,10 @@ const hrefFuentes = fuentesHref(data);
             lista(document.getElementById('listoSerie'), res.d.fechas || fechasDe[elegido]);
             document.getElementById('listoCorreo').textContent = res.d.correo
               ? 'Te enviamos estas fechas a ' + email + '.'
-              : 'Guarda esta pantalla: Nicole ya tiene tu reserva y te escribirá para confirmarte.';
+              : 'Guarda esta pantalla con tus fechas.';
+            var waUrl = 'https://wa.me/' + (res.d.whatsapp || '51955127656') + '?text=' + encodeURIComponent(res.d.wa_texto || '');
+            document.getElementById('btnWaListo').href = waUrl;
+            setTimeout(function () { location.href = waUrl; }, 1800);
             document.getElementById('pasoDias').hidden = true; pasoHoras.hidden = true; pasoForm.hidden = true;
             pasoListo.hidden = false; pasoListo.scrollIntoView({ behavior: 'smooth', block: 'center' });
           })

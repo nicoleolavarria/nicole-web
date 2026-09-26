@@ -2728,38 +2728,24 @@ async function privLibres(env){
 
 function escHtml(s){ return String(s || "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])); }
 
-/* Correo al alumno con sus 4 fechas: para que no se le pierda el horario. */
-async function privCorreoAlumno(env, { email, nombre, fechas }){
-  const lineas = fechas.map(iso => { const c = cuandoLima(iso); return c.dia + " · " + c.hora; });
-  const c0 = cuandoLima(fechas[0]);
-  const subject = "Tus clases con " + MARCA.profe + ": " + DIAS_LARGO[limaParts(new Date(Date.parse(fechas[0]))).dow] + "s " + c0.hora;
-  const text =
-    "Hola " + nombre + ",\n\n" +
-    "Quedaron separadas tus clases con " + MARCA.profe + " (hora de Lima):\n\n" +
-    lineas.map((l, i) => (i + 1) + ". " + l).join("\n") + "\n\n" +
-    "Cada clase dura 1 hora. Si necesitas mover alguna, escríbele a " + MARCA.profe +
-    " por WhatsApp: https://wa.me/" + MARCA.whatsapp + "\n\n" +
-    "Guarda este correo para tener tus horarios a la mano.\n\n— " + MARCA.nombre;
-  const html =
-    "<p>Hola " + escHtml(nombre) + ",</p>" +
-    "<p>Quedaron separadas tus clases con " + escHtml(MARCA.profe) + " (hora de Lima):</p><ol>" +
-    lineas.map(l => "<li>" + escHtml(l) + "</li>").join("") + "</ol>" +
-    "<p>Cada clase dura 1 hora. Si necesitas mover alguna, escríbele a " + escHtml(MARCA.profe) +
-    " por <a href=\"https://wa.me/" + MARCA.whatsapp + "\">WhatsApp</a>.</p>" +
-    "<p>Guarda este correo para tener tus horarios a la mano.</p><p>— " + escHtml(MARCA.nombre) + "</p>";
+function privLinea(iso){ const c = cuandoLima(iso); return c.dia + " · " + c.hora; }
+
+/* Correo al alumno (Resend). Best-effort: false si no hay RESEND_API_KEY o falla. */
+async function privCorreoAlumno(env, { email, nombre, subject, intro, fechas, cierre }){
+  if (!email) return false;
+  const lineas = fechas.map(privLinea);
+  const text = "Hola " + nombre + ",\n\n" + intro + "\n\n" + lineas.map((l, i) => (i + 1) + ". " + l).join("\n") +
+    "\n\n" + cierre + "\n\n— " + MARCA.nombre;
+  const html = "<p>Hola " + escHtml(nombre) + ",</p><p>" + escHtml(intro) + "</p><ol>" +
+    lineas.map(l => "<li>" + escHtml(l) + "</li>").join("") + "</ol><p>" + escHtml(cierre) + "</p><p>— " + escHtml(MARCA.nombre) + "</p>";
   return enviarCorreo(env, { to: email, subject, text, html });
 }
 
-async function privAvisarNicole(env, { nombre, email, whatsapp, fechas, correoOk }){
-  const lineas = fechas.map(iso => { const c = cuandoLima(iso); return "- " + c.dia + " · " + c.hora; }).join("\n");
+/* Aviso a Nicole: push + correo (Email Routing; Resend de respaldo). */
+async function privAvisarNicole(env, { subject, cuerpo, push }){
   const destino = MARCA.correoProfesora || MARCA.correoAdmin;
-  const subject = "Nuevo horario fijo: " + nombre + " (4 clases)";
-  const cuerpo =
-    nombre + " separó 4 clases desde tu enlace privado:\n\n" + lineas + "\n\n" +
-    "Correo:   " + email + (correoOk ? "  (ya le llegó su confirmación)" : "  (OJO: no se pudo enviar su correo de confirmación)") + "\n" +
-    (whatsapp ? ("WhatsApp: +" + whatsapp + "  (https://wa.me/" + whatsapp + ")\n") : "") +
-    "\nLas ves en tu panel: " + MARCA.dominio + "/admin/crm/\n";
-  try { await avisarPush(env, { title: "Horario fijo nuevo", body: nombre + " · " + cuandoLima(fechas[0]).dia, url: MARCA.dominio + "/admin/crm/" }); } catch (e) {}
+  const texto = cuerpo + "\n\nConfírmalo en tu agenda: https://www.nicoleolavarria.com/mi-agenda\n";
+  try { await avisarPush(env, { title: subject, body: push || "", url: "https://www.nicoleolavarria.com/mi-agenda" }); } catch (e) {}
   let ok = false;
   if (env.AVISOS){
     try {
@@ -2767,12 +2753,35 @@ async function privAvisarNicole(env, { nombre, email, whatsapp, fechas, correoOk
       msg.setSender({ name: "Avisos " + MARCA.nombre, addr: MARCA.correoAvisos });
       msg.setRecipient(destino);
       msg.setSubject(subject);
-      msg.addMessage({ contentType: "text/plain", data: cuerpo });
+      msg.addMessage({ contentType: "text/plain", data: texto });
       await env.AVISOS.send(new EmailMessage(MARCA.correoAvisos, destino, msg.asRaw()));
       ok = true;
     } catch (e) { ok = false; }
   }
-  if (!ok) await enviarCorreo(env, { to: destino, subject, text: cuerpo, from: { name: "Avisos " + MARCA.nombre, email: MARCA.correoAvisos } });
+  if (!ok) await enviarCorreo(env, { to: destino, subject, text: texto, from: { name: "Avisos " + MARCA.nombre, email: MARCA.correoAvisos } });
+}
+
+/* Deja el evento viejo TACHADO en su Google Calendar (texto tachado, color gris y "libre",
+   para que no bloquee la hora). Google no tiene tachado nativo: se usa el carácter
+   combinante U+0336 sobre cada letra del título. */
+function tachar(t){ return [...String(t || "")].map(c => c + "\u0336").join(""); }
+async function gcalTacharEvento(env, eventId, nota){
+  try {
+    if (!eventId) return false;
+    const tok = await gcalAccessToken(env);
+    if (!tok) return false;
+    const cfg = await loadConfig(env);
+    const calId = cfg.gcal_calendar_id || "primary";
+    const base = "https://www.googleapis.com/calendar/v3/calendars/" + encodeURIComponent(calId) + "/events/" + encodeURIComponent(eventId);
+    const g = await fetch(base, { headers: { authorization: "Bearer " + tok } });
+    if (!g.ok) return false;
+    const ev = await g.json().catch(() => ({}));
+    const r = await fetch(base + "?sendUpdates=none", {
+      method: "PATCH", headers: { authorization: "Bearer " + tok, "content-type": "application/json" },
+      body: JSON.stringify({ summary: tachar(ev.summary || "Clase") + " (" + (nota || "reprogramada") + ")", colorId: "8", transparency: "transparent" })
+    });
+    return r.ok;
+  } catch (e) { return false; }
 }
 
 /* Vista previa de lo que hay en su Google Calendar (para importar alumnos y contar clases).
@@ -3022,7 +3031,7 @@ export default {
     }
     /* Preflight de la reserva pública: el navegador pregunta antes del POST con JSON. Solo se le
        abre la puerta a los dos dominios de Nicole (el resto sigue cayendo en el 204 pelado). */
-    if (request.method === "OPTIONS" && (url.pathname === "/api/agenda/reservar-publico" || url.pathname === "/api/agenda/privado/reservar" || url.pathname.startsWith("/api/agenda/panel/"))){
+    if (request.method === "OPTIONS" && (url.pathname === "/api/agenda/reservar-publico" || url.pathname === "/api/agenda/privado/reservar" || url.pathname === "/api/agenda/privado/reprogramar" || url.pathname.startsWith("/api/agenda/panel/"))){
       const o = origenWeb(request);
       const r = new Response(null, { status: 204 });
       if (o){
@@ -4311,7 +4320,6 @@ export default {
           return conCors(json({ error: "Ya separaste varios horarios hoy. Si necesitas otro, escríbele a Nicole." }, 429), origen);
         }
 
-        // Revalidar las 4 semanas en el servidor (el navegador pudo quedarse con una foto vieja).
         const pc = privCfg(cfg);
         const now = Date.now();
         const inicio = Date.parse(String(b.inicio_utc || ""));
@@ -4326,20 +4334,19 @@ export default {
           fechas.push(new Date(t).toISOString());
         }
 
+        /* Flujo 1 (26-sep): la reserva entra PENDIENTE (aparta la hora) hasta que Nicole la
+           acepta en Mi agenda; recién ahí pasa a su Google Calendar. */
         const serie = crypto.randomUUID();
         const nowIso = new Date().toISOString();
         const filas = fechas.map(iso => ({ id: crypto.randomUUID(), iso, fin: new Date(Date.parse(iso) + CLASE_MIN * 60000).toISOString() }));
         try {
-          // batch = todo o nada: si una semana la toma otra persona en el mismo segundo, no queda media serie.
           await env.DB.batch(filas.map(f => env.DB.prepare(
             "INSERT INTO reservas (id,alumno_id,inicio_utc,fin_utc,tipo,serie_id,estado,curso,nota,ciclo,creada,lead_nombre,lead_whatsapp,lead_email,origen) " +
-            "VALUES (?1,NULL,?2,?3,'fija',?4,'reservada','','',1,?5,?6,?7,?8,'link-privado')"
+            "VALUES (?1,NULL,?2,?3,'fija',?4,'pendiente','','',1,?5,?6,?7,?8,'link-privado')"
           ).bind(f.id, f.iso, f.fin, serie, nowIso, nombre, waFull, email)));
         } catch (e){
           return conCors(json({ error: "Justo tomaron una de esas semanas. Elige otro horario." }, 409), origen);
         }
-
-        // CRM: el alumno queda como lead con su correo real.
         try {
           const ya = await env.DB.prepare("SELECT id FROM leads WHERE email = ?1 AND marca = ?2").bind(email, MARCA_LEAD).first();
           if (!ya){
@@ -4347,23 +4354,83 @@ export default {
               "INSERT INTO leads (id,email,marca,fuente,interes,fecha,telefono,nombre,nurture_paso) VALUES (?1,?2,?3,'link-privado','clase',?4,?5,?6,99)"
             ).bind(crypto.randomUUID(), email, MARCA_LEAD, hoy(), waFull, nombre).run();
           }
-        } catch (e) { /* la reserva ya entró */ }
+        } catch (e) {}
 
-        /* Correo al alumno: Resend si está configurado; además, si su Google Calendar está
-           conectado, cada clase va como invitación al correo del alumno (Google se la envía).
-           Cualquiera de los dos basta para que no se le pierda el horario. */
-        const resendOk = await privCorreoAlumno(env, { email, nombre, fechas });
-        let invitaciones = 0;
-        for (const f of filas){
-          try {
-            const eid = await gcalCrearEvento(env, { inicio_utc: f.iso, fin_utc: f.fin, curso: "", alumnoNombre: nombre, email });
-            if (eid){ invitaciones++; await env.DB.prepare("UPDATE reservas SET gcal_event_id = ?1 WHERE id = ?2").bind(eid, f.id).run(); }
-          } catch (e) {}
+        const correoOk = await privCorreoAlumno(env, {
+          email, nombre, fechas,
+          subject: "Tu horario con " + MARCA.profe + " (por confirmar)",
+          intro: "Separaste estas clases con " + MARCA.profe + " (hora de Lima). Quedan apartadas y " + MARCA.profe + " te las confirma:",
+          cierre: "Cada clase dura 1 hora. Guarda este correo para tener tus horarios a la mano."
+        });
+        ctx.waitUntil(privAvisarNicole(env, {
+          subject: "Nuevo horario por confirmar: " + nombre,
+          push: nombre + " · " + privLinea(fechas[0]),
+          cuerpo: nombre + " separó 4 clases desde tu enlace:\n\n" + fechas.map(f => "- " + privLinea(f)).join("\n") +
+            "\n\nCorreo: " + email + (waFull ? "\nWhatsApp: +" + waFull + " (https://wa.me/" + waFull + ")" : "")
+        }));
+        const waTexto = "Hola " + MARCA.profe + ", soy " + nombre + ". Separé mi horario en tu web:\n" +
+          fechas.map(f => "• " + privLinea(f)).join("\n") + "\n¿Me lo confirmas?";
+        return conCors(json({ ok: true, fechas, correo: correoOk, whatsapp: MARCA.whatsapp, wa_texto: waTexto }), origen);
+      }
+
+      /* ===== Flujo 2: reprogramaciones. El alumno ve sus próximas clases con su correo,
+         elige una y una hora libre; queda una SOLICITUD pendiente que Nicole acepta. ===== */
+      if (url.pathname === "/api/agenda/privado/mis-clases" && request.method === "GET"){
+        const origen = origenWeb(request);
+        const cfg = await loadConfig(env);
+        if (!privTokenOk(cfg, "priv_token_libres", url.searchParams.get("k"))){
+          return conCors(json({ error: "Este enlace no es válido." }, 403), origen);
         }
-        const correoOk = resendOk || invitaciones > 0;
-        ctx.waitUntil(privAvisarNicole(env, { nombre, email, whatsapp: waFull, fechas, correoOk }));
+        const email = String(url.searchParams.get("email") || "").trim().toLowerCase();
+        if (!emailOk(email)) return conCors(json({ error: "Escribe el correo con el que separaste tus clases." }, 400), origen);
+        const ip = request.headers.get("CF-Connecting-IP") || "";
+        if (ip && await pasoTopeDia(env, "misclases:" + ip, 30)) return conCors(json({ error: "Demasiados intentos por hoy." }, 429), origen);
+        const { results } = await env.DB.prepare(
+          "SELECT id, inicio_utc, COALESCE(lead_nombre,'') AS nombre FROM reservas WHERE LOWER(COALESCE(lead_email,'')) = ?1 " +
+          "AND estado = 'reservada' AND inicio_utc >= ?2 ORDER BY inicio_utc ASC LIMIT 12"
+        ).bind(email, new Date(Date.now() + 2 * 3600000).toISOString()).all();
+        return conCors(json({ clases: (results || []).map(r => ({ id: r.id, inicio: r.inicio_utc, nombre: r.nombre })) }), origen);
+      }
 
-        return conCors(json({ ok: true, fechas, correo: correoOk }), origen);
+      if (url.pathname === "/api/agenda/privado/reprogramar" && request.method === "POST"){
+        const origen = origenWeb(request);
+        const b = await request.json().catch(() => ({}));
+        const cfg = await loadConfig(env);
+        if (!privTokenOk(cfg, "priv_token_libres", b.k)) return conCors(json({ error: "Este enlace no es válido." }, 403), origen);
+        const email = String(b.email || "").trim().toLowerCase();
+        const orig = await env.DB.prepare(
+          "SELECT * FROM reservas WHERE id = ?1 AND LOWER(COALESCE(lead_email,'')) = ?2 AND estado = 'reservada'"
+        ).bind(String(b.reserva_id || ""), email).first();
+        if (!orig) return conCors(json({ error: "No encuentro esa clase con tu correo." }, 404), origen);
+        const ya = await env.DB.prepare("SELECT id FROM reservas WHERE nota = ?1 AND estado = 'pendiente'").bind("reprog:" + orig.id).first();
+        if (ya) return conCors(json({ error: "Ya pediste cambiar esa clase. Espera la confirmación de Nicole." }, 409), origen);
+        const pc = privCfg(cfg);
+        const t = Date.parse(String(b.nuevo_inicio || ""));
+        const oc = await privOcupacion(env, pc, Date.now(), t + 86400000);
+        if (!Number.isFinite(t) || !privLibre(pc, oc, t, Date.now())) return conCors(json({ error: "Esa hora ya no está libre. Elige otra." }, 409), origen);
+        const nIso = new Date(t).toISOString(), nFin = new Date(t + CLASE_MIN * 60000).toISOString();
+        try {
+          await env.DB.prepare(
+            "INSERT INTO reservas (id,alumno_id,inicio_utc,fin_utc,tipo,serie_id,estado,curso,nota,ciclo,creada,lead_nombre,lead_whatsapp,lead_email,origen) " +
+            "VALUES (?1,NULL,?2,?3,'reprog',?4,'pendiente','',?5,1,?6,?7,?8,?9,'reprogramacion')"
+          ).bind(crypto.randomUUID(), nIso, nFin, orig.serie_id || "", "reprog:" + orig.id, new Date().toISOString(),
+                 orig.lead_nombre || "", orig.lead_whatsapp || "", email).run();
+        } catch (e){ return conCors(json({ error: "Justo tomaron esa hora. Elige otra." }, 409), origen); }
+        const nombre = orig.lead_nombre || "Alumno";
+        const correoOk = await privCorreoAlumno(env, {
+          email, nombre, fechas: [orig.inicio_utc, nIso],
+          subject: "Tu cambio de clase con " + MARCA.profe + " (por confirmar)",
+          intro: "Pediste mover tu clase (1) a este nuevo horario (2), hora de Lima:",
+          cierre: MARCA.profe + " te confirma el cambio. Mientras tanto, tu clase original sigue en pie."
+        });
+        ctx.waitUntil(privAvisarNicole(env, {
+          subject: "Reprogramación por confirmar: " + nombre,
+          push: nombre + " · " + privLinea(nIso),
+          cuerpo: nombre + " quiere cambiar su clase:\n\nDe: " + privLinea(orig.inicio_utc) + "\nA:  " + privLinea(nIso) + "\n\nCorreo: " + email
+        }));
+        const waTexto = "Hola " + MARCA.profe + ", soy " + nombre + ". Quiero cambiar mi clase del " + privLinea(orig.inicio_utc) +
+          " al " + privLinea(nIso) + ", ¿me lo confirmas?";
+        return conCors(json({ ok: true, correo: correoOk, whatsapp: MARCA.whatsapp, wa_texto: waTexto, de: orig.inicio_utc, a: nIso }), origen);
       }
 
       /* ===== MI AGENDA (panel mínimo de Nicole, 26-sep-2026) =====
@@ -4391,7 +4458,7 @@ export default {
             "COALESCE(NULLIF(r.lead_nombre,''), a.nombre, '') AS nombre, COALESCE(NULLIF(r.lead_email,''), '') AS email, " +
             "COALESCE(NULLIF(r.lead_whatsapp,''), '') AS whatsapp " +
             "FROM reservas r LEFT JOIN alumnos a ON a.id = r.alumno_id " +
-            "WHERE r.estado IN ('reservada','pendiente') AND COALESCE(r.tipo,'') != 'bloqueo' AND r.inicio_utc >= ?1 AND r.inicio_utc <= ?2 " +
+            "WHERE r.estado = 'reservada' AND COALESCE(r.tipo,'') != 'bloqueo' AND r.inicio_utc >= ?1 AND r.inicio_utc <= ?2 " +
             "ORDER BY r.inicio_utc ASC"
           ).bind(new Date(Date.now() - 2 * 3600000).toISOString(), hasta).all();
           const clases = results || [];
@@ -4402,7 +4469,21 @@ export default {
             if (c.inicio_utc >= ahoraIso) porAlumno.get(k).restantes++;
           }
           const gcal = { cliente: !!(cfg.gcal_client_id && cfg.gcal_client_secret), conectado: !!cfg.gcal_refresh_token };
-          return conCors(json({ clases, alumnos: [...porAlumno.values()], libres: await privLibres(env), reglas: privCfg(cfg), gcal }), origen);
+          // Solicitudes por confirmar: horarios nuevos (agrupados por serie) y reprogramaciones.
+          const { results: pend } = await env.DB.prepare(
+            "SELECT r.id, r.inicio_utc, r.tipo, r.serie_id, COALESCE(r.nota,'') AS nota, COALESCE(r.lead_nombre,'') AS nombre, " +
+            "COALESCE(r.lead_email,'') AS email, COALESCE(r.lead_whatsapp,'') AS whatsapp, o.inicio_utc AS original " +
+            "FROM reservas r LEFT JOIN reservas o ON r.nota = 'reprog:' || o.id " +
+            "WHERE r.estado = 'pendiente' AND r.inicio_utc >= ?1 AND COALESCE(r.origen,'') IN ('link-privado','reprogramacion') ORDER BY r.inicio_utc ASC"
+          ).bind(ahoraIso).all();
+          const grupos = new Map();
+          for (const r of (pend || [])){
+            const key = r.tipo === "reprog" ? "r:" + r.id : "s:" + (r.serie_id || r.id);
+            if (!grupos.has(key)) grupos.set(key, { clave: key, tipo: r.tipo === "reprog" ? "reprogramacion" : "horario", nombre: r.nombre, email: r.email, whatsapp: r.whatsapp, fechas: [], original: r.original || "" });
+            grupos.get(key).fechas.push(r.inicio_utc);
+          }
+          const pendientes = [...grupos.values()];
+          return conCors(json({ clases, pendientes, alumnos: [...porAlumno.values()], libres: await privLibres(env), reglas: privCfg(cfg), gcal }), origen);
         }
 
         /* Conectar su Google Calendar desde Mi agenda (mismo OAuth que el CRM). */
@@ -4423,12 +4504,56 @@ export default {
           return conCors(json(await privPreviaGcal(env, 42)), origen);
         }
 
+        /* Aceptar / rechazar una solicitud. clave "s:<serie>" = horario nuevo de 4 semanas;
+           "r:<id>" = reprogramación (la clase vieja se cancela y queda tachada en su calendario). */
+        if ((url.pathname === "/api/agenda/panel/aceptar" || url.pathname === "/api/agenda/panel/rechazar") && esPost){
+          const acepta = url.pathname.endsWith("/aceptar");
+          const clave = String(b.clave || "");
+          let filas = [];
+          if (clave.startsWith("s:")){
+            const { results } = await env.DB.prepare("SELECT * FROM reservas WHERE serie_id = ?1 AND estado = 'pendiente' AND COALESCE(tipo,'') != 'reprog'").bind(clave.slice(2)).all();
+            filas = results || [];
+          } else if (clave.startsWith("r:")){
+            const r = await env.DB.prepare("SELECT * FROM reservas WHERE id = ?1 AND estado = 'pendiente'").bind(clave.slice(2)).first();
+            if (r) filas = [r];
+          }
+          if (!filas.length) return conCors(json({ error: "Esa solicitud ya no está pendiente." }, 404), origen);
+          if (!acepta){
+            await env.DB.batch(filas.map(f => env.DB.prepare("UPDATE reservas SET estado = 'cancelada', cancelada_utc = ?2, cancelada_por = 'profesor' WHERE id = ?1").bind(f.id, ahoraIso)));
+            return conCors(json({ ok: true }), origen);
+          }
+          await env.DB.batch(filas.map(f => env.DB.prepare("UPDATE reservas SET estado = 'reservada' WHERE id = ?1").bind(f.id)));
+          let original = null;
+          if (clave.startsWith("r:")){
+            const oid = String(filas[0].nota || "").replace(/^reprog:/, "");
+            original = await env.DB.prepare("SELECT * FROM reservas WHERE id = ?1").bind(oid).first();
+            if (original){
+              await env.DB.prepare("UPDATE reservas SET estado = 'cancelada', cancelada_utc = ?2, cancelada_por = 'reprogramada' WHERE id = ?1").bind(original.id, ahoraIso).run();
+            }
+          }
+          // Google Calendar: crear las clases nuevas (con invitación al alumno) y tachar la vieja.
+          let enCalendario = 0;
+          for (const f of filas){
+            const eid = await gcalCrearEvento(env, { inicio_utc: f.inicio_utc, fin_utc: f.fin_utc, curso: "", alumnoNombre: f.lead_nombre || "", email: f.lead_email || "" });
+            if (eid){ enCalendario++; await env.DB.prepare("UPDATE reservas SET gcal_event_id = ?2 WHERE id = ?1").bind(f.id, eid).run(); }
+          }
+          let tachada = false;
+          if (original && original.gcal_event_id){
+            tachada = await gcalTacharEvento(env, original.gcal_event_id, "reprogramada");
+            if (tachada) await env.DB.prepare("UPDATE reservas SET gcal_event_id = '' WHERE id = ?1").bind(original.id).run();
+          }
+          return conCors(json({ ok: true, aceptadas: filas.length, en_calendario: enCalendario, tachada }), origen);
+        }
+
         if (url.pathname === "/api/agenda/panel/cancelar" && esPost){
           const r = await env.DB.prepare("SELECT id, gcal_event_id FROM reservas WHERE id = ?1 AND estado IN ('reservada','pendiente')").bind(String(b.id || "")).first();
           if (!r) return conCors(json({ error: "No encuentro esa clase." }, 404), origen);
           await env.DB.prepare("UPDATE reservas SET estado = 'cancelada', cancelada_utc = ?2, cancelada_por = 'profesor' WHERE id = ?1").bind(r.id, ahoraIso).run();
           ctx.waitUntil((async () => {
-            if (r.gcal_event_id && await gcalBorrarEvento(env, r.gcal_event_id)){
+            // Queda tachada (no borrada) en su Google Calendar para que se vea qué pasó.
+            // El cron borra eventos de reservas canceladas que aún tengan gcal_event_id: al tacharla
+            // se limpia el id para que el evento tachado se quede como registro.
+            if (r.gcal_event_id && await gcalTacharEvento(env, r.gcal_event_id, "cancelada")){
               await env.DB.prepare("UPDATE reservas SET gcal_event_id = '' WHERE id = ?1").bind(r.id).run();
             }
           })());
@@ -4451,7 +4576,7 @@ export default {
             await env.DB.prepare("UPDATE reservas SET inicio_utc = ?2, fin_utc = ?3, aviso_24 = 0, aviso_2 = 0 WHERE id = ?1").bind(r.id, nIso, nFin).run();
           } catch (e){ return conCors(json({ error: "Esa hora ya está tomada." }, 409), origen); }
           ctx.waitUntil((async () => {
-            if (r.gcal_event_id) await gcalBorrarEvento(env, r.gcal_event_id);
+            if (r.gcal_event_id) await gcalTacharEvento(env, r.gcal_event_id, "movida");
             const eid = await gcalCrearEvento(env, { inicio_utc: nIso, fin_utc: nFin, curso: "", alumnoNombre: r.nombre, email: r.email });
             await env.DB.prepare("UPDATE reservas SET gcal_event_id = ?2 WHERE id = ?1").bind(r.id, eid || "").run();
           })());

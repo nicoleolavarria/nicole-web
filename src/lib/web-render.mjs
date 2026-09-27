@@ -87,6 +87,19 @@ export const DEFAULTS = {
       { url: "/images/foto-5.jpg", pos: "50% 50%" }
     ]
   },
+  /* Páginas propias (27-sep-2026, pedido de Nicole): antes eran secciones de /acerca-de. */
+  trayectoria: {
+    titulo: "Trayectoria",
+    sub: "",
+    foto: { url: "", pos: "50% 50%" },
+    bloques: []
+  },
+  formacion: {
+    titulo: "Formación",
+    sub: "",
+    foto: { url: "", pos: "50% 50%" },
+    bloques: []
+  },
   sesiones: {
     titulo: "Sesiones 1:1",
     intro: [
@@ -395,9 +408,36 @@ function paginaContacto(d){
 }
 
 /* HTML del <main> de una página. `pagina`: inicio | acerca | sesiones | contacto */
+function slug(t){
+  return String(t || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+}
+
+/* Página propia de bloques (Trayectoria, Formación): título + bloques, y foto al costado
+   solo si Nicole puso una. Mismo marcado y clases que "Acerca de" para heredar su diseño. */
+function paginaBloques(d, clave){
+  var a = d[clave] || {};
+  var bloques = (a.bloques || []).map(function (b, i){
+    var ed = ' data-ed="' + clave + '.bloques.' + i + '"';
+    if (b && b.tipo === "titulo") return "<h2" + ed + ' id="' + slug(b.texto) + '"' + (i ? ' style="margin-top:40px;scroll-margin-top:24px"' : "") + ">" + esc(b.texto) + "</h2>";
+    if (b && b.tipo === "foto") return '<div' + ed + ' style="margin:0 0 18px">' + fotoImg(b, "about-photo", "") + "</div>";
+    return "<p" + ed + ">" + texto(b && b.texto) + "</p>";
+  }).join("");
+  var conFoto = a.foto && a.foto.url;
+  return '<div class="wrap">' +
+    '<div class="about-intro">' +
+      '<h1 data-ed="' + clave + '.titulo">' + esc(a.titulo) + "</h1>" +
+      (a.sub ? '<p class="role" data-ed="' + clave + '.sub">' + esc(a.sub) + "</p>" : "") +
+    "</div>" +
+    (conFoto
+      ? '<div class="about-grid"><div>' + fotoImg(a.foto, "about-photo", "", clave + ".foto") + "</div><div>" + bloques + "</div></div>"
+      : "<div>" + bloques + "</div>") +
+    "</div>";
+}
+
 export function htmlPagina(pagina, data){
   var d = mezclar(data);
   if (pagina === "acerca") return paginaAcerca(d);
+  if (pagina === "trayectoria" || pagina === "formacion") return paginaBloques(d, pagina);
   if (pagina === "sesiones") return paginaSesiones(d);
   if (pagina === "contacto") return paginaContacto(d);
   return paginaInicio(d);

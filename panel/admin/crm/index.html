@@ -624,6 +624,8 @@
       <div class="web-pages" id="webPages">
         <button class="webpg active" data-pg="inicio">Inicio</button>
         <button class="webpg" data-pg="acerca">Acerca de</button>
+        <button class="webpg" data-pg="trayectoria">Trayectoria</button>
+        <button class="webpg" data-pg="formacion">Formación</button>
         <button class="webpg" data-pg="sesiones">Sesiones 1:1</button>
         <button class="webpg" data-pg="contacto">Contacto</button>
         <button class="webpg" data-pg="estilo">Diseño</button>
@@ -3126,6 +3128,24 @@ window.mvtInit = mvtInit;
           return '<div class="witem" data-wf="acerca.galeria.' + i + '">' + barraItem("acerca.galeria." + i, "Foto " + (i+1), i, gal.length) +
             foto("acerca.galeria." + i, "") + "</div>";
         }).join("") + agregar("acerca.galeria", "Agregar foto"));
+    }
+
+    /* Trayectoria y Formación (27-sep-2026): páginas propias, mismo editor de bloques que "Acerca de". */
+    if (PG === "trayectoria" || PG === "formacion"){
+      var K = PG, SEC = WEB[K] || (WEB[K] = { titulo: "", bloques: [] });
+      h += grupo("Encabezado", campo(K + ".titulo", "Título") + campo(K + ".sub", "Debajo del título"), true);
+      h += grupo("Foto (opcional)", foto(K + ".foto", "Foto de la columna izquierda", { borrable: true }));
+      var bk = (SEC.bloques || []);
+      h += grupo("Contenido (" + bk.length + ")",
+        bk.map(function(b, i){
+          var cuerpo = b.tipo === "foto"
+            ? foto(K + ".bloques." + i, "Foto")
+            : campo(K + ".bloques." + i + ".texto", b.tipo === "titulo" ? "Título de sección" : "", { area: b.tipo !== "titulo", rows: 4 });
+          return '<div class="witem" data-wf="' + K + '.bloques.' + i + '">' +
+            barraItem(K + ".bloques." + i, b.tipo === "titulo" ? "Título" : (b.tipo === "foto" ? "Foto" : "Párrafo"), i, bk.length) + cuerpo + "</div>";
+        }).join("") +
+        agregar(K + ".bloques|parrafo", "Párrafo") + " " + agregar(K + ".bloques|titulo", "Título de sección") + " " + agregar(K + ".bloques|foto", "Foto") +
+        '<div class="mini" style="margin-top:8px">' + AYUDA_TEXTO + "</div>", true);
     }
 
     if (PG === "sesiones"){

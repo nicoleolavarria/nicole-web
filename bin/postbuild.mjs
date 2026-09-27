@@ -61,6 +61,8 @@ const CANONICO = 'https://www.nicoleolavarria.com';
 const PAGINAS = [
   ['/', 'index.html'],
   ['/acerca-de', 'acerca-de/index.html'],
+  ['/trayectoria', 'trayectoria/index.html'],
+  ['/formacion', 'formacion/index.html'],
   ['/sesiones', 'sesiones/index.html'],
   ['/horarios', 'horarios/index.html'],
   ['/contacto', 'contacto/index.html'],

@@ -373,7 +373,7 @@ function sanearWeb(raw){
     anuncio: function (v){ return wTxt(v, 160); }
   });
 
-  out.nav = wLista(d.nav, 8, function (n){
+  out.nav = wLista(d.nav, 10, function (n){
     const t = wTxt(n && n.texto, 40);
     if (!t) return null;
     const o = { texto: t, url: wUrl(n && n.url) };
@@ -411,6 +411,23 @@ function sanearWeb(raw){
       });
     }
   });
+
+  /* Páginas propias Trayectoria y Formación (27-sep-2026): mismo esquema de bloques que "Acerca de". */
+  for (const clave of ["trayectoria", "formacion"]){
+    out[clave] = wSeccion(d[clave], {
+      titulo:  function (v){ return wTxt(v, 80); },
+      sub:     function (v){ return wTxt(v, 160); },
+      foto:    wFoto,
+      bloques: function (v){
+        return wLista(v, 40, function (b){
+          const tipo = ["titulo", "parrafo", "foto"].includes(b && b.tipo) ? b.tipo : "parrafo";
+          if (tipo === "foto"){ const f = wFoto(b); return f.url ? Object.assign({ tipo: "foto" }, f) : null; }
+          const t = wTxt(b && b.texto, tipo === "titulo" ? 80 : 1200);
+          return t ? { tipo: tipo, texto: t } : null;
+        });
+      }
+    });
+  }
 
   out.sesiones = wSeccion(d.sesiones, {
     titulo:             function (v){ return wTxt(v, 80); },

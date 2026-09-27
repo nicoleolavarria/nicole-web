@@ -327,7 +327,7 @@ function paginaAcerca(d){
   }).join("");
   var bloques = (a.bloques || []).map(function (b, i){
     var ed = ' data-ed="acerca.bloques.' + i + '"';
-    if (b && b.tipo === "titulo") return "<h2" + ed + (i ? ' style="margin-top:40px"' : "") + ">" + esc(b.texto) + "</h2>";
+    if (b && b.tipo === "titulo") return "<h2" + ed + ' id="' + String(b.texto || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") + '"' + (i ? ' style="margin-top:40px;scroll-margin-top:24px"' : "") + ">" + esc(b.texto) + "</h2>";
     if (b && b.tipo === "foto") return '<div' + ed + ' style="margin:0 0 18px">' + fotoImg(b, "about-photo", "") + "</div>";
     return "<p" + ed + ">" + texto(b && b.texto) + "</p>";
   }).join("");

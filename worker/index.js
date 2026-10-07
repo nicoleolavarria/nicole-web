@@ -354,7 +354,7 @@ function wSeccion(src, forma){
 
 function sanearWeb(raw){
   const d = raw && typeof raw === "object" ? raw : {};
-  const out = { v: 1 };
+  const out = { v: Number(d.v) >= 2 ? 2 : 1 };
 
   out.estilo = wSeccion(d.estilo, {
     fuente_titulos: function (v){ return WEB_FUENTES.includes(String(v)) ? String(v) : ""; },

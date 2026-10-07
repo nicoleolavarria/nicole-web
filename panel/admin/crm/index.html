@@ -2968,7 +2968,8 @@ window.mvtInit = mvtInit;
     "  document.getElementById('estiloEd').textContent = R.estiloCss(d);",
     "  var lf = document.getElementById('fuentesEd'), h = R.fuentesHref(d);",
     "  if (h) lf.href = h; else lf.removeAttribute('href');",
-    "  document.body.innerHTML = (pagina === 'inicio' ? '' : R.headerHtml(d)) +",
+    "  document.body.dataset.pagina = pagina;",
+    "  document.body.innerHTML = R.headerHtml(d) +",
     "    '<main>' + R.htmlPagina(pagina, d) + '</main>' + R.pieHtml(d);",
     "  var an = R.anuncioHtml(d); if (an) document.body.insertAdjacentHTML('afterbegin', an);",
     "};",
@@ -3081,26 +3082,7 @@ window.mvtInit = mvtInit;
     var h = "";
     if (PG === "inicio"){
       h += grupo("Portada", campo("inicio.titulo", "Título grande") + campo("inicio.sub", "Debajo del título"), true);
-      h += grupo("Tu foto", foto("inicio.foto", "Foto de portada") +
-        rango("inicio.foto.ancho", "Tamaño de la foto", 220, 720, 10, "px") +
-        '<div class="wf" data-wf="inicio.foto.ratio"><label>Forma de la foto</label><select data-w="inicio.foto.ratio">' +
-          ["3/4:Vertical (3:4)", "4/5:Vertical suave (4:5)", "1/1:Cuadrada", "4/3:Horizontal", "16/9:Panorámica"].map(function(o){
-            var p = o.split(":"), v = getR(WEB, "inicio.foto.ratio") || "3/4";
-            return '<option value="' + p[0] + '"' + (v === p[0] ? " selected" : "") + ">" + p[1] + "</option>";
-          }).join("") + "</select></div>", true);
-      var en = (WEB.inicio.enlaces || []);
-      h += grupo("Menú sobre la foto (" + en.length + ")",
-        '<div class="wf" data-wf="inicio.enlaces_pos"><label>Dónde va el menú</label><select data-w="inicio.enlaces_pos">' +
-          ["arriba:Arriba", "centro:Al centro", "abajo:Abajo"].map(function(o){
-            var p = o.split(":"), v = getR(WEB, "inicio.enlaces_pos") || "arriba";
-            return '<option value="' + p[0] + '"' + (v === p[0] ? " selected" : "") + ">" + p[1] + "</option>";
-          }).join("") + "</select></div>" +
-        en.map(function(a, i){
-          return '<div class="witem" data-wf="inicio.enlaces.' + i + '">' + barraItem("inicio.enlaces." + i, "Enlace " + (i+1), i, en.length) +
-            campo("inicio.enlaces." + i + ".texto", "Texto") + campo("inicio.enlaces." + i + ".url", "A dónde lleva", { ph: "/sesiones" }) + "</div>";
-        }).join("") + agregar("inicio.enlaces", "Agregar enlace"));
-      h += grupo("Tus redes", campo("inicio.instagram", "Instagram", { ph: "https://instagram.com/…" }) +
-        campo("inicio.whatsapp", "WhatsApp", { ph: "https://wa.me/51…" }));
+      h += '<p class="hint">Portada de texto, sin foto. El menú se edita en Estilo → Menú de arriba. Tus fotos anteriores se conservan.</p>';
     }
 
     if (PG === "acerca"){

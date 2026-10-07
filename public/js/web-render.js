@@ -27,10 +27,10 @@
 
 /* ---------- valores por defecto = la web original ---------- */
 const DEFAULTS = {
-  v: 1,
+  v: 2,
   estilo: {
-    fuente_titulos: "",      // "" = DM Mono (la original)
-    fuente_cuerpo: "",
+    fuente_titulos: "Cormorant Garamond",
+    fuente_cuerpo: "Cormorant Garamond",
     escala: 100,             // tamaño de letra general, %
     escala_titulo: 100,      // extra solo para los títulos grandes, %
     color_fondo: "",
@@ -44,16 +44,15 @@ const DEFAULTS = {
     anuncio: ""              // barra opcional arriba de todas las páginas
   },
   nav: [
-    { texto: "inicio", url: "/" },
     { texto: "acerca de", url: "/acerca-de" },
+    { texto: "trayectoria", url: "/trayectoria" },
+    { texto: "formación", url: "/formacion" },
     { texto: "sesiones 1:1", url: "/sesiones" },
-    { texto: "horarios", url: "/horarios" },
-    { texto: "contacto", url: "/contacto" },
-    { texto: "portal alumno", url: "/portal/index.html", destacado: true }
+    { texto: "contacto", url: "/contacto" }
   ],
   inicio: {
     titulo: "Nicole Olavarría",
-    sub: "soprano · artista escénica · compositora",
+    sub: "Cantante y artista escénica. Su práctica se expande hacia la actuación, el movimiento y la creación.",
     foto: { url: "/images/sesiones.jpg", pos: "50% 50%", ratio: "3/4", ancho: 380 },
     enlaces: [
       { texto: "Acerca de", url: "/acerca-de" },
@@ -203,6 +202,17 @@ function mezclar(data){
     }
   }
   unir(out, d);
+  // Adaptación local del diseño anterior; no escribe ni borra datos del CRM.
+  // v2 se conserva al guardar desde el panel: las ediciones posteriores mandan.
+  if (Number(d.v || 1) < 2) {
+    out.nav = JSON.parse(JSON.stringify(DEFAULTS.nav));
+    out.estilo.fuente_titulos = out.estilo.fuente_cuerpo = "Cormorant Garamond";
+    out.estilo.escala = out.estilo.escala_titulo = 100;
+    out.estilo.color_fondo = "#fafaf8";
+    out.estilo.color_texto = "#0a0a0a";
+    if (out.inicio.sub === "soprano · artista escénica · compositora") out.inicio.sub = DEFAULTS.inicio.sub;
+  }
+  out.v = 2;
   return out;
 }
 
@@ -212,8 +222,8 @@ function estiloCss(data){
   var r = [];
   var ft = e.fuente_titulos && FUENTES[e.fuente_titulos] ? "'" + e.fuente_titulos + "', " : "";
   var fc = e.fuente_cuerpo && FUENTES[e.fuente_cuerpo] ? "'" + e.fuente_cuerpo + "', " : "";
-  if (ft) r.push("--font-titulo:" + ft + "var(--mono)");
-  if (fc) r.push("--font-cuerpo:" + fc + "var(--mono)");
+  if (ft) r.push("--font-titulo:" + ft + (e.fuente_titulos === "Cormorant Garamond" ? "Georgia,serif" : "var(--mono)"));
+  if (fc) r.push("--font-cuerpo:" + fc + (e.fuente_cuerpo === "Cormorant Garamond" ? "Georgia,serif" : "var(--mono)"));
   var esc1 = num(e.escala, 100, 70, 150) / 100;
   var esc2 = num(e.escala_titulo, 100, 70, 200) / 100;
   if (esc1 !== 1) r.push("--esc:" + esc1);
@@ -284,7 +294,7 @@ function anuncioHtml(data){
   return '<div class="anuncio" data-ed="marca.anuncio">' + esc(m.anuncio) + "</div>";
 }
 
-/* Header con navegación editable. El inicio no lo usa (va sin header). */
+/* Header compartido por la portada, interiores y vista previa editable. */
 function headerHtml(data){
   var d = mezclar(data);
   var links = (d.nav || []).map(function (n, i){
@@ -292,8 +302,8 @@ function headerHtml(data){
            ' data-ed="nav.' + i + '">' + esc(n.texto) + "</a>";
   }).join("");
   return '<header>' +
-    '<a href="/" class="site-name" data-ed="marca.nombre">' + esc(d.marca.nombre) + "</a>" +
-    '<nav>' + links + "</nav>" +
+    '<a href="/" class="site-name" data-ed="marca.nombre">' + esc(d.marca.nombre || d.inicio.titulo) + "</a>" +
+    '<nav aria-label="Navegación principal">' + links + "</nav>" +
     '<button class="menu-toggle" aria-label="menú" aria-expanded="false"><span></span><span></span></button>' +
     "</header>";
 }
@@ -310,27 +320,11 @@ function pieHtml(data){
 /* ---------- páginas ---------- */
 function paginaInicio(d){
   var h = d.inicio;
-  var enlaces = (h.enlaces || []).map(function (a, i){
-    return '<a href="' + urlSegura(a.url) + '" data-ed="inicio.enlaces.' + i + '">' + esc(a.texto) + "</a>";
-  }).join("");
-  var posClase = { arriba: "flex-start", centro: "center", abajo: "flex-end" }[h.enlaces_pos] || "flex-start";
-  var anchoFoto = num(h.foto && h.foto.ancho, 380, 220, 720);
-  var ratio = ["3/4", "1/1", "4/5", "4/3", "16/9"].indexOf(String(h.foto && h.foto.ratio)) >= 0 ? h.foto.ratio : "3/4";
-  var redes = "";
-  if (h.instagram) redes += '<a href="' + urlSegura(h.instagram) + '" target="_blank" rel="noopener" aria-label="Instagram" data-ed="inicio.instagram">' + SVG_IG + "</a>";
-  if (h.whatsapp) redes += '<a href="' + urlSegura(h.whatsapp) + '" target="_blank" rel="noopener" aria-label="WhatsApp" data-ed="inicio.whatsapp">' + SVG_WA + "</a>";
-
-  return '<div class="home">' +
+  return '<section class="home" aria-labelledby="portada-titulo">' +
     '<div class="home-top">' +
-      '<h1 data-ed="inicio.titulo">' + esc(h.titulo) + "</h1>" +
+      '<h1 id="portada-titulo" data-ed="inicio.titulo">' + esc(h.titulo) + "</h1>" +
       (h.sub ? '<p class="home-sub" data-ed="inicio.sub">' + esc(h.sub) + "</p>" : "") +
-    "</div>" +
-    '<div class="home-photo-box" style="max-width:min(' + anchoFoto + 'px,100%)">' +
-      fotoImg(h.foto, "home-photo", "aspect-ratio:" + ratio + ";", "inicio.foto") +
-      '<nav class="home-nav-overlay" style="justify-content:' + posClase + '">' + enlaces + "</nav>" +
-    "</div>" +
-    (redes ? '<div class="home-icons">' + redes + "</div>" : "") +
-    "</div>";
+    "</div></section>";
 }
 
 function paginaAcerca(d){
@@ -458,9 +452,9 @@ function htmlDocumento(pagina, data, opciones){
     '<link href="https://fonts.googleapis.com/css2?family=DM+Mono:ital,wght@0,300;0,400;0,500;1,300;1,400&display=swap" rel="stylesheet" />' +
     (href ? '<link href="' + esc(href) + '" rel="stylesheet" />' : "") +
     '<link rel="stylesheet" href="' + esc(o.css || "/web/global.css") + '" />' +
-    "<style>" + estiloCss(d) + (o.extraCss || "") + "</style></head><body>" +
+    "<style>" + estiloCss(d) + (o.extraCss || "") + '</style></head><body data-pagina="' + esc(pagina) + '">' +
     anuncioHtml(d) +
-    (pagina === "inicio" ? "" : headerHtml(d)) +
+    headerHtml(d) +
     "<main>" + htmlPagina(pagina, d) + "</main>" +
     pieHtml(d) +
     (o.script ? "<script>" + o.script + "</script>" : "") +

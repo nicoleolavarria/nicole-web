@@ -25,7 +25,6 @@ const {
 
 const { web, version } = await obtenerWeb();
 const data = mezclar(web);
-const conHeader = pagina !== 'inicio';
 
 /* La tarjeta de 1200x630 en su tipografía y su paleta. Sus fotos son verticales (4:5):
    en el recorte 1.91:1 de WhatsApp y X salen partidas por la mitad, así que la previsualización
@@ -73,7 +72,7 @@ const datosEstructurados = jsonLd(pagina, data, canonicalURL);
 </head>
 <body data-pagina={pagina} data-webver={version}>
   <Fragment set:html={anuncioHtml(data)} />
-  {conHeader && <Fragment set:html={headerHtml(data)} />}
+  <Fragment set:html={headerHtml(data)} />
 
   <main>
     <Fragment set:html={htmlPagina(pagina, data)} />
@@ -146,12 +145,10 @@ const datosEstructurados = jsonLd(pagina, data, canonicalURL);
         if (anHtml) document.body.insertAdjacentHTML('afterbegin', anHtml);
 
         var head = document.querySelector('header');
-        if (pagina !== 'inicio') {
-          var nuevo = W.headerHtml(data);
-          if (head) head.outerHTML = nuevo;
-          else document.querySelector('main').insertAdjacentHTML('beforebegin', nuevo);
-          window.engancharMenu();
-        } else if (head) { head.remove(); }
+        var nuevo = W.headerHtml(data);
+        if (head) head.outerHTML = nuevo;
+        else document.querySelector('main').insertAdjacentHTML('beforebegin', nuevo);
+        window.engancharMenu();
 
         document.querySelector('main').innerHTML = W.htmlPagina(pagina, data);
         var pie = document.querySelector('footer');

@@ -12,8 +12,8 @@
   --mono: 'DM Mono', 'Courier New', ui-monospace, monospace;
 
   /* editables desde el CRM */
-  --font-titulo: var(--mono);
-  --font-cuerpo: var(--mono);
+  --font-titulo: 'Cormorant Garamond', Georgia, serif;
+  --font-cuerpo: 'Cormorant Garamond', Georgia, serif;
   --esc: 1;          /* tamaño de letra general */
   --esc-tit: 1;      /* extra solo para los títulos grandes */
   --ancho: 860px;    /* ancho máximo de las páginas interiores */
@@ -411,4 +411,35 @@ footer {
   .footer-copy { margin-left: auto; }
   .home-nav-overlay a { font-size: calc(13.1px * var(--esc)); }
   .home-icons { margin-bottom: 32px; }
+}
+
+/* Portada aprobada en boceto, 7-oct-2026. La navegación permanece visible también
+   en móvil; no depende de un menú oculto ni de JavaScript. */
+body { font-size: calc(20px * var(--esc)); }
+header { position: relative; padding: 24px 40px; gap: 24px; border-bottom: 0; }
+header nav { justify-content: center; flex-wrap: wrap; gap: 8px 36px; }
+header nav a { font-size: calc(20px * var(--esc)); letter-spacing: 0; min-height: 44px; display: inline-flex; align-items: center; color: var(--fg); }
+.site-name { font-size: calc(22px * var(--esc)); letter-spacing: 0; }
+.menu-toggle { display: none; }
+a:focus-visible { outline: 2px solid var(--fg); outline-offset: 5px; }
+body[data-pagina="inicio"] header { justify-content: center; }
+body[data-pagina="inicio"] .site-name { display: none; }
+body[data-pagina="inicio"] main { min-height: 0; }
+.home { min-height: calc(100svh - 92px); justify-content: center; padding: 72px 24px 120px; }
+.home-top { width: 100%; max-width: 900px; margin: 0; }
+.home-top h1 { font-size: calc(clamp(44px, 6vw, 80px) * var(--esc) * var(--esc-tit)); font-weight: 400; line-height: 1.1; margin: 0 0 24px; }
+.home-sub { max-width: 570px; margin: 0 auto; font-size: calc(clamp(22px, 2vw, 26px) * var(--esc)); line-height: 1.5; letter-spacing: 0; color: var(--fg); }
+h2 { font-size: calc(20px * var(--esc)); }
+.small, .about-intro .role, .sesion-card p, .sesiones-meta, .btn-agenda, .contact-label, .footer-thanks, .footer-blog, .footer-copy { font-size: calc(18px * var(--esc)); }
+.sesion-card h3, .contact-value { font-size: calc(22px * var(--esc)); }
+@media (max-width: 1000px) {
+  header { flex-direction: column; gap: 12px; }
+}
+@media (max-width: 700px) {
+  header { padding: 20px 22px; }
+  header nav { display: flex; position: static; flex-direction: row; align-items: center; padding: 0; border: 0; gap: 0 24px; }
+  header nav a { width: auto; padding: 5px 0; font-size: calc(19px * var(--esc)); }
+  .home { min-height: calc(100svh - 128px); padding: 60px 24px 112px; }
+  .home-top h1 { font-size: calc(clamp(40px, 11vw, 64px) * var(--esc) * var(--esc-tit)); }
+  .home-sub { max-width: 340px; }
 }

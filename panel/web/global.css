@@ -418,7 +418,7 @@ footer {
 body { font-size: calc(20px * var(--esc)); }
 header { position: relative; padding: 24px 40px; gap: 24px; border-bottom: 0; }
 header nav { justify-content: center; flex-wrap: wrap; gap: 8px 36px; }
-header nav a { font-size: calc(20px * var(--esc)); letter-spacing: 0; min-height: 44px; display: inline-flex; align-items: center; color: var(--fg); }
+header nav a { font-family: 'DM Sans', Arial, sans-serif; text-transform: uppercase; font-size: calc(16px * var(--esc)); letter-spacing: .06em; min-height: 44px; display: inline-flex; align-items: center; color: var(--fg); }
 .site-name { font-size: calc(22px * var(--esc)); letter-spacing: 0; }
 .menu-toggle { display: none; }
 a:focus-visible { outline: 2px solid var(--fg); outline-offset: 5px; }
@@ -438,8 +438,11 @@ h2 { font-size: calc(20px * var(--esc)); }
 @media (max-width: 700px) {
   header { padding: 20px 22px; }
   header nav { display: flex; position: static; flex-direction: row; align-items: center; padding: 0; border: 0; gap: 0 24px; }
-  header nav a { width: auto; padding: 5px 0; font-size: calc(19px * var(--esc)); }
+  header nav a { width: auto; padding: 5px 0; font-size: calc(15px * var(--esc)); }
   .home { min-height: calc(100svh - 128px); padding: 60px 24px 112px; }
   .home-top h1 { font-size: calc(clamp(40px, 11vw, 64px) * var(--esc) * var(--esc-tit)); }
   .home-sub { max-width: 340px; }
 }
+
+/* Tipografía de portada independiente de las páginas interiores. */
+.home-top h1, .home-sub { font-family: 'Cormorant Garamond', Georgia, serif; }

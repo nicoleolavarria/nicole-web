@@ -242,7 +242,7 @@ function estiloCss(data){
 function fuentesHref(data){
   var e = mezclar(data).estilo;
   var qs = [];
-  [e.fuente_titulos, e.fuente_cuerpo].forEach(function (f){
+  ["Cormorant Garamond", "DM Sans", e.fuente_titulos, e.fuente_cuerpo].forEach(function (f){
     if (f && FUENTES[f] && qs.indexOf(FUENTES[f]) === -1) qs.push(FUENTES[f]);
   });
   return qs.length ? "https://fonts.googleapis.com/css2?" + qs.join("&") + "&display=swap" : "";

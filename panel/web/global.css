@@ -444,5 +444,10 @@ h2 { font-size: calc(20px * var(--esc)); }
   .home-sub { max-width: 340px; }
 }
 
-/* Tipografía de portada independiente de las páginas interiores. */
-.home-top h1, .home-sub { font-family: 'Cormorant Garamond', Georgia, serif; }
+/* Tipografía: títulos en Cormorant Garamond; el resto del texto (portada y páginas interiores) en DM Sans, sin mayúsculas forzadas. */
+.home-top h1 { font-family: 'Cormorant Garamond', Georgia, serif; }
+.home-sub { font-family: 'DM Sans', Arial, sans-serif; text-transform: none; letter-spacing: 0; font-size: calc(clamp(16px, 1.6vw, 19px) * var(--esc)); line-height: 1.6; }
+main h1 { font-family: 'Cormorant Garamond', Georgia, serif; }
+main .wrap *:not(h1), main .wrap-narrow *:not(h1) { font-family: 'DM Sans', Arial, sans-serif; }
+main .wrap h2, main .wrap h3, main .wrap-narrow h2, main .wrap-narrow h3, main .contact-label { text-transform: none; letter-spacing: 0; }
+main .wrap p, main .wrap-narrow p, main .contact-value, main .sesion-card p { font-size: calc(17px * var(--esc)); line-height: 1.65; }

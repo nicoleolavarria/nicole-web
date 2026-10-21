@@ -470,7 +470,7 @@ header nav a::first-letter { text-transform: uppercase; }
 .home-sub { font-family: 'Space Mono', ui-monospace, monospace; text-transform: none; max-width: 900px; font-size: calc(clamp(13px, 1.62vw, 26px) * var(--esc)); line-height: 2.29; }
 main h1 { font-family: 'Homemade Apple', cursive; font-weight: 400; }
 /* Título "SOBRE NICOLE" de la página Acerca de, en negrita (Homemade Apple solo tiene peso 400: se engrosa con trazo y peso sintético). */
-body[data-pagina="acerca"] main h2[data-ed="acerca.bloques.0"] { font-weight: 700; -webkit-text-stroke: .5px currentColor; }
+body[data-pagina="acerca"] main h2[data-ed="acerca.bloques.0"] { font-weight: 400; text-transform: none; color: var(--fg); font-size: calc(28px * var(--esc)); -webkit-text-stroke: .55px currentColor; letter-spacing: .01em; }
 main .wrap *:not(h1), main .wrap-narrow *:not(h1) { font-family: 'Space Mono', ui-monospace, monospace; }
 main .wrap h2, main .wrap h3, main .wrap-narrow h2, main .wrap-narrow h3, main .sesion-card h3 { font-family: 'Homemade Apple', cursive; font-weight: 400; line-height: 1.5; }
 main .wrap p, main .wrap-narrow p, main .contact-value, main .sesion-card p { font-size: calc(15px * var(--esc)); line-height: 1.8; }

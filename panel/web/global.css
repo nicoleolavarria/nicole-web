@@ -463,7 +463,7 @@ body[data-pagina="inicio"] header nav { margin-right: calc(1.4 * var(--u)); }
   body[data-pagina="inicio"] header nav a:nth-child(4) { margin-left: calc(.83 * var(--u)); }
   body[data-pagina="inicio"] header nav a:nth-child(5) { margin-left: calc(.2 * var(--u)); }
 }
-header nav a { font-family: 'Homemade Apple', cursive; text-transform: none; letter-spacing: 0; display: inline-block; line-height: 1.8; font-size: calc(clamp(16px, calc(2.15 * var(--u)), 36px) * var(--esc)); }
+header nav a { font-family: 'Homemade Apple', cursive; text-transform: none; letter-spacing: 0; display: inline-block; line-height: 1.8; font-size: calc(clamp(15px, calc(1.95 * var(--u)), 33px) * var(--esc)); }
 header nav a::first-letter { text-transform: uppercase; }
 .site-name { font-family: 'Homemade Apple', cursive; }
 .home-top h1 { font-family: 'Homemade Apple', cursive; text-transform: none; font-weight: 400; font-size: calc(clamp(52px, calc(6.53 * var(--u)), 112px) * var(--esc) * var(--esc-tit)); line-height: 1.2; margin: 0 0 56px; }
@@ -492,17 +492,6 @@ main .wrap p, main .wrap-narrow p, main .contact-value, main .sesion-card p { fo
    así los tamaños no se salen en ventanas anchas y bajas. */
 :root { --u: min(1vw, 1.653vh); }
 
-/* Fondo del boceto de Nicole (21-oct-2026): gris azulado de papel de bitácora, con grano fino y fibras
-   (papel.png, 256 px, sin costuras) y un jaspeado muy suave. Medido sobre su foto: color medio #c4ced7.
-   --bg se fija aquí con !important para que el resto de la web (cabecera, botones) use el mismo color. */
-:root { --bg: #c4ced7 !important; --line: #aeb9c3; --muted: #4b5258; }
-body {
-  background-color: #c4ced7;
-  background-image:
-    url('papel.png'),
-    linear-gradient(180deg, #c4cdd6 0%, #c7d1d9 45%, #cdd7df 72%, #d2dce4 100%);
-  background-size: 256px 256px, 100% 100%;
-}
 header { background: transparent; }
 
 /* Móvil: sin el hueco grande entre el subtítulo y el pie (solo ≤700px; en computador no cambia). */

@@ -2,12 +2,14 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import vm from 'node:vm';
+import { DatabaseSync } from 'node:sqlite';
+import { create as crearFuenteBinaria } from 'fontkit';
 import { webcrypto } from 'node:crypto';
 
 const src = readFileSync(new URL('../worker/index.js', import.meta.url), 'utf8');
 
 /* 1) Funciones puras: el mismo trozo del worker que usa portada.test.mjs. */
-const pure = vm.createContext({});
+const pure = vm.createContext({crearFuenteBinaria, Buffer, DataView});
 vm.runInContext(src.slice(src.indexOf('const WEB_FUENTES'), src.indexOf('function webDeConfig'))
   + '\nthis.H = { firmaFuente, validarFuente, wNombreFuente, generarIdFuente, wFuentesGuardadas, usosFuente, sanearWeb };', pure);
 const H = pure.H;
@@ -18,7 +20,7 @@ const A = (s, ...n) => new Uint8Array([...s].map((c) => c.charCodeAt(0)).concat(
 const bytesDe = (arr) => new Uint8Array(arr);
 // los objetos que salen de la vm vienen de otro realm: se pasan a JSON para comparar
 const J = (x) => JSON.parse(JSON.stringify(x === undefined ? null : x));
-const fuenteWoff2 = Array.from(A("wOF2", ...new Array(60).fill(0)));
+const fuenteWoff2 = Array.from(readFileSync(new URL('../public/styles/fonts/homemade-apple-400.woff2', import.meta.url)));
 const guardada = { id: ID, nombre: 'Mi Fuente', formato: 'woff2' };
 
 test('firma binaria reconoce cada formato y rechaza lo demás', () => {
@@ -33,12 +35,12 @@ test('firma binaria reconoce cada formato y rechaza lo demás', () => {
 
 test('validarFuente exige extensión, tamaño y firma que coincidan', () => {
   assert.deepEqual(J(H.validarFuente('Mi.woff2', bytesDe(fuenteWoff2))), { formato: 'woff2' });
-  assert.deepEqual(J(H.validarFuente('MI.TTF', bytesDe([0, 1, 0, 0, 9, 9]))), { formato: 'ttf' });
+  assert.match(H.validarFuente('MI.TTF', bytesDe([0, 1, 0, 0, 9, 9])).error, /válida/);
   assert.match(H.validarFuente('Mi.woff', bytesDe(fuenteWoff2)).error, /woff/);       // firma de woff2 con extensión woff
   assert.match(H.validarFuente('Mi.exe', bytesDe(fuenteWoff2)).error, /woff2, woff, ttf u otf/);
   assert.match(H.validarFuente('Mi.woff2', A("<html", 0, 0, 0)).error, /no parece/);
   assert.match(H.validarFuente('Mi.woff2', new Uint8Array(1024 * 1024 + 1)).error, /1 MB/);
-  assert.deepEqual(J(H.validarFuente('grande.otf', (() => { const b = new Uint8Array(1024 * 1024); b.set(A("OTTO")); return b; })())), { formato: 'otf' });
+  assert.ok(H.validarFuente('grande.otf', (() => { const b = new Uint8Array(1024 * 1024); b.set(A("OTTO")); return b; })()).error);
 });
 
 test('wNombreFuente deja letras, números, espacio, punto, guion y guion bajo', () => {
@@ -107,9 +109,9 @@ test('sanearWeb: tipos acota rangos, descarta lo desconocido y no deja pasar CSS
   assert.equal(t.foto, undefined);
 });
 
-test('sanearWeb: tipos sin fuentes subidas no acepta up:<id>', () => {
+test('sanearWeb: lista cliente vacía conserva las fuentes del inventario servidor', () => {
   const raw = { v: 2, estilo: { fuentes_subidas: [], tipos: { menu: { fuente: 'up:' + ID } } } };
-  assert.equal(H.sanearWeb(raw, [guardada]).estilo, undefined);
+  assert.equal(H.sanearWeb(raw, [guardada]).estilo.tipos.menu.fuente, 'up:' + ID);
 });
 
 /* 2) Rutas del worker de punta a punta, con D1 y R2 falsos. El módulo se carga igual que en
@@ -119,7 +121,7 @@ function cargarWorker(){
     .replace(/^import .*$/gm, '')
     .replace('export default {', 'const worker = {');
   const ctx = vm.createContext({
-    Request, Response, FormData, File, URL, Headers, TextEncoder, TextDecoder, console,
+    Request, Response, FormData, File, URL, Headers, TextEncoder, TextDecoder, console, crearFuenteBinaria, Buffer, DataView,
     crypto: webcrypto,
     EmailMessage: function () {}, createMimeMessage: () => ({}), buildPushPayload: () => ({})
   });
@@ -128,35 +130,32 @@ function cargarWorker(){
 }
 
 function entorno(){
-  const config = new Map();
+  const sqlite = new DatabaseSync(':memory:');
+  sqlite.exec('CREATE TABLE config(clave TEXT PRIMARY KEY, valor TEXT)');
+  const config = {get: k => sqlite.prepare('SELECT valor FROM config WHERE clave=?').get(k)?.valor,
+    has: k => !!sqlite.prepare('SELECT valor FROM config WHERE clave=?').get(k),
+    set: (k,v) => sqlite.prepare('INSERT OR REPLACE INTO config VALUES(?,?)').run(k,v)};
   const r2 = new Map();
-  function stmt(sql, args){
+  const fallos = {put:0, borrar:0, db:0};
+  function stmt(sql, args=[]){
     return {
       bind: (...a) => stmt(sql, a),
-      all: async () => {
-        if (/FROM config/.test(sql)) return { results: [...config].map(([clave, valor]) => ({ clave, valor })) };
-        return { results: [] };
-      },
-      first: async () => null,
+      all: async () => ({results: sqlite.prepare(sql).all(...args)}),
+      first: async () => sqlite.prepare(sql).get(...args) || null,
       run: async () => {
-        const m = sql.match(/INSERT INTO config \(clave, valor\) VALUES \('(\w+)', \?1\)/);
-        if (m) config.set(m[1], args[0]);
-        const m2 = sql.match(/INSERT INTO config \(clave, valor\) VALUES \(\?1, \?2\)/);
-        if (m2) config.set(args[0], args[1]);
-        return {};
+        if(fallos.db && sql.includes('INSERT INTO config')) {fallos.db--;throw new Error('DB fixture');}
+        const r=sqlite.prepare(sql).run(...args);
+        return {meta:{changes:Number(r.changes)}};
       }
     };
   }
-  const DB = {
-    prepare: (sql) => stmt(sql, []),
-    batch: (lista) => Promise.all(lista.map((s) => s.run()))
-  };
+  const DB = {prepare: sql => stmt(sql), batch: async lista => { const out=[];for(const s of lista)out.push(await s.run());return out; }};
   const RECURSOS_R2 = {
-    put: async (key, body, opts) => { r2.set(key, { body: new Uint8Array(body), opts }); },
+    put: async (key, body, opts) => { if(fallos.put){fallos.put--;throw new Error('R2 fixture');} r2.set(key, { body: new Uint8Array(body), opts }); },
     get: async (key) => (r2.has(key) ? { body: r2.get(key).body, httpMetadata: r2.get(key).opts.httpMetadata } : null),
-    delete: async (key) => { r2.delete(key); }
+    delete: async (key) => { if(fallos.borrar){fallos.borrar--;throw new Error('R2 fixture');} r2.delete(key); }
   };
-  return { env: { DB, RECURSOS_R2, ADMIN_TOKEN: 'tok-prueba' }, config, r2 };
+  return { env: { DB, RECURSOS_R2, ADMIN_TOKEN: 'tok-prueba' }, config, r2, fallos, sqlite };
 }
 
 const ctx = { waitUntil() {} };
@@ -191,7 +190,7 @@ test('POST /api/web/fuente rechaza sin sesión, firma falsa, extensión mala y n
   assert.equal((await subir(worker, env, 'X', A("<html>", 0, 0), 'a.woff2')).status, 400);
   assert.equal((await subir(worker, env, 'X', fuenteWoff2, 'a.exe')).status, 400);
   assert.equal((await subir(worker, env, '!!!', fuenteWoff2, 'a.woff2')).status, 400);
-  assert.equal((await subir(worker, env, 'X', new Array(1024 * 1024 + 1).fill(0), 'a.woff2')).status, 400);
+  assert.equal((await subir(worker, env, 'X', new Array(1024 * 1024 + 1).fill(0), 'a.woff2')).status, 413);
   assert.equal(r2.size, 0);
   assert.equal(config.has('web_fuentes'), false);
 });
@@ -250,4 +249,76 @@ test('publicar con una fuente en uso bloquea el borrado (409) y, al quitarla, de
   assert.equal((await worker.fetch(new Request(`${ORIGEN}/fuentes/${id}.woff2`), env, ctx)).status, 404);
   assert.equal((await worker.fetch(new Request(ORIGEN + '/api/web/fuente/' + id, { method: 'DELETE', headers: AUTH }), env, ctx)).status, 404);
   assert.equal((await worker.fetch(new Request(ORIGEN + '/api/web/fuente/' + id, { method: 'DELETE' }), env, ctx)).status, 401);
+});
+
+test('máximo ocho es atómico incluso con diez subidas concurrentes', async () => {
+  const worker=cargarWorker(), {env,config,r2}=entorno();
+  const rs=await Promise.all(Array.from({length:10},(_,i)=>subir(worker,env,'Concurrente '+i,fuenteWoff2,'f.woff2')));
+  assert.equal(rs.filter(r=>r.status===200).length,8);
+  assert.equal(r2.size,8);
+  const lista=JSON.parse(config.get('web_fuentes'));
+  assert.equal(lista.length,8);assert.ok(lista.every(f=>!f.estado));
+  assert.equal(new Set(lista.map(f=>f.id)).size,8);
+});
+
+test('magic bytes falsas, SVG, HTML y rutas nunca guardan objetos', async()=>{
+  const worker=cargarWorker(),{env,r2}=entorno();
+  for(const [archivo,contenido] of [['a.woff2',A('wOF2',...new Array(80).fill(0))],['a.otf',A('OTTO',...new Array(80).fill(0))],['a.woff2',A('<svg><script>')],['a.ttf',A('<html>')],['a.woff2.exe',fuenteWoff2],['../a.woff2',fuenteWoff2],['a.html.woff2',A('<html>')]]){
+    assert.equal((await subir(worker,env,'Prueba',contenido,archivo)).status,400,archivo);
+  }
+  assert.equal(r2.size,0);
+});
+
+test('fallo R2 libera reserva y fallo DB tras subir limpia R2',async()=>{
+  const worker=cargarWorker();
+  {
+    const {env,fallos,config,r2}=entorno();fallos.put=1;
+    assert.equal((await subir(worker,env,'Fallo R2',fuenteWoff2,'f.woff2')).status,503);
+    assert.equal(r2.size,0);assert.deepEqual(JSON.parse(config.get('web_fuentes')),[]);
+  }
+  {
+    const {env,fallos,config,r2}=entorno(),put=env.RECURSOS_R2.put;
+    env.RECURSOS_R2.put=async(...args)=>{await put(...args);fallos.db=1;};
+    assert.equal((await subir(worker,env,'Fallo DB',fuenteWoff2,'f.woff2')).status,503);
+    assert.equal(r2.size,0);assert.deepEqual(JSON.parse(config.get('web_fuentes')),[]);
+  }
+});
+
+test('fallo de limpieza conserva referencia y DELETE reintenta sin huérfanos',async()=>{
+  const worker=cargarWorker(),{env,fallos,config,r2}=entorno(),put=env.RECURSOS_R2.put;
+  env.RECURSOS_R2.put=async(...args)=>{await put(...args);fallos.db=1;fallos.borrar=1;};
+  const rs=await subir(worker,env,'Recuperar',fuenteWoff2,'f.woff2');
+  assert.equal(rs.status,503);const {id}=await rs.json();
+  assert.equal(r2.size,1);assert.equal(JSON.parse(config.get('web_fuentes'))[0].estado,'borrando');
+  assert.equal((await worker.fetch(new Request(`${ORIGEN}/api/web/fuente/${id}`,{method:'DELETE',headers:AUTH}),env,ctx)).status,200);
+  assert.equal(r2.size,0);assert.deepEqual(JSON.parse(config.get('web_fuentes')),[]);
+});
+
+const publicarFixture=(worker,env,web)=>worker.fetch(new Request(ORIGEN+'/api/admin/web',{method:'POST',headers:{...AUTH,'content-type':'application/json'},body:JSON.stringify({web})}),env,ctx);
+
+test('publicar snapshot viejo conserva subidas recientes y todos los usos impiden DELETE',async()=>{
+  const worker=cargarWorker(),{env,config,r2}=entorno();
+  const {id}=await(await subir(worker,env,'Nueva',fuenteWoff2,'f.woff2')).json();
+  for(const clave of ['menu','titulo_inicio','subtitulo_inicio','titulos','texto','pie','tarjetas','nombre_sitio','fuente_titulos','fuente_cuerpo']){
+    const estilo={fuentes_subidas:[]};
+    if(clave.startsWith('fuente_')) estilo[clave]='up:'+id;else estilo.tipos={[clave]:{fuente:'up:'+id}};
+    const r=await publicarFixture(worker,env,{v:2,estilo});assert.equal(r.status,200);
+    assert.equal((await r.json()).web.estilo.fuentes_subidas[0].id,id);
+    assert.equal((await worker.fetch(new Request(`${ORIGEN}/api/web/fuente/${id}`,{method:'DELETE',headers:AUTH}),env,ctx)).status,409,clave);
+  }
+  assert.equal(r2.size,1);assert.equal(JSON.parse(config.get('web_fuentes')).length,1);
+});
+
+test('upload/publicar concurrentes no pierden el inventario y publicar/delete no dejan referencias rotas',async()=>{
+  const worker=cargarWorker(),{env,config,r2}=entorno();
+  const [upload,pub]=await Promise.all([subir(worker,env,'Carrera',fuenteWoff2,'f.woff2'),publicarFixture(worker,env,{v:2,estilo:{fuentes_subidas:[]}})]);
+  assert.equal(upload.status,200);assert.equal(pub.status,200);const {id}=await upload.json();
+  const publico=await(await worker.fetch(new Request(ORIGEN+'/api/publico'),env,ctx)).json();
+  assert.equal(publico.web.estilo.fuentes_subidas[0].id,id);
+  const [p,d]=await Promise.all([publicarFixture(worker,env,{v:2,estilo:{tipos:{pie:{fuente:'up:'+id}}}}),worker.fetch(new Request(`${ORIGEN}/api/web/fuente/${id}`,{method:'DELETE',headers:AUTH}),env,ctx)]);
+  assert.equal(p.status,200);assert.ok([200,409].includes(d.status));
+  const final=await(await worker.fetch(new Request(ORIGEN+'/api/publico'),env,ctx)).json();
+  const ref=final.web.estilo?.tipos?.pie?.fuente;
+  if(ref){assert.ok(r2.has(`fuentes/${id}.woff2`));assert.equal(d.status,409);}
+  else {assert.equal(r2.size,0);assert.deepEqual(JSON.parse(config.get('web_fuentes')),[]);}
 });

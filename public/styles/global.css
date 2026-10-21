@@ -453,21 +453,21 @@ main .wrap h2, main .wrap h3, main .wrap-narrow h2, main .wrap-narrow h3, main .
 main .wrap p, main .wrap-narrow p, main .contact-value, main .sesion-card p { font-size: calc(17px * var(--esc)); line-height: 1.65; }
 
 /* Tipografía pedida por Nicole (21-oct-2026): menú, títulos y el "hola :)" en Homemade Apple; el resto del texto en Space Mono. */
-header nav { gap: 8px clamp(24px, 5.75vw, 90px); }
-body[data-pagina="inicio"] header { padding-top: clamp(24px, 7.7vw, 140px); }
-body[data-pagina="inicio"] header nav { margin-right: 1.4vw; }
+header nav { gap: 8px clamp(24px, calc(5.75 * var(--u)), 90px); }
+body[data-pagina="inicio"] header { padding-top: clamp(24px, calc(7.7 * var(--u)), 140px); }
+body[data-pagina="inicio"] header nav { margin-right: calc(1.4 * var(--u)); }
 @media (min-width: 701px) {
-  body[data-pagina="inicio"] .home { padding: 14.6vw 2.5vw 120px 24px; }
-  body[data-pagina="inicio"] header nav a:nth-child(2) { margin-left: .97vw; }
-  body[data-pagina="inicio"] header nav a:nth-child(3) { margin-left: -2vw; }
-  body[data-pagina="inicio"] header nav a:nth-child(4) { margin-left: .83vw; }
-  body[data-pagina="inicio"] header nav a:nth-child(5) { margin-left: .2vw; }
+  body[data-pagina="inicio"] .home { padding: calc(14.6 * var(--u)) calc(2.5 * var(--u)) 120px 24px; }
+  body[data-pagina="inicio"] header nav a:nth-child(2) { margin-left: calc(.97 * var(--u)); }
+  body[data-pagina="inicio"] header nav a:nth-child(3) { margin-left: calc(-2 * var(--u)); }
+  body[data-pagina="inicio"] header nav a:nth-child(4) { margin-left: calc(.83 * var(--u)); }
+  body[data-pagina="inicio"] header nav a:nth-child(5) { margin-left: calc(.2 * var(--u)); }
 }
-header nav a { font-family: 'Homemade Apple', cursive; text-transform: none; letter-spacing: 0; display: inline-block; line-height: 1.8; font-size: calc(clamp(16px, 2.15vw, 36px) * var(--esc)); }
+header nav a { font-family: 'Homemade Apple', cursive; text-transform: none; letter-spacing: 0; display: inline-block; line-height: 1.8; font-size: calc(clamp(16px, calc(2.15 * var(--u)), 36px) * var(--esc)); }
 header nav a::first-letter { text-transform: uppercase; }
 .site-name { font-family: 'Homemade Apple', cursive; }
-.home-top h1 { font-family: 'Homemade Apple', cursive; text-transform: none; font-weight: 400; font-size: calc(clamp(52px, 6.53vw, 112px) * var(--esc) * var(--esc-tit)); line-height: 1.2; margin: 0 0 56px; }
-.home-sub { font-family: 'Space Mono', ui-monospace, monospace; text-transform: none; max-width: 900px; font-size: calc(clamp(13px, 1.62vw, 26px) * var(--esc)); line-height: 2.29; }
+.home-top h1 { font-family: 'Homemade Apple', cursive; text-transform: none; font-weight: 400; font-size: calc(clamp(52px, calc(6.53 * var(--u)), 112px) * var(--esc) * var(--esc-tit)); line-height: 1.2; margin: 0 0 56px; }
+.home-sub { font-family: 'Space Mono', ui-monospace, monospace; text-transform: none; max-width: 900px; font-size: calc(clamp(13px, calc(1.62 * var(--u)), 26px) * var(--esc)); line-height: 2.29; }
 main h1 { font-family: 'Homemade Apple', cursive; font-weight: 400; }
 /* Título "SOBRE NICOLE" de la página Acerca de, en negrita (Homemade Apple solo tiene peso 400: se engrosa con trazo y peso sintético). */
 body[data-pagina="acerca"] main h2[data-ed="acerca.bloques.0"] { font-weight: 400; text-transform: none; color: var(--fg); font-size: calc(28px * var(--esc)); -webkit-text-stroke: .55px currentColor; letter-spacing: .01em; }
@@ -487,6 +487,10 @@ main .wrap p, main .wrap-narrow p, main .contact-value, main .sesion-card p { fo
 @font-face { font-family: 'Space Mono'; font-style: normal; font-weight: 400; font-display: block; src: url('fonts/space-mono-400.woff2') format('woff2'); }
 @font-face { font-family: 'Space Mono'; font-style: normal; font-weight: 700; font-display: block; src: url('fonts/space-mono-700.woff2') format('woff2'); }
 @font-face { font-family: 'Space Mono'; font-style: italic; font-weight: 400; font-display: block; src: url('fonts/space-mono-400-italic.woff2') format('woff2'); }
+
+/* Unidad de escala de la portada: el menor entre 1% del ancho y 1,653% del alto (la proporción 1443x873 del boceto),
+   así los tamaños no se salen en ventanas anchas y bajas. */
+:root { --u: min(1vw, 1.653vh); }
 
 /* Fondo del boceto de Nicole (21-oct-2026): gris azulado de papel de bitácora, con grano fino y fibras
    (papel.png, 256 px, sin costuras) y un jaspeado muy suave. Medido sobre su foto: color medio #c4ced7.

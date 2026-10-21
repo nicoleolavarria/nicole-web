@@ -46,3 +46,5 @@ Esta sección reemplaza los estados pendientes de las notas originales de C. Ram
 
 Entrega: /Users/andres/Documents/Web Express/Entregables/Nicole/Panel-diseno-22oct/ENTREGA.md
 Arquitectura de despliegue: Wrangler empaqueta worker y panel juntos. Verificar API y luego panel tras ese despliegue; Git/Vercel para web es el paso posterior. No inventar un segundo destino de panel ni asegurar una integración Git remota que no se inspeccionó.
+
+Última comprobación: el reproductor completo también pasó desde otro estado D1/R2 vacío. En Mi web se oculta la guía flotante general para evitar que tape controles y se mantiene una única ayuda de tres pasos. Los selectores de color tienen un área mínima de 44x44 px. Se conservó el node_modules original de INT; las dependencias de QA están aisladas en `.qa-dependencies.local/node_modules`, que el reproductor usa temporalmente y restaura al terminar.

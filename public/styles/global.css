@@ -425,7 +425,7 @@ a:focus-visible { outline: 2px solid var(--fg); outline-offset: 5px; }
 body[data-pagina="inicio"] header { justify-content: center; }
 body[data-pagina="inicio"] .site-name { display: none; }
 body[data-pagina="inicio"] main { min-height: 0; }
-.home { min-height: calc(100svh - 92px); justify-content: center; padding: 72px 24px 120px; }
+.home { min-height: 0; justify-content: flex-start; padding: 72px 24px 120px; }
 .home-top { width: 100%; max-width: 900px; margin: 0; }
 .home-top h1 { font-size: calc(clamp(44px, 6vw, 80px) * var(--esc) * var(--esc-tit)); font-weight: 400; line-height: 1.1; margin: 0 0 24px; }
 .home-sub { max-width: 570px; margin: 0 auto; font-size: calc(clamp(22px, 2vw, 26px) * var(--esc)); line-height: 1.5; letter-spacing: 0; color: var(--fg); }
@@ -437,7 +437,7 @@ h2 { font-size: calc(20px * var(--esc)); }
 }
 @media (max-width: 700px) {
   header { padding: 20px 22px; }
-  header nav { display: flex; position: static; flex-direction: row; align-items: center; padding: 0; border: 0; gap: 0 24px; }
+  header nav { display: flex; position: static; flex-direction: row; align-items: center; padding: 0; border: 0; gap: 0 24px; background: transparent; }
   header nav a { width: auto; padding: 5px 0; font-size: calc(15px * var(--esc)); }
   .home { min-height: calc(100svh - 128px); padding: 60px 24px 112px; }
   .home-top h1 { font-size: calc(clamp(40px, 11vw, 64px) * var(--esc) * var(--esc-tit)); }
@@ -453,14 +453,24 @@ main .wrap h2, main .wrap h3, main .wrap-narrow h2, main .wrap-narrow h3, main .
 main .wrap p, main .wrap-narrow p, main .contact-value, main .sesion-card p { font-size: calc(17px * var(--esc)); line-height: 1.65; }
 
 /* Tipografía pedida por Nicole (21-oct-2026): menú, títulos y el "hola :)" en Homemade Apple; el resto del texto en Space Mono. */
-header nav { gap: 8px clamp(24px, 5.5vw, 90px); }
-body[data-pagina="inicio"] header { padding-top: clamp(24px, 5.9vw, 96px); }
+header nav { gap: 8px clamp(24px, 5.75vw, 90px); }
+body[data-pagina="inicio"] header { padding-top: clamp(24px, 7.7vw, 140px); }
+body[data-pagina="inicio"] header nav { margin-right: 1.4vw; }
+@media (min-width: 701px) {
+  body[data-pagina="inicio"] .home { padding: 14.6vw 2.5vw 120px 24px; }
+  body[data-pagina="inicio"] header nav a:nth-child(2) { margin-left: .97vw; }
+  body[data-pagina="inicio"] header nav a:nth-child(3) { margin-left: -2vw; }
+  body[data-pagina="inicio"] header nav a:nth-child(4) { margin-left: .83vw; }
+  body[data-pagina="inicio"] header nav a:nth-child(5) { margin-left: .2vw; }
+}
 header nav a { font-family: 'Homemade Apple', cursive; text-transform: none; letter-spacing: 0; display: inline-block; line-height: 1.8; font-size: calc(clamp(16px, 2.15vw, 36px) * var(--esc)); }
 header nav a::first-letter { text-transform: uppercase; }
 .site-name { font-family: 'Homemade Apple', cursive; }
-.home-top h1 { font-family: 'Homemade Apple', cursive; text-transform: none; font-weight: 400; font-size: calc(clamp(52px, 6.6vw, 112px) * var(--esc) * var(--esc-tit)); line-height: 1.2; margin: 0 0 56px; }
-.home-sub { font-family: 'Space Mono', ui-monospace, monospace; text-transform: none; max-width: 900px; font-size: calc(clamp(13px, 1.55vw, 26px) * var(--esc)); line-height: 2.25; }
+.home-top h1 { font-family: 'Homemade Apple', cursive; text-transform: none; font-weight: 400; font-size: calc(clamp(52px, 6.53vw, 112px) * var(--esc) * var(--esc-tit)); line-height: 1.2; margin: 0 0 56px; }
+.home-sub { font-family: 'Space Mono', ui-monospace, monospace; text-transform: none; max-width: 900px; font-size: calc(clamp(13px, 1.62vw, 26px) * var(--esc)); line-height: 2.29; }
 main h1 { font-family: 'Homemade Apple', cursive; font-weight: 400; }
+/* Título "SOBRE NICOLE" de la página Acerca de, en negrita (Homemade Apple solo tiene peso 400: se engrosa con trazo y peso sintético). */
+body[data-pagina="acerca"] main h2[data-ed="acerca.bloques.0"] { font-weight: 700; -webkit-text-stroke: .5px currentColor; }
 main .wrap *:not(h1), main .wrap-narrow *:not(h1) { font-family: 'Space Mono', ui-monospace, monospace; }
 main .wrap h2, main .wrap h3, main .wrap-narrow h2, main .wrap-narrow h3, main .sesion-card h3 { font-family: 'Homemade Apple', cursive; font-weight: 400; line-height: 1.5; }
 main .wrap p, main .wrap-narrow p, main .contact-value, main .sesion-card p { font-size: calc(15px * var(--esc)); line-height: 1.8; }
@@ -486,9 +496,7 @@ body {
   background-color: #c4ced7;
   background-image:
     url('papel.png'),
-    radial-gradient(ellipse 60% 50% at 22% 28%, rgba(255,255,255,.07), transparent 70%),
-    radial-gradient(ellipse 55% 45% at 78% 72%, rgba(120,140,160,.07), transparent 70%),
-    linear-gradient(180deg, #c1cbd5 0%, #c4ced7 50%, #c9d3dc 100%);
-  background-size: 256px 256px, 100% 100%, 100% 100%, 100% 100%;
+    linear-gradient(180deg, #c4cdd6 0%, #c7d1d9 45%, #cdd7df 72%, #d2dce4 100%);
+  background-size: 256px 256px, 100% 100%;
 }
 header { background: transparent; }

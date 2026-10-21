@@ -143,6 +143,7 @@ const FUENTES = {
   "Cormorant Garamond": "family=Cormorant+Garamond:ital,wght@0,400;0,600;1,400",
   "DM Sans": "family=DM+Sans:ital,wght@0,400;0,500;0,700;1,400",
   "EB Garamond": "family=EB+Garamond:ital,wght@0,400;0,600;1,400",
+  "Homemade Apple": "family=Homemade+Apple",
   "Inter Tight": "family=Inter+Tight:ital,wght@0,400;0,600;1,400",
   "Libre Baskerville": "family=Libre+Baskerville:ital,wght@0,400;0,700;1,400",
   "Playfair Display": "family=Playfair+Display:ital,wght@0,500;0,700;1,500",
@@ -242,7 +243,7 @@ function estiloCss(data){
 function fuentesHref(data){
   var e = mezclar(data).estilo;
   var qs = [];
-  ["Cormorant Garamond", "DM Sans", e.fuente_titulos, e.fuente_cuerpo].forEach(function (f){
+  ["Cormorant Garamond", "DM Sans", "Homemade Apple", "Space Mono", e.fuente_titulos, e.fuente_cuerpo].forEach(function (f){
     if (f && FUENTES[f] && qs.indexOf(FUENTES[f]) === -1) qs.push(FUENTES[f]);
   });
   return qs.length ? "https://fonts.googleapis.com/css2?" + qs.join("&") + "&display=swap" : "";

@@ -451,3 +451,18 @@ main h1 { font-family: 'Cormorant Garamond', Georgia, serif; }
 main .wrap *:not(h1), main .wrap-narrow *:not(h1) { font-family: 'DM Sans', Arial, sans-serif; }
 main .wrap h2, main .wrap h3, main .wrap-narrow h2, main .wrap-narrow h3, main .contact-label { text-transform: none; letter-spacing: 0; }
 main .wrap p, main .wrap-narrow p, main .contact-value, main .sesion-card p { font-size: calc(17px * var(--esc)); line-height: 1.65; }
+
+/* Tipografía pedida por Nicole (21-oct-2026): menú, títulos y el "hola :)" en Homemade Apple; el resto del texto en Space Mono. */
+header nav a { font-family: 'Homemade Apple', cursive; text-transform: none; letter-spacing: 0; display: inline-block; line-height: 44px; font-size: calc(17px * var(--esc)); }
+header nav a::first-letter { text-transform: uppercase; }
+.site-name { font-family: 'Homemade Apple', cursive; }
+.home-top h1 { font-family: 'Homemade Apple', cursive; text-transform: none; font-weight: 400; font-size: calc(clamp(56px, 9vw, 120px) * var(--esc) * var(--esc-tit)); line-height: 1.2; margin: 0 0 40px; }
+.home-sub { font-family: 'Space Mono', ui-monospace, monospace; text-transform: none; max-width: 640px; font-size: calc(clamp(13px, 1.3vw, 16px) * var(--esc)); line-height: 2; }
+main h1 { font-family: 'Homemade Apple', cursive; font-weight: 400; }
+main .wrap *:not(h1), main .wrap-narrow *:not(h1) { font-family: 'Space Mono', ui-monospace, monospace; }
+main .wrap h2, main .wrap h3, main .wrap-narrow h2, main .wrap-narrow h3, main .sesion-card h3 { font-family: 'Homemade Apple', cursive; font-weight: 400; line-height: 1.5; }
+main .wrap p, main .wrap-narrow p, main .contact-value, main .sesion-card p { font-size: calc(15px * var(--esc)); line-height: 1.8; }
+@media (max-width: 700px) {
+  header nav a { font-size: calc(15px * var(--esc)); }
+  .home-top h1 { font-size: calc(clamp(48px, 15vw, 72px) * var(--esc) * var(--esc-tit)); }
+}

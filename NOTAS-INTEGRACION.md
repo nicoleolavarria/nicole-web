@@ -30,3 +30,19 @@ Rama `panel-C-ui`. Cambios solo en `panel/admin/crm/index.html` y `tests/panel-l
 - `node --test tests/portada.test.mjs tests/panel-letras.test.mjs`: pasan.
 - Chrome headless (Playwright sobre Google Chrome instalado) con API simulada: partes, selector con 13 letras + subidas, tamaños con ±, grosor, interlineado, deshacer (22 pasos), publicar (payload con `estilo.tipos`), vista Celular a 390 px, subida con progreso, errores 409/413/415/404, validación de tipo y tamaño en el panel, quitar. Capturas revisadas: escritorio, selector, editor, vista celular, formulario de subida y panel en 390 px sin scroll horizontal.
 - Las pruebas de navegador están en la carpeta de trabajo (no en el repo) porque dependen de Playwright global.
+
+## QA y correcciones de integración, Codex, 21-oct-2026
+
+Esta sección reemplaza los estados pendientes de las notas originales de C. Rama panel-integracion, entrada 23165ae; main comprobado 393ec38. Sin push ni despliegue.
+
+- Inventario autoritativo en config.web_fuentes, guardado al subir. Publicar ignora listas antiguas del navegador. Reserva de plaza con comparación y escritura atómica SQLite de web_fuentes y web_json, entre isolates; estados internos subiendo/borrando no se exponen como fuentes utilizables. No hay bloqueo en memoria ni expiración que permita exceder ocho. DELETE compara el diseño publicado en la misma sentencia condicional antes de retirar la fuente del inventario visible.
+- R2 falla: se elimina el objeto y su reserva. Si falla la limpieza, queda una referencia persistente con id para reintentar DELETE; no se oculta un objeto perdido. Una interrupción total del proceso durante subiendo requiere recuperación supervisada con respaldo, sin liberar reservas activas por tiempo.
+- Validación Fontkit 2.0.4, extensión/firma, máximo 1 MB y límites previos de tablas/descompresión. Rechaza los fixtures de solo magic bytes; no es una certificación universal de cualquier fuente ni un sanitizador OTS.
+- Ocho partes: cinco originales más pie (agrupa agradecimiento, enlace y derechos), tarjetas de sesiones h3 y nombre del sitio. Mismos campos/rangos en worker, render, CSS y panel. Familia única nicole-up-<id>, font-display swap. Letras generales también aceptan subidas; valores Cormorant antiguos mantienen el comportamiento original.
+- Ambos tamaños visibles lado a lado. Sin tam_movil se mantiene el valor móvil original. Números originales referidos a las vistas reales 1440x900 y 390x844. Teclado, foco, etiquetas, botones de 44 px como mínimo, ayuda de tres pasos y tour general excluido de Mi web. Undo/redo y reset conservan inventario de servidor.
+- npm run render genera los dos renderers, CSS, fuentes y ahora las imágenes locales del preview en panel/images. Antes, /images/sesiones.jpg no existía en el worker y aparecía rota.
+- NICOLE_LOCAL_ORIGIN solo acepta loopback para construir Astro sin consultar el worker real. Config QA fuera del repo, sin AI, cron, cuenta ni recursos remotos. No se leyó ningún .env productivo.
+- Baseline 33/33 verificado. Final 43/43, 16 pruebas HTTP sobre Wrangler local, E2E en Chrome con D1/R2 locales, axe sin infracciones en Mi web. Ver comandos, límites, capturas y reproductor en la entrega.
+
+Entrega: /Users/andres/Documents/Web Express/Entregables/Nicole/Panel-diseno-22oct/ENTREGA.md
+Arquitectura de despliegue: Wrangler empaqueta worker y panel juntos. Verificar API y luego panel tras ese despliegue; Git/Vercel para web es el paso posterior. No inventar un segundo destino de panel ni asegurar una integración Git remota que no se inspeccionó.

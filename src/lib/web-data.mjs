@@ -3,7 +3,9 @@
 
    Si el worker no responde, la web se construye con el diseño original — este
    fetch nunca puede tumbar un deploy. */
-const ORIGEN = 'https://nicole-crm-worker.nicoleolavarria.workers.dev';
+const local = process.env.NICOLE_LOCAL_ORIGIN || '';
+if (local && !/^http:\/\/(127\.0\.0\.1|localhost):\d+$/.test(local)) throw new Error('NICOLE_LOCAL_ORIGIN debe ser loopback');
+const ORIGEN = local || 'https://nicole-crm-worker.nicoleolavarria.workers.dev';
 
 let promesa = null;
 

@@ -235,6 +235,24 @@
     .web-prev{position:static;}
     #webPrev{height:70vh;}
   }
+  #panel-web button:focus-visible,#panel-web input:focus-visible,#panel-web summary:focus-visible{outline:3px solid var(--accent);outline-offset:2px;}
+  #panel-web button{min-height:44px;}
+  #panel-web .wgrp>summary{min-height:48px;}
+  #panel-web .tamanos-par{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:10px;}
+  #panel-web .tamanos-par .wf{min-width:0;}
+  #panel-web .tamanos-par .tamctl{display:grid;grid-template-columns:44px minmax(0,1fr) 44px;gap:4px;}
+  #panel-web .tamanos-par input[type=range]{grid-column:1/-1;grid-row:2;width:100%;min-width:0;}
+  #panel-web .tamanos-par input[type=number]{grid-column:2;grid-row:1;min-width:0;width:100%;padding:5px 2px;font-size:16px;}
+  #panel-web .tamanos-par [data-dir="1"]{grid-column:3;grid-row:1;}
+  #panel-web .tamanos-par .tamctl>.mini{display:none;}
+  #panel-web input[type=number]::-webkit-inner-spin-button,#panel-web input[type=number]::-webkit-outer-spin-button{-webkit-appearance:none;margin:0;}
+  #panel-web input[type=number]{appearance:textfield;}
+  #panel-web .wlab{font-size:14px;letter-spacing:0;text-transform:none;}
+  #panel-web .mini,#panel-web .hint{font-size:14px;}
+  #panel-web input,#panel-web select{min-height:44px;}
+  #panel-web .wparte button,#panel-web .parte{min-height:48px;}
+  #panel-web .tamanos-par .tbtn{min-height:44px;}
+  @media(max-width:700px){#panel-web .web-top{position:static;} .web-side,.web-prev{min-width:0;} .web-editor{grid-template-columns:minmax(0,1fr);}}
   .toast{position:fixed;bottom:22px;left:50%;transform:translateX(-50%) translateY(20px);background:var(--accent);color:var(--bg);font-family:var(--mono);font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;padding:11px 18px;border-radius:3px;opacity:0;transition:all .2s;pointer-events:none;z-index:99;}
   .toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
   @media (max-width:560px){ .frow{grid-template-columns:1fr;} .card .num{font-size:28px;} }
@@ -1744,6 +1762,7 @@ document.querySelectorAll(".tab").forEach(function(t){
     if(t.dataset.tab==="agenda") cargarAgenda();
     if(t.dataset.tab==="perfil") renderPerfil();
     if(t.dataset.tab==="web") abrirEditorWeb();
+    document.querySelectorAll(".footnote").forEach(function(n){n.hidden=t.dataset.tab==="web";});
     cerrarDrawer();
   });
 });
@@ -2999,6 +3018,7 @@ window.mvtInit = mvtInit;
   var PICK = "";             // selector de fuente abierto (ruta)
   var SUBIDA = null;         // subida de tipografía en curso
   var DISPO = "desktop";     // vista previa: desktop | movil
+  var INVENTARIO = null;
   var HIST = { undo: [], redo: [], pend: null };  // deshacer / rehacer
 
   function W(){ return window.WebRender; }
@@ -3043,8 +3063,11 @@ window.mvtInit = mvtInit;
     "  var ed = n && n.getAttribute ? (n.getAttribute('data-ed') || '') : '';",
     "  if (ed === 'inicio.titulo') return 'titulo_inicio';",
     "  if (ed === 'inicio.sub') return 'subtitulo_inicio';",
-    "  if (ed === 'marca.nombre' || /^nav[.]/.test(ed)) return 'menu';",
+    "  if (ed === 'marca.nombre') return 'nombre_sitio';",
+    "  if (/^nav[.]/.test(ed)) return 'menu';",
     "  if (!n || !n.closest) return '';",
+    "  if (n.closest('footer')) return 'pie';",
+    "  if (n.closest('.sesion-card h3')) return 'tarjetas';",
     "  if (n.closest('header')) return 'menu';",
     "  if (n.closest('h1,h2,h3')) return 'titulos';",
     "  if (n.closest('p,span,.footer-copy,.footer-thanks,.footer-blog,.contact-value,.contact-label')) return 'texto';",
@@ -3053,7 +3076,7 @@ window.mvtInit = mvtInit;
     /* Resalta en la vista previa las partes que se están editando. */
     "window.marcarParte = function(p){",
     "  document.querySelectorAll('.parte-marca').forEach(function(x){ x.classList.remove('parte-marca'); });",
-    "  var sel = { menu: 'header', titulo_inicio: '.home-top h1', subtitulo_inicio: '.home-sub', titulos: 'main h1, main h2, main h3', texto: 'main p, .footer-copy, .footer-thanks' }[p];",
+    "  var sel = { menu: 'header', titulo_inicio: '.home-top h1', subtitulo_inicio: '.home-sub', titulos: 'main h1, main h2, main h3', texto: 'main p', pie: 'footer', tarjetas: '.sesion-card h3', nombre_sitio: '.site-name' }[p];",
     "  if (sel) document.querySelectorAll(sel).forEach(function(x){ x.classList.add('parte-marca'); });",
     "};",
     "document.addEventListener('click', function(e){",
@@ -3082,6 +3105,7 @@ window.mvtInit = mvtInit;
     var fr = frame();
     if (!fr || !listo || !WEB) return;
     try {
+      if (INVENTARIO) WEB.estilo.fuentes_subidas = INVENTARIO;
       fr.contentWindow.aplicar(WEB, PG === "estilo" ? PAG_VISTA : PG);
       prepararFrame(fr.contentDocument);
       if (fr.contentWindow.marcarParte) fr.contentWindow.marcarParte(PG === "estilo" ? PARTE : "");
@@ -3108,8 +3132,8 @@ window.mvtInit = mvtInit;
     var v = getR(WEB, ruta);
     v = v == null ? "" : String(v);
     var input = opt.area
-      ? '<textarea data-w="' + ruta + '" rows="' + (opt.rows || 3) + '" placeholder="' + esc(opt.ph || "") + '">' + esc(v) + "</textarea>"
-      : '<input type="text" data-w="' + ruta + '" value="' + esc(v) + '" placeholder="' + esc(opt.ph || "") + '" />';
+      ? '<textarea aria-label="' + esc(etiqueta || 'Texto de esta parte') + '" data-w="' + ruta + '" rows="' + (opt.rows || 3) + '" placeholder="' + esc(opt.ph || "") + '">' + esc(v) + "</textarea>"
+      : '<input type="text" aria-label="' + esc(etiqueta || 'Texto de esta parte') + '" data-w="' + ruta + '" value="' + esc(v) + '" placeholder="' + esc(opt.ph || "") + '" />';
     return '<div class="wf" data-wf="' + ruta + '"><label>' + esc(etiqueta) + "</label>" + input +
       (opt.hint ? '<div class="mini" style="margin-top:4px">' + opt.hint + "</div>" : "") + "</div>";
   }
@@ -3117,33 +3141,43 @@ window.mvtInit = mvtInit;
     var v = Number(getR(WEB, ruta));
     if (!isFinite(v)) v = min;
     return '<div class="wf" data-wf="' + ruta + '"><label>' + esc(etiqueta) + '</label><div class="wrange">' +
-      '<input type="range" data-w="' + ruta + '" data-num="1" min="' + min + '" max="' + max + '" step="' + (paso || 1) + '" value="' + v + '" />' +
+      '<input type="range" aria-label="' + esc(etiqueta) + '" data-w="' + ruta + '" data-num="1" min="' + min + '" max="' + max + '" step="' + (paso || 1) + '" value="' + v + '" />' +
       '<span class="val">' + v + (sufijo || "") + "</span></div></div>";
   }
   function color(ruta, etiqueta, def){
     var v = getR(WEB, ruta) || "";
     return '<div class="wf" data-wf="' + ruta + '"><label>' + esc(etiqueta) + '</label><div class="wcolor">' +
-      '<input type="color" data-w="' + ruta + '" data-color="1" value="' + esc(v || def) + '" />' +
+      '<input type="color" aria-label="' + esc(etiqueta) + '" data-w="' + ruta + '" data-color="1" value="' + esc(v || def) + '" />' +
       '<button class="wmini" type="button" data-wact="reset" data-w="' + ruta + '">Volver al original</button>' +
       (v ? "" : '<span class="mini">el original</span>') + "</div></div>";
   }
   /* ---------- letras: partes de la web, fuentes y tamaños ----------
      Todo lo nuevo vive en estilo.tipos y estilo.fuentes_subidas (ver CONTRATO-PANEL.md).
      Si el worker todavía no responde, el panel avisa con un mensaje amable. */
-  var ORIGEN_FUENTES = "https://nicole-crm-worker.nicoleolavarria.workers.dev";
+  var ORIGEN_FUENTES = /^(localhost|127\.0\.0\.1)$/.test(location.hostname) ? location.origin : "https://nicole-crm-worker.nicoleolavarria.workers.dev";
   var MAX_FUENTES = 8, MAX_BYTES = 1048576, MAX_HIST = 50;
   var FORMATOS = { woff2: "woff2", woff: "woff", ttf: "truetype", otf: "opentype" };
   var PARTES = [
-    { k: "menu", nombre: "Menú de arriba", ayuda: "Tu nombre y los enlaces de arriba.", d: 16, m: 14, min: 12, max: 60 },
-    { k: "titulo_inicio", nombre: "«Hola» de la portada", ayuda: "El título grande de la primera página.", d: 80, m: 58, min: 24, max: 200 },
-    { k: "subtitulo_inicio", nombre: "Texto bajo el «Hola»", ayuda: "La línea chica que va debajo del título de la portada.", d: 22, m: 16, min: 10, max: 48 },
-    { k: "titulos", nombre: "Títulos de las páginas", ayuda: "Los títulos de Acerca de, Sesiones, Contacto y las demás páginas.", d: 40, m: 32, min: 14, max: 100 },
-    { k: "texto", nombre: "Texto de las páginas", ayuda: "Los párrafos de las páginas y el pie de página.", d: 17, m: 15, min: 10, max: 36 }
+    { k: "menu", nombre: "Menú de arriba", ayuda: "Los enlaces de arriba.", min: 12, max: 60 },
+    { k: "titulo_inicio", nombre: "«Hola» de la portada", ayuda: "El título grande de la primera página.", min: 24, max: 200 },
+    { k: "subtitulo_inicio", nombre: "Texto bajo el «Hola»", ayuda: "La línea chica que va debajo del título de la portada.", min: 10, max: 48 },
+    { k: "titulos", nombre: "Títulos de las páginas", ayuda: "Los títulos de Acerca de, Sesiones, Contacto y las demás páginas.", min: 14, max: 100 },
+    { k: "texto", nombre: "Texto de las páginas", ayuda: "Los párrafos de las páginas.", min: 10, max: 36 },
+    { k: "pie", nombre: "Pie de página", ayuda: "El agradecimiento, enlace y firma al final.", min: 10, max: 36 },
+    { k: "tarjetas", nombre: "Títulos de las sesiones", ayuda: "El nombre de cada sesión en sus tarjetas.", min: 14, max: 100 },
+    { k: "nombre_sitio", nombre: "Nombre del sitio", ayuda: "Tu nombre en las páginas interiores. En la portada está oculto.", min: 12, max: 60 }
   ];
+  function originalTipo(k, movil){
+    var e = WEB.estilo, esc = (Number(e.escala) || 100) / 100, tit = (Number(e.escala_titulo) || 100) / 100;
+    // Vistas reales: computador 1440x900 y celular 390x844. Sin heredar el tamaño PC.
+    var base = movil ? {menu:16,titulo_inicio:58.5,subtitulo_inicio:13.5,titulos:26,texto:15,pie:12,tarjetas:22,nombre_sitio:22}
+      : {menu:28.08,titulo_inicio:94.032,subtitulo_inicio:23.328,titulos:40,texto:15,pie:18,tarjetas:22,nombre_sitio:22};
+    return Math.round(base[k] * esc * ((k === "titulo_inicio" || k === "titulos") ? tit : 1) * 100) / 100;
+  }
   function parteInfo(k){ for (var i = 0; i < PARTES.length; i++) if (PARTES[i].k === k) return PARTES[i]; return null; }
   function tipos(){ return (WEB && WEB.estilo && WEB.estilo.tipos) || {}; }
   function valorTipo(parte, campo){ var p = tipos()[parte]; return p ? p[campo] : undefined; }
-  function listaSubidas(){ return (WEB && WEB.estilo && Array.isArray(WEB.estilo.fuentes_subidas)) ? WEB.estilo.fuentes_subidas : []; }
+  function listaSubidas(){ if (INVENTARIO) return INVENTARIO; return (WEB && WEB.estilo && Array.isArray(WEB.estilo.fuentes_subidas)) ? WEB.estilo.fuentes_subidas : []; }
   function hayCambio(k){
     var p = tipos()[k];
     return !!p && ["fuente", "tam", "tam_movil", "peso", "interlineado"].some(function(c){ return p[c] !== undefined && p[c] !== "" && p[c] !== null; });
@@ -3226,7 +3260,7 @@ window.mvtInit = mvtInit;
     var abierto = PICK === ruta, id = "fp" + ruta.replace(/[^a-z0-9]/gi, "_");
     var h = '<div class="wf"><div class="wlab" id="' + id + '_t">' + esc(etiqueta) + "</div>" +
       '<button type="button" class="fbtn t44" data-est="pick" data-ruta="' + esc(ruta) + '" data-foco="pick|' + esc(ruta) +
-      '" aria-expanded="' + abierto + '" aria-labelledby="' + id + "_t " + id + '_n">' +
+      '" aria-haspopup="listbox" aria-controls="' + id + '_lista" aria-expanded="' + abierto + '" aria-labelledby="' + id + "_t " + id + '_n">' +
       '<span class="fbtn-nom" id="' + id + '_n" data-fam="' + esc(familiaDe(valor)) + '">' + esc(nombreDe(valor, predet)) + "</span>" +
       '<span class="fbtn-fl" aria-hidden="true">' + (abierto ? "▲" : "▼") + "</span></button>";
     if (abierto){
@@ -3239,7 +3273,7 @@ window.mvtInit = mvtInit;
           return opcionFuente(ruta, valor, { v: "up:" + f.id, n: f.nombre, f: "nicole-up-" + f.id });
         }).join("");
       }
-      h += '<div class="flista" role="listbox" aria-labelledby="' + id + '_t">' + lista + "</div>";
+      h += '<div class="flista" id="' + id + '_lista" role="listbox" aria-labelledby="' + id + '_t">' + lista + "</div>";
     }
     return h + "</div>";
   }
@@ -3254,10 +3288,10 @@ window.mvtInit = mvtInit;
         '<input type="range" data-est="rango" min="' + min + '" max="' + max + '" step="' + deslizar + '" value="' + (tiene ? v : def) +
           '" aria-label="' + esc(etiqueta) + '" />' +
         '<button type="button" class="tbtn t44" data-est="paso" data-dir="1" aria-label="Subir ' + esc(etiqueta) + '">+</button>' +
-        '<input type="number" data-est="num" min="' + min + '" max="' + max + '" step="' + deslizar + '" value="' + (tiene ? v : "") +
+        '<input type="number" data-est="num" min="' + min + '" max="' + max + '" step="' + deslizar + '" value="' + (tiene ? v : def) +
           '" placeholder="Original" aria-label="' + esc(etiqueta) + ' con número" />' +
         '<span class="mini">' + (dec ? "" : "px") + "</span></div>" +
-      '<div class="mini">' + (tiene ? "" : "Ahora está como en el original.") + "</div></div>";
+      '<div class="mini">' + (tiene ? "" : "Original: " + def + (dec ? "" : " px")) + "</div></div>";
   }
   function ctrlPeso(parte){
     var v = String(valorTipo(parte, "peso") || "");
@@ -3273,8 +3307,8 @@ window.mvtInit = mvtInit;
     if (!P) return "";
     return '<div class="wparte"><p class="ptit">' + esc(P.nombre) + '</p><p class="mini">' + esc(P.ayuda) + "</p>" +
       selectorFuente("estilo.tipos." + P.k + ".fuente", valorTipo(P.k, "fuente") || "", "Letra", "Predeterminada") +
-      ctrlNum(P.k, "tam", "Tamaño en computador", P.min, P.max, 1, 0, P.d) +
-      ctrlNum(P.k, "tam_movil", "Tamaño en celular", P.min, P.max, 1, 0, P.m) +
+      '<div class="tamanos-par">' + ctrlNum(P.k, "tam", "Computador", P.min, P.max, 1, 0, originalTipo(P.k, false)) +
+      ctrlNum(P.k, "tam_movil", "Celular", P.min, P.max, 1, 0, originalTipo(P.k, true)) + "</div>" +
       ctrlPeso(P.k) +
       ctrlNum(P.k, "interlineado", "Espacio entre renglones", 1, 3, 0.1, 2, 1.7) +
       '<button type="button" class="btn ghost sm t44" data-est="parte-reset" data-v="' + P.k + '" data-foco="parte-reset">Volver al original de esta parte</button></div>';
@@ -3335,7 +3369,7 @@ window.mvtInit = mvtInit;
   function agregar(ruta, texto){
     return '<button class="btn ghost sm" type="button" data-wact="add" data-w="' + ruta + '">+ ' + esc(texto) + "</button>";
   }
-  var AYUDA_TEXTO = 'Para poner algo en <em>cursiva</em> escríbelo entre asteriscos: *así*. Para <strong>negrita</strong>, dos: **así**.';
+  var AYUDA_TEXTO = 'Para negrita, escribe dos asteriscos a cada lado: **así**.';
 
   /* ---------- controles por página ---------- */
   function controles(){
@@ -3431,12 +3465,12 @@ window.mvtInit = mvtInit;
 
     if (PG === "estilo"){
       h += grupo("Letras de tu web",
-        '<p class="hint">Elige una parte de la web y cambia su letra, su tamaño, su grosor o el espacio entre renglones. Lo ves al instante a la derecha. También puedes hacer clic en una parte de la vista previa.</p>' +
+        '<p class="hint">1. Elige una parte y cambia sus letras. 2. Mira cómo queda en Computador y Celular. 3. Pulsa Publicar cambios cuando estés lista.</p>' +
         listaPartes() + editorParte() +
         '<button type="button" class="btn ghost sm t44" data-est="todo-reset" data-foco="todo-reset">Volver al original (todas las partes)</button>', true);
       h += grupo("Letras generales",
-        selectorFuente("estilo.fuente_titulos", WEB.estilo.fuente_titulos, "Letra de los títulos", "DM Mono (la original)") +
-        selectorFuente("estilo.fuente_cuerpo", WEB.estilo.fuente_cuerpo, "Letra de los textos", "DM Mono (la original)") +
+        selectorFuente("estilo.fuente_titulos", WEB.estilo.fuente_titulos, "Letra de los títulos", "Original de la web") +
+        selectorFuente("estilo.fuente_cuerpo", WEB.estilo.fuente_cuerpo, "Letra de los textos", "Original de la web") +
         rango("estilo.escala", "Tamaño de letra general", 70, 150, 1, "%") +
         rango("estilo.escala_titulo", "Tamaño de los títulos", 70, 200, 1, "%"), false);
       h += grupo("Mis tipografías", grupoSubidas(), true);
@@ -3444,7 +3478,7 @@ window.mvtInit = mvtInit;
         color("estilo.color_texto", "Color del texto", "#0a0a0a") +
         color("estilo.color_acento", "Color de acento", "#0a0a0a") +
         '<div class="wf"><label>Fondo de tus paneles (CRM y portal)</label><div class="wcolor">' +
-          '<input type="color" id="webPanelBg" value="' + esc((db.config && db.config.apar_bg_panel) || "#fafaf8") + '" />' +
+          '<input type="color" aria-label="Fondo de tus paneles" id="webPanelBg" value="' + esc((db.config && db.config.apar_bg_panel) || "#fafaf8") + '" />' +
           '<button class="wmini" type="button" id="webPanelBgReset">Volver al original</button>' +
           '<span class="mini">se guarda al publicar</span></div></div>', true);
       h += grupo("Espacio y formas", rango("estilo.ancho", "Ancho de las páginas", 620, 1200, 10, "px") +
@@ -3592,9 +3626,9 @@ window.mvtInit = mvtInit;
     setR(WEB, "estilo.tipos." + ctl.dataset.parte + "." + ctl.dataset.campo, v);
     var rango = ctl.querySelector('[data-est="rango"]'), num = ctl.querySelector('[data-est="num"]');
     if (rango) rango.value = v === "" ? def : v;
-    if (num && sincNum !== false) num.value = v;
+    if (num && sincNum !== false) num.value = v === "" ? def : v;
     var pista = ctl.nextElementSibling;
-    if (pista) pista.textContent = v === "" ? "Ahora está como en el original." : "";
+    if (pista) pista.textContent = v === "" ? "Original: " + def + (dec ? "" : " px") : "";
   }
   function dar_paso(ctl, dir){
     var def = +ctl.dataset.def, dec = +ctl.dataset.dec || 0, paso = +ctl.dataset.paso;
@@ -3662,16 +3696,18 @@ window.mvtInit = mvtInit;
       var ok = xhr.status >= 200 && xhr.status < 300 && d && /^[a-z0-9_]+$/.test(String(d.id || "")) && FORMATOS[d.formato || s.formato];
       if (!ok){ fallar(xhr.status); return; }
       var f = { id: String(d.id), nombre: String(d.nombre || nombre), formato: String(d.formato || s.formato) };
-      setR(WEB, "estilo.fuentes_subidas", listaSubidas().concat([f]));
+      INVENTARIO = listaSubidas().concat([f]);
+      setR(WEB, "estilo.fuentes_subidas", INVENTARIO);
       SUBIDA = null;
       pintarCssSubidas(); render(); pintar();
-      toast("Listo. Tu tipografía ya aparece en las listas. Dale Publicar cambios para guardarla.", 5000);
+      toast("Tu tipografía ya está guardada. Elígela y publica para usarla en tu web.", 5000);
     };
     xhr.send(fd);
   }
   function quitarLocal(id){
     var up = "up:" + id;
-    setR(WEB, "estilo.fuentes_subidas", listaSubidas().filter(function(x){ return x.id !== id; }));
+    INVENTARIO = listaSubidas().filter(function(x){ return x.id !== id; });
+    setR(WEB, "estilo.fuentes_subidas", INVENTARIO);
     ["fuente_titulos", "fuente_cuerpo"].forEach(function(k){ if (WEB.estilo[k] === up) WEB.estilo[k] = ""; });
     Object.keys(tipos()).forEach(function(p){ if (tipos()[p] && tipos()[p].fuente === up) setR(WEB, "estilo.tipos." + p + ".fuente", ""); });
     pintarCssSubidas(); render(); pintar();
@@ -3730,7 +3766,7 @@ window.mvtInit = mvtInit;
     var b = e.target.closest("[data-est]");
     if (!b) return;
     var acc = b.dataset.est, v = b.dataset.v;
-    if (acc === "parte"){ PARTE = v; render(); pintar(); return; }
+    if (acc === "parte"){ if (v === "tarjetas" || v === "nombre_sitio") PAG_VISTA = "sesiones"; PARTE = v; render(); pintar(); return; }
     if (acc === "paso"){
       var ctl = b.closest(".tamctl");
       if (ctl) cambiarHist(function(){ dar_paso(ctl, Number(b.dataset.dir)); });
@@ -3751,12 +3787,28 @@ window.mvtInit = mvtInit;
     if (acc === "pick-opt"){
       var ruta = b.dataset.ruta;
       cambiarHist(function(){ setR(WEB, ruta, v); });
-      PICK = ""; render(); pintar(); return;
+      PICK = ""; render(); pintar();
+      var trigger = panelWeb().querySelector('[data-est="pick"][data-ruta="' + ruta + '"]');
+      if (trigger) trigger.focus({preventScroll:true});
+      return;
     }
     if (acc === "subir"){ elegirArchivoFuente(); return; }
     if (acc === "subir-ok"){ subirFuente(); return; }
     if (acc === "subir-no"){ SUBIDA = null; render(); return; }
     if (acc === "quitar"){ quitarFuente(v); return; }
+  });
+
+  panelWeb().addEventListener("keydown", function(e){
+    var lista = e.target.closest(".flista");
+    if (!lista) return;
+    var botones = Array.from(lista.querySelectorAll('[role="option"]')), i = botones.indexOf(e.target);
+    if (e.key === "Escape") {
+      e.preventDefault(); var ruta = PICK; PICK = ""; render();
+      var boton = panelWeb().querySelector('[data-est="pick"][data-ruta="' + ruta + '"]');
+      if (boton) boton.focus(); return;
+    }
+    var j = e.key === "Home" ? 0 : e.key === "End" ? botones.length-1 : e.key === "ArrowDown" ? (i+1)%botones.length : e.key === "ArrowUp" ? (i-1+botones.length)%botones.length : -1;
+    if (j >= 0) { e.preventDefault(); botones[j].focus(); }
   });
 
   /* ---------- vista previa: computador o celular ---------- */
@@ -3938,7 +3990,7 @@ window.mvtInit = mvtInit;
     Promise.all(tareas).then(function(res){
       var d = res[0];
       if (!d || d.error) throw new Error(d && d.error || "No se pudo publicar");
-      if (d.web) WEB = W().mezclar(d.web);
+      if (d.web) { WEB = W().mezclar(d.web); INVENTARIO = WEB.estilo.fuentes_subidas; }
       GUARDADO = firma(WEB);
       render(); pintar();
       toast(d.rebuild ? "Publicado. Tu web se está actualizando." : "¡Publicado! Tu web ya muestra los cambios.", 4000);
@@ -3959,7 +4011,7 @@ window.mvtInit = mvtInit;
 
   document.getElementById("btnWebOriginal").addEventListener("click", function(){
     if (!confirm("Esto devuelve tu web al diseño original (textos, fotos y colores de fábrica). Se aplica cuando publiques. ¿Seguir?")) return;
-    WEB = W().mezclar({});
+    cambiarHist(function(){ WEB = W().mezclar({}); if(INVENTARIO) WEB.estilo.fuentes_subidas = INVENTARIO; });
     render(); pintar();
     toast("Listo. Dale Publicar si te quedas con el original.");
   });
@@ -3970,6 +4022,8 @@ window.mvtInit = mvtInit;
   function cargar(forzar){
     return fetch("/api/publico").then(function(r){ return r.json(); }).then(function(d){
       WEB = W().mezclar((d && d.web) || {});
+      INVENTARIO = (d && d.fuentes_subidas) || WEB.estilo.fuentes_subidas;
+      WEB.estilo.fuentes_subidas = INVENTARIO;
       GUARDADO = firma(WEB);
       HIST.undo = []; HIST.redo = []; HIST.pend = null;
       render(); pintar();
@@ -4158,11 +4212,12 @@ window.mvtInit = mvtInit;
     }
     pop.style.transform="none";
   }
-  function abrir(){ veil.classList.add("on"); i=0; pos(); }
+  function abrir(){ if(document.getElementById("panel-web").classList.contains("active")) return; veil.classList.add("on"); i=0; pos(); }
   function cerrar(){ veil.classList.remove("on"); try{localStorage.setItem(SEEN,"1");}catch(e){} }
   PASOS.forEach(function(){ var d=document.createElement("span"); d.className="tour-dot"; elDots.appendChild(d); });
   btnNext.addEventListener("click",function(){ if(i<PASOS.length-1){ i++; pos(); return; } cerrar(); });
   btnSkip.addEventListener("click",cerrar);
+  document.querySelector('[data-tab="web"]').addEventListener("click",function(){veil.classList.remove("on");});
   window.addEventListener("resize",function(){ if(veil.classList.contains("on")) pos(); });
   window.lanzarTour=function(force){ if(force){ abrir(); return; } try{ if(localStorage.getItem(SEEN)) return; }catch(e){} setTimeout(abrir,1400); };
   // Auto-lanzar cuando el panel ya cargo (db lista y sin marca de visto).

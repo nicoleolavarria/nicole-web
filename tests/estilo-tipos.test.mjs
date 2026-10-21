@@ -69,14 +69,14 @@ test('nunca se inyecta texto arbitrario en el CSS', () => {
 
 test('una fuente subida solo se referencia si su id existe en fuentes_subidas', () => {
   const con = W.estiloCss({ estilo: { fuentes_subidas: [subida], tipos: { titulos: { fuente: 'up:' + ID } } } });
-  assert.match(con, /--t-titulos-fuente:'up-f_abcd1234'/);
+  assert.match(con, /--t-titulos-fuente:'nicole-up-f_abcd1234'/);
   const sin = W.estiloCss({ estilo: { fuentes_subidas: [], tipos: { titulos: { fuente: 'up:' + ID } } } });
   assert.doesNotMatch(sin, /--t-titulos-fuente/);
 });
 
 test('fontFacesCss emite un @font-face por fuente subida, con origen del worker y swap', () => {
   const css = W.fontFacesCss({ estilo: { fuentes_subidas: [subida, { id: 'f_otra0002', nombre: 'Dos', formato: 'ttf' }] } });
-  assert.match(css, /@font-face\{font-family:'up-f_abcd1234'/);
+  assert.match(css, /@font-face\{font-family:'nicole-up-f_abcd1234'/);
   assert.match(css, /url\('https:\/\/nicole-crm-worker\.nicoleolavarria\.workers\.dev\/fuentes\/f_abcd1234\.woff2'\) format\('woff2'\)/);
   assert.match(css, /font-display:swap/);
   assert.match(css, /format\('truetype'\)/);
@@ -126,10 +126,40 @@ test('fuentesHref pide a Google las fuentes de los tipos pero nunca las subidas'
 test('htmlDocumento incluye las fuentes subidas y el estilo de tipos', () => {
   const html = W.htmlDocumento('inicio', { v: 2, estilo: { fuentes_subidas: [subida], tipos: { menu: { tam: 24 } } } });
   assert.match(html, /--t-menu-tam:24px/);
-  assert.match(html, /@font-face\{font-family:'up-f_abcd1234'/);
+  assert.match(html, /@font-face\{font-family:'nicole-up-f_abcd1234'/);
 });
 
 test('htmlDocumento sin datos nuevos no cambia la salida base', () => {
   const html = W.htmlDocumento('acerca', { v: 2 });
   assert.doesNotMatch(html, /--t-|@font-face/);
+});
+
+test('pie, tarjetas y nombre del sitio tienen contrato completo y fuente segura',()=>{
+  const t={fuente:'Space Mono',tam:25,tam_movil:19,peso:'700',interlineado:2};
+  const css=W.estiloCss({estilo:{tipos:{pie:t,tarjetas:t,nombre_sitio:t}}});
+  for(const k of ['pie','tarjetas','nombre-sitio']){
+    assert.match(css,new RegExp('--t-'+k+'-tam:25px'));
+    assert.match(css,new RegExp('--t-'+k+'-tam-m:19px'));
+    assert.match(css,new RegExp('--t-'+k+'-fuente:\\x27Space Mono\\x27'));
+    assert.match(css,new RegExp('--t-'+k+'-peso:700'));
+    assert.match(css,new RegExp('--t-'+k+'-lh:2'));
+  }
+});
+
+test('fontFacesCss solo permite origen local loopback y descarta origen arbitrario',()=>{
+  const d={estilo:{fuentes_subidas:[subida]}};
+  assert.match(W.fontFacesCss(d,'http://127.0.0.1:18742'),/127\.0\.0\.1:18742\/fuentes/);
+  assert.doesNotMatch(W.fontFacesCss(d,"https://evil.test/');}body{"),/evil|body/);
+});
+
+test('las letras generales aceptan fuentes subidas y no alteran valores originales antiguos',()=>{
+  const css=W.estiloCss({v:2,estilo:{fuentes_subidas:[subida],fuente_titulos:'up:'+ID,fuente_cuerpo:'Space Mono'}});
+  assert.match(css,/--g-titulos:'nicole-up-f_abcd1234'/);
+  assert.match(css,/--g-cuerpo:'Space Mono'/);
+  assert.doesNotMatch(W.estiloCss(W.DEFAULTS),/--g-/);
+});
+
+test('mezclar descarta claves que intentan modificar prototipos',()=>{
+  const evil=JSON.parse('{"v":2,"estilo":{"__proto__":{"inyectado":"si"},"constructor":{"prototype":{"inyectado":"si"}}}}');
+  W.mezclar(evil);assert.equal({}.inyectado,undefined);
 });

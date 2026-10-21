@@ -193,7 +193,7 @@ export function mezclar(data){
   var out = JSON.parse(JSON.stringify(DEFAULTS));
   function unir(dest, src){
     for (var k in src){
-      if (!Object.prototype.hasOwnProperty.call(src, k)) continue;
+      if (!Object.prototype.hasOwnProperty.call(src, k) || ["__proto__", "constructor", "prototype"].indexOf(k) >= 0) continue;
       var v = src[k];
       if (v === undefined || v === null) continue;
       if (Array.isArray(v)) dest[k] = v;
@@ -222,13 +222,19 @@ export function mezclar(data){
 /* ---------- estilo (CSS variables que sobreescriben global.css) ---------- */
 /* Origen de las fuentes subidas por Nicole (el worker las sirve con CORS). */
 var ORIGEN_FUENTES = "https://nicole-crm-worker.nicoleolavarria.workers.dev";
+function origenFuentes(){
+  return typeof location !== "undefined" && /^(localhost|127\.0\.0\.1)$/.test(location.hostname) ? location.origin : ORIGEN_FUENTES;
+}
 /* Tipos de texto editables: clave en estilo.tipos, nombre en CSS y rango del tamaño en px. */
 var TIPOS_EDITABLES = [
   { clave: "menu", css: "menu", min: 12, max: 60 },
   { clave: "titulo_inicio", css: "titulo-inicio", min: 24, max: 200 },
   { clave: "subtitulo_inicio", css: "subtitulo-inicio", min: 10, max: 48 },
   { clave: "titulos", css: "titulos", min: 14, max: 100 },
-  { clave: "texto", css: "texto", min: 10, max: 36 }
+  { clave: "texto", css: "texto", min: 10, max: 36 },
+  { clave: "pie", css: "pie", min: 10, max: 36 },
+  { clave: "tarjetas", css: "tarjetas", min: 14, max: 100 },
+  { clave: "nombre_sitio", css: "nombre-sitio", min: 12, max: 60 }
 ];
 var FORMATOS_FUENTE = { woff2: "woff2", woff: "woff", ttf: "truetype", otf: "opentype" };
 
@@ -257,7 +263,7 @@ function familiaCss(v, subidas){
   var s = String(v == null ? "" : v).trim();
   if (enFuentes(s)) return "'" + s + "'";
   var m = /^up:(f_[a-z0-9]{8})$/.exec(s);
-  if (m && subidas.some(function (f){ return f.id === m[1]; })) return "'up-" + m[1] + "'";
+  if (m && subidas.some(function (f){ return f.id === m[1]; })) return "'nicole-up-" + m[1] + "'";
   return "";
 }
 
@@ -294,6 +300,11 @@ export function estiloCss(data){
   var fc = e.fuente_cuerpo && enFuentes(e.fuente_cuerpo) ? "'" + e.fuente_cuerpo + "', " : "";
   if (ft) r.push("--font-titulo:" + ft + (e.fuente_titulos === "Cormorant Garamond" ? "Georgia,serif" : "var(--mono)"));
   if (fc) r.push("--font-cuerpo:" + fc + (e.fuente_cuerpo === "Cormorant Garamond" ? "Georgia,serif" : "var(--mono)"));
+  // Los valores Cormorant del contrato viejo significaban original. Se conservan.
+  var subidaGeneral = fuentesSubidas(data);
+  var generalT = familiaCss(e.fuente_titulos, subidaGeneral), generalC = familiaCss(e.fuente_cuerpo, subidaGeneral);
+  if (generalT && e.fuente_titulos !== DEFAULTS.estilo.fuente_titulos) r.push("--g-titulos:" + generalT);
+  if (generalC && e.fuente_cuerpo !== DEFAULTS.estilo.fuente_cuerpo) r.push("--g-cuerpo:" + generalC);
   var esc1 = num(e.escala, 100, 70, 150) / 100;
   var esc2 = num(e.escala_titulo, 100, 70, 200) / 100;
   if (esc1 !== 1) r.push("--esc:" + esc1);
@@ -326,10 +337,11 @@ export function estiloCss(data){
 
 /* @font-face de las fuentes subidas por Nicole (familia 'up-<id>'). Vacío si no hay ninguna.
    Se carga solo cuando algún texto la usa, así que no pesa si no se elige. */
-export function fontFacesCss(data){
+export function fontFacesCss(data, origenLocal){
+  var origen = /^http:\/\/(127\.0\.0\.1|localhost):\d+$/.test(origenLocal || "") ? origenLocal : origenFuentes();
   return fuentesSubidas(data).map(function (f){
-    return "@font-face{font-family:'up-" + f.id + "';font-style:normal;font-weight:400;font-display:swap;" +
-      "src:url('" + ORIGEN_FUENTES + "/fuentes/" + f.id + "." + f.formato + "') format('" + FORMATOS_FUENTE[f.formato] + "')}";
+    return "@font-face{font-family:'nicole-up-" + f.id + "';font-style:normal;font-weight:400;font-display:swap;" +
+      "src:url('" + origen + "/fuentes/" + f.id + "." + f.formato + "') format('" + FORMATOS_FUENTE[f.formato] + "')}";
   }).join("");
 }
 

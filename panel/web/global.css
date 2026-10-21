@@ -511,3 +511,9 @@ header { background: transparent; }
   body[data-pagina="inicio"] main { min-height: 0; }
   body[data-pagina="inicio"] footer { margin-top: 0; }
 }
+
+/* Móvil: aire entre el subtítulo y el pie igual al que hay entre el menú y el "hola :)"; pie más pequeño y en Space Mono. */
+@media (max-width: 700px) {
+  body[data-pagina="inicio"] .home { padding-bottom: 17vw; }
+  footer .footer-thanks, footer .footer-copy { font-family: 'Space Mono', ui-monospace, monospace; font-size: calc(12px * var(--esc)); }
+}

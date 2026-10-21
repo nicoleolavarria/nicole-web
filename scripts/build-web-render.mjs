@@ -43,6 +43,7 @@ for (const destino of ['public/js/web-render.js', 'panel/web/web-render.js']) {
 }
 mkdirSync(resolve(raiz, 'panel/web'), { recursive: true });
 copyFileSync(resolve(raiz, 'public/styles/global.css'), resolve(raiz, 'panel/web/global.css'));
+copyFileSync(resolve(raiz, 'public/styles/papel.png'), resolve(raiz, 'panel/web/papel.png'));
 cpSync(resolve(raiz, 'public/styles/fonts'), resolve(raiz, 'panel/web/fonts'), { recursive: true });
 
 console.log('web-render: ' + nombres.length + ' exports -> public/js/ y panel/web/ (+ global.css)');

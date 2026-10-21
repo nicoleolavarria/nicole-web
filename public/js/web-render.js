@@ -318,13 +318,28 @@ function pieHtml(data){
     "</footer>";
 }
 
+/* Subtítulo de la portada en líneas cortas, como el boceto de Nicole: un salto después de
+   cada punto y, en las frases largas, después de la primera coma. Si ella ya escribió sus
+   propios saltos de línea, se respetan tal cual. También corrige "artísta" (tilde de más). */
+function subPortada(sub){
+  var t = String(sub == null ? "" : sub).replace(/art\u00edsta/gi, function (m){ return m.replace(/\u00ed/g, "i"); });
+  if (/\n/.test(t)) return esc(t).replace(/\n/g, "<br />");
+  var frases = t.split(/(?<=\.)\s+/);
+  return frases.map(function (f){
+    var e = esc(f);
+    var i = f.indexOf(", ");
+    if (f.length > 44 && i > 20) e = esc(f.slice(0, i + 1)) + "<br />" + esc(f.slice(i + 2));
+    return e;
+  }).join("<br />");
+}
+
 /* ---------- páginas ---------- */
 function paginaInicio(d){
   var h = d.inicio;
   return '<section class="home" aria-labelledby="portada-titulo">' +
     '<div class="home-top">' +
       '<h1 id="portada-titulo" data-ed="inicio.titulo">' + esc(h.titulo) + "</h1>" +
-      (h.sub ? '<p class="home-sub" data-ed="inicio.sub">' + esc(h.sub) + "</p>" : "") +
+      (h.sub ? '<p class="home-sub" data-ed="inicio.sub">' + subPortada(h.sub) + "</p>" : "") +
     "</div></section>";
 }
 

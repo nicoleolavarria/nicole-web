@@ -7,7 +7,7 @@
                                  que Vercel esté arriba)
    Además copia el CSS de la web a panel/web/global.css por la misma razón.
    Correr con `npm run render` (el build de Astro ya lo encadena). */
-import { readFileSync, writeFileSync, mkdirSync, copyFileSync } from 'node:fs';
+import { readFileSync, writeFileSync, mkdirSync, copyFileSync, cpSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -43,5 +43,6 @@ for (const destino of ['public/js/web-render.js', 'panel/web/web-render.js']) {
 }
 mkdirSync(resolve(raiz, 'panel/web'), { recursive: true });
 copyFileSync(resolve(raiz, 'public/styles/global.css'), resolve(raiz, 'panel/web/global.css'));
+cpSync(resolve(raiz, 'public/styles/fonts'), resolve(raiz, 'panel/web/fonts'), { recursive: true });
 
 console.log('web-render: ' + nombres.length + ' exports -> public/js/ y panel/web/ (+ global.css)');

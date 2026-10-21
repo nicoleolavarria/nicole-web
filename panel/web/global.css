@@ -466,3 +466,10 @@ main .wrap p, main .wrap-narrow p, main .contact-value, main .sesion-card p { fo
   header nav a { font-size: calc(15px * var(--esc)); }
   .home-top h1 { font-size: calc(clamp(48px, 15vw, 72px) * var(--esc) * var(--esc-tit)); }
 }
+
+/* Fuentes alojadas en la propia web y cargadas con prioridad (preload en el layout):
+   evita el parpadeo de otra tipografía mientras llegan desde Google Fonts. */
+@font-face { font-family: 'Homemade Apple'; font-style: normal; font-weight: 400; font-display: block; src: url('fonts/homemade-apple-400.woff2') format('woff2'); }
+@font-face { font-family: 'Space Mono'; font-style: normal; font-weight: 400; font-display: block; src: url('fonts/space-mono-400.woff2') format('woff2'); }
+@font-face { font-family: 'Space Mono'; font-style: normal; font-weight: 700; font-display: block; src: url('fonts/space-mono-700.woff2') format('woff2'); }
+@font-face { font-family: 'Space Mono'; font-style: italic; font-weight: 400; font-display: block; src: url('fonts/space-mono-400-italic.woff2') format('woff2'); }

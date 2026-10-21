@@ -504,3 +504,10 @@ body {
   background-size: 256px 256px, 100% 100%;
 }
 header { background: transparent; }
+
+/* Móvil: sin el hueco grande entre el subtítulo y el pie (solo ≤700px; en computador no cambia). */
+@media (max-width: 700px) {
+  body[data-pagina="inicio"] .home { min-height: 0; padding-bottom: 40px; }
+  body[data-pagina="inicio"] main { min-height: 0; }
+  body[data-pagina="inicio"] footer { margin-top: 0; }
+}

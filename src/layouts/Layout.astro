@@ -7,7 +7,7 @@
    script que re-renderiza al vuelo si ella publicó algo después del último
    deploy de Vercel — así ve su cambio al instante, sin esperar un rebuild. */
 import { obtenerWeb, ORIGEN } from '../lib/web-data.mjs';
-import { htmlPagina, headerHtml, pieHtml, anuncioHtml, estiloCss, fuentesHref, mezclar } from '../lib/web-render.mjs';
+import { htmlPagina, headerHtml, pieHtml, anuncioHtml, estiloCss, fontFacesCss, fuentesHref, mezclar } from '../lib/web-render.mjs';
 import { CANONICO, jsonLd, canonicalDe } from '../lib/seo.mjs';
 
 interface Props {
@@ -33,7 +33,7 @@ const ogImage = CANONICO + (image ?? '/og-nicole-olavarria.png');
 /* Canónica SIN barra final: Vercel sirve /sesiones (cleanUrls + trailingSlash:false) y
    Astro construye /sesiones/. Apuntar a la que redirige es regalarle un aviso a Search Console. */
 const canonicalURL = canonicalDe(Astro.url.pathname);
-const cssExtra = estiloCss(data);
+const cssExtra = estiloCss(data) + fontFacesCss(data, ORIGEN);
 const hrefFuentes = fuentesHref(data);
 const datosEstructurados = jsonLd(pagina, data, canonicalURL);
 ---
@@ -139,7 +139,7 @@ const datosEstructurados = jsonLd(pagina, data, canonicalURL);
 
         var st = document.getElementById('estiloNicole');
         if (!st) { st = document.createElement('style'); st.id = 'estiloNicole'; document.head.appendChild(st); }
-        st.textContent = W.estiloCss(data);
+        st.textContent = W.estiloCss(data) + (W.fontFacesCss ? W.fontFacesCss(data, ORIGEN) : '');
 
         var an = document.querySelector('.anuncio');
         var anHtml = W.anuncioHtml(data);

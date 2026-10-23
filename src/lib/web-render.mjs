@@ -34,7 +34,9 @@ export const DEFAULTS = {
     color_texto: "",
     color_acento: "",
     ancho: 860,              // ancho máximo de las páginas interiores, px
-    esquinas: 0              // redondeo de las fotos, px
+    esquinas: 0,             // redondeo de las fotos, px
+    fuentes_subidas: [],     // [{ id: "f_xxxxxxxx", nombre, formato }] (máximo 8)
+    tipos: {}                // { menu, titulo_inicio, subtitulo_inicio, titulos, texto }: fuente, tam, tam_movil, peso, interlineado
   },
   marca: {
     nombre: "Nicole Olavarría",
@@ -191,7 +193,7 @@ export function mezclar(data){
   var out = JSON.parse(JSON.stringify(DEFAULTS));
   function unir(dest, src){
     for (var k in src){
-      if (!Object.prototype.hasOwnProperty.call(src, k)) continue;
+      if (!Object.prototype.hasOwnProperty.call(src, k) || ["__proto__", "constructor", "prototype"].indexOf(k) >= 0) continue;
       var v = src[k];
       if (v === undefined || v === null) continue;
       if (Array.isArray(v)) dest[k] = v;
@@ -200,6 +202,9 @@ export function mezclar(data){
     }
   }
   unir(out, d);
+  // Datos anteriores a los tipos y las fuentes subidas: quedan con valores vacíos.
+  if (!Array.isArray(out.estilo.fuentes_subidas)) out.estilo.fuentes_subidas = [];
+  if (!out.estilo.tipos || typeof out.estilo.tipos !== "object" || Array.isArray(out.estilo.tipos)) out.estilo.tipos = {};
   // Adaptación local del diseño anterior; no escribe ni borra datos del CRM.
   // v2 se conserva al guardar desde el panel: las ediciones posteriores mandan.
   if (Number(d.v || 1) < 2) {
@@ -215,13 +220,91 @@ export function mezclar(data){
 }
 
 /* ---------- estilo (CSS variables que sobreescriben global.css) ---------- */
+/* Origen de las fuentes subidas por Nicole (el worker las sirve con CORS). */
+var ORIGEN_FUENTES = "https://nicole-crm-worker.nicoleolavarria.workers.dev";
+function origenFuentes(){
+  return typeof location !== "undefined" && /^(localhost|127\.0\.0\.1)$/.test(location.hostname) ? location.origin : ORIGEN_FUENTES;
+}
+/* Tipos de texto editables: clave en estilo.tipos, nombre en CSS y rango del tamaño en px. */
+var TIPOS_EDITABLES = [
+  { clave: "menu", css: "menu", min: 12, max: 60 },
+  { clave: "titulo_inicio", css: "titulo-inicio", min: 24, max: 200 },
+  { clave: "subtitulo_inicio", css: "subtitulo-inicio", min: 10, max: 48 },
+  { clave: "titulos", css: "titulos", min: 14, max: 100 },
+  { clave: "texto", css: "texto", min: 10, max: 36 },
+  { clave: "pie", css: "pie", min: 10, max: 36 },
+  { clave: "tarjetas", css: "tarjetas", min: 14, max: 100 },
+  { clave: "nombre_sitio", css: "nombre-sitio", min: 12, max: 60 }
+];
+var FORMATOS_FUENTE = { woff2: "woff2", woff: "woff", ttf: "truetype", otf: "opentype" };
+
+function enFuentes(f){
+  return Object.prototype.hasOwnProperty.call(FUENTES, f);
+}
+
+/* Fuentes subidas válidas (id, formato) y sin repetir. Ignora lo que no cumple. */
+function fuentesSubidas(data){
+  var lista = mezclar(data).estilo.fuentes_subidas;
+  if (!Array.isArray(lista)) return [];
+  var out = [];
+  lista.forEach(function (f){
+    if (!f || typeof f !== "object") return;
+    var id = String(f.id == null ? "" : f.id);
+    var formato = String(f.formato == null ? "" : f.formato);
+    if (!/^f_[a-z0-9]{8}$/.test(id) || !Object.prototype.hasOwnProperty.call(FORMATOS_FUENTE, formato)) return;
+    if (out.some(function (x){ return x.id === id; })) return;
+    out.push({ id: id, nombre: String(f.nombre || ""), formato: formato });
+  });
+  return out.slice(0, 8);
+}
+
+/* Nombre de familia seguro para CSS: solo claves de FUENTES o "up:<id>" de una fuente subida. */
+function familiaCss(v, subidas){
+  var s = String(v == null ? "" : v).trim();
+  if (enFuentes(s)) return "'" + s + "'";
+  var m = /^up:(f_[a-z0-9]{8})$/.exec(s);
+  if (m && subidas.some(function (f){ return f.id === m[1]; })) return "'nicole-up-" + m[1] + "'";
+  return "";
+}
+
+/* Tamaño en px dentro del rango. 0 o vacío = automático (no genera variable). */
+function tamCss(v, min, max){
+  if (v == null || v === "" || Number(v) === 0) return "";
+  var n = Number(v);
+  if (!isFinite(n)) return "";
+  return (Math.round(Math.min(max, Math.max(min, n)) * 10) / 10) + "px";
+}
+
+function pesoCss(v){
+  var s = String(v == null ? "" : v).trim();
+  return s === "400" || s === "700" ? s : "";
+}
+
+/* Interlineado: número entre 1 y 3. Vacío o 0 = el de la web. */
+function lhCss(v){
+  if (v == null || v === "" || Number(v) === 0) return "";
+  var n = Number(v);
+  if (!isFinite(n)) return "";
+  return String(Math.round(Math.min(3, Math.max(1, n)) * 100) / 100);
+}
+
+function tipoDe(e, clave){
+  var t = e.tipos && typeof e.tipos === "object" && !Array.isArray(e.tipos) ? e.tipos[clave] : null;
+  return t && typeof t === "object" ? t : {};
+}
+
 export function estiloCss(data){
   var e = mezclar(data).estilo;
   var r = [];
-  var ft = e.fuente_titulos && FUENTES[e.fuente_titulos] ? "'" + e.fuente_titulos + "', " : "";
-  var fc = e.fuente_cuerpo && FUENTES[e.fuente_cuerpo] ? "'" + e.fuente_cuerpo + "', " : "";
+  var ft = e.fuente_titulos && enFuentes(e.fuente_titulos) ? "'" + e.fuente_titulos + "', " : "";
+  var fc = e.fuente_cuerpo && enFuentes(e.fuente_cuerpo) ? "'" + e.fuente_cuerpo + "', " : "";
   if (ft) r.push("--font-titulo:" + ft + (e.fuente_titulos === "Cormorant Garamond" ? "Georgia,serif" : "var(--mono)"));
   if (fc) r.push("--font-cuerpo:" + fc + (e.fuente_cuerpo === "Cormorant Garamond" ? "Georgia,serif" : "var(--mono)"));
+  // Los valores Cormorant del contrato viejo significaban original. Se conservan.
+  var subidaGeneral = fuentesSubidas(data);
+  var generalT = familiaCss(e.fuente_titulos, subidaGeneral), generalC = familiaCss(e.fuente_cuerpo, subidaGeneral);
+  if (generalT && e.fuente_titulos !== DEFAULTS.estilo.fuente_titulos) r.push("--g-titulos:" + generalT);
+  if (generalC && e.fuente_cuerpo !== DEFAULTS.estilo.fuente_cuerpo) r.push("--g-cuerpo:" + generalC);
   var esc1 = num(e.escala, 100, 70, 150) / 100;
   var esc2 = num(e.escala_titulo, 100, 70, 200) / 100;
   if (esc1 !== 1) r.push("--esc:" + esc1);
@@ -233,15 +316,44 @@ export function estiloCss(data){
   if (ancho !== 860) r.push("--ancho:" + ancho + "px");
   var esq = num(e.esquinas, 0, 0, 40);
   if (esq) r.push("--radio-foto:" + esq + "px");
+  // Tipos de texto: solo generan variable los valores que existen y son válidos.
+  var subidas = fuentesSubidas(data);
+  TIPOS_EDITABLES.forEach(function (tp){
+    var t = tipoDe(e, tp.clave);
+    var p = "--t-" + tp.css + "-";
+    var fam = familiaCss(t.fuente, subidas);
+    if (fam) r.push(p + "fuente:" + fam);
+    var tam = tamCss(t.tam, tp.min, tp.max);
+    if (tam) r.push(p + "tam:" + tam);
+    var tamM = tamCss(t.tam_movil, tp.min, tp.max);
+    if (tamM) r.push(p + "tam-m:" + tamM);
+    var peso = pesoCss(t.peso);
+    if (peso) r.push(p + "peso:" + peso);
+    var lh = lhCss(t.interlineado);
+    if (lh) r.push(p + "lh:" + lh);
+  });
   return r.length ? ":root{" + r.join(";") + "}" : "";
 }
 
-/* <link> de Google Fonts para las fuentes elegidas (vacío si usa la original). */
+/* @font-face de las fuentes subidas por Nicole (familia 'up-<id>'). Vacío si no hay ninguna.
+   Se carga solo cuando algún texto la usa, así que no pesa si no se elige. */
+export function fontFacesCss(data, origenLocal){
+  var origen = /^http:\/\/(127\.0\.0\.1|localhost):\d+$/.test(origenLocal || "") ? origenLocal : origenFuentes();
+  return fuentesSubidas(data).map(function (f){
+    return "@font-face{font-family:'nicole-up-" + f.id + "';font-style:normal;font-weight:400;font-display:swap;" +
+      "src:url('" + origen + "/fuentes/" + f.id + "." + f.formato + "') format('" + FORMATOS_FUENTE[f.formato] + "')}";
+  }).join("");
+}
+
+/* <link> de Google Fonts para las fuentes elegidas (vacío si usa la original).
+   Las fuentes subidas ("up:<id>") nunca se piden a Google. */
 export function fuentesHref(data){
   var e = mezclar(data).estilo;
+  var familias = ["Cormorant Garamond", "DM Sans", "Homemade Apple", "Space Mono", e.fuente_titulos, e.fuente_cuerpo];
+  TIPOS_EDITABLES.forEach(function (tp){ familias.push(tipoDe(e, tp.clave).fuente); });
   var qs = [];
-  ["Cormorant Garamond", "DM Sans", "Homemade Apple", "Space Mono", e.fuente_titulos, e.fuente_cuerpo].forEach(function (f){
-    if (f && FUENTES[f] && qs.indexOf(FUENTES[f]) === -1) qs.push(FUENTES[f]);
+  familias.forEach(function (f){
+    if (f && enFuentes(f) && qs.indexOf(FUENTES[f]) === -1) qs.push(FUENTES[f]);
   });
   return qs.length ? "https://fonts.googleapis.com/css2?" + qs.join("&") + "&display=swap" : "";
 }
@@ -465,7 +577,7 @@ export function htmlDocumento(pagina, data, opciones){
     '<link href="https://fonts.googleapis.com/css2?family=DM+Mono:ital,wght@0,300;0,400;0,500;1,300;1,400&display=swap" rel="stylesheet" />' +
     (href ? '<link href="' + esc(href) + '" rel="stylesheet" />' : "") +
     '<link rel="stylesheet" href="' + esc(o.css || "/web/global.css") + '" />' +
-    "<style>" + estiloCss(d) + (o.extraCss || "") + '</style></head><body data-pagina="' + esc(pagina) + '">' +
+    "<style>" + estiloCss(d) + fontFacesCss(d) + (o.extraCss || "") + '</style></head><body data-pagina="' + esc(pagina) + '">' +
     anuncioHtml(d) +
     headerHtml(d) +
     "<main>" + htmlPagina(pagina, d) + "</main>" +

@@ -1,3 +1,5 @@
+import { create as crearFuenteBinaria } from "fontkit";
+import { Buffer } from "node:buffer";
 /* API CRM Nicole Olavarría — Cloudflare Worker + D1
    (white-label del sistema de MVT; la marca vive en el objeto MARCA y en la tabla `config`)
    Destino en el repo: worker/index.js
@@ -19,6 +21,9 @@
                                        + consume el crédito usado por el comprador
      POST /api/admin/recurso           {accion:'crear'|'borrar', ...}
      POST /api/admin/config            acepta también google_client_id
+     POST /api/web/fuente              (solo Nicole) sube una fuente propia de "Mi web": multipart archivo + nombre
+     GET  /fuentes/<id>.<formato>      sirve esa fuente (público, CORS abierto, caché inmutable)
+     DELETE /api/web/fuente/<id>       (solo Nicole) borra una fuente; 409 si está en uso en el diseño publicado
 */
 "use strict";
 
@@ -292,7 +297,7 @@ async function loadConfig(env){
               // Editor visual "Mi web" (23-jul-2026): TODO el contenido y el diseño de
               // nicoleolavarria.com en un solo JSON. Vacío = la web original. web_version cambia
               // en cada publicación (la web la compara para saber si su HTML quedó viejo).
-              web_json: "", web_version: "", vercel_deploy_hook: "" };
+              web_json: "", web_version: "", web_fuentes: "", vercel_deploy_hook: "" };
               // Los 4 motores nuevos van APAGADOS por defecto (07-jul): tocan correos de alumnos reales.
               // Andrés los enciende poniendo el switch en "1" en la tabla config (comandos en la bitácora del loop).
   for (const row of (results || [])) c[row.clave] = row.valor || "";
@@ -306,8 +311,175 @@ async function loadConfig(env){
    y su lista de valores válidos; lo demás se descarta en silencio. Un campo malo
    se vuelve "" (= vuelve el diseño original en ese punto), nunca rompe la web.  */
 const WEB_FUENTES = ["Bebas Neue", "Bricolage Grotesque", "Cormorant Garamond", "DM Sans", "EB Garamond",
-                     "Inter Tight", "Libre Baskerville", "Playfair Display", "Space Grotesk", "Space Mono", "Work Sans"];
+                     "Homemade Apple", "Inter Tight", "Libre Baskerville", "Playfair Display", "Space Grotesk", "Space Mono", "Work Sans"];
 const WEB_MAX_BYTES = 60 * 1024;
+
+/* Fuentes propias que sube Nicole (27-oct-2026). Archivo en R2 (bucket de imágenes) bajo
+   fuentes/<id>.<formato>; la lista vive en config.web_fuentes (JSON de {id, nombre, formato}). */
+const FUENTES_MAX = 8;
+const FUENTES_MAX_BYTES = 1024 * 1024;
+const FUENTES_FORMATOS = ["woff2", "woff", "ttf", "otf"];
+const MIME_FUENTE = { woff2: "font/woff2", woff: "font/woff", ttf: "font/ttf", otf: "font/otf" };
+const FUENTE_CACHE = "public, max-age=31536000, immutable";
+const FUENTE_ID_CHARS = "abcdefghijklmnopqrstuvwxyz0123456789";
+const FUENTE_USOS = { menu: "Menú", titulo_inicio: "Título de la portada", subtitulo_inicio: "Subtítulo de la portada",
+                      titulos: "Títulos de las páginas", texto: "Texto de las páginas", pie: "Pie de página", tarjetas: "Títulos de sesiones", nombre_sitio: "Nombre del sitio",
+                      fuente_titulos: "Letra de los títulos (diseño general)", fuente_cuerpo: "Letra del texto (diseño general)" };
+/* Rangos de tamaño (px) y de cada parte del texto, según el contrato del panel. */
+const TIPOS_RANGOS = { menu: [12, 60], titulo_inicio: [24, 200], subtitulo_inicio: [10, 48], titulos: [14, 100], texto: [10, 36], pie: [10, 36], tarjetas: [14, 100], nombre_sitio: [12, 60] };
+
+/* Formato real según la firma binaria (primeros bytes). null si no es una fuente conocida. */
+function firmaFuente(bytes){
+  if (!bytes || bytes.length < 4) return null;
+  function empieza(s){ for (let i = 0; i < s.length; i++) if (bytes[i] !== s.charCodeAt(i)) return false; return true; }
+  if (empieza("wOF2")) return "woff2";
+  if (empieza("wOFF")) return "woff";
+  if (empieza("OTTO")) return "otf";
+  if ((bytes[0] === 0 && bytes[1] === 1 && bytes[2] === 0 && bytes[3] === 0) || empieza("true")) return "ttf";
+  return null;
+}
+/* Valida un archivo subido: extensión, tamaño y firma deben coincidir. Devuelve {formato} o {error}. */
+function validarFuente(nombreArchivo, bytes){
+  const m = String(nombreArchivo || "").toLowerCase().match(/\.(woff2|woff|ttf|otf)$/);
+  if (!m || /[\\/\x00]/.test(String(nombreArchivo))) return { error: "Solo se aceptan fuentes woff2, woff, ttf u otf." };
+  if (!bytes || bytes.length > FUENTES_MAX_BYTES) return { error: "La fuente pesa más de 1 MB. Usa una más liviana." };
+  if (firmaFuente(bytes) !== m[1]) return { error: "El archivo no parece una fuente " + m[1] + " válida." };
+  // Fontkit decodifica las tablas y el mapa de caracteres; la firma sola no basta.
+  // Límite previo a descomprimir WOFF/WOFF2 para evitar cabeceras expansivas.
+  try {
+    if (bytes.length < 12) throw new Error("truncada");
+    if (m[1] === "woff" || m[1] === "woff2") {
+      if (bytes.length < 48) throw new Error("truncada");
+      const v = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+      if (v.getUint32(8) !== bytes.length || v.getUint32(16) > 8 * 1024 * 1024 ||
+          v.getUint16(12) < 1 || v.getUint16(12) > 256) throw new Error("cabecera");
+    }
+    if (m[1] === "ttf" || m[1] === "otf") {
+      const count = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength).getUint16(4);
+      if (count < 1 || count > 256) throw new Error("tablas");
+    }
+    const font = crearFuenteBinaria(Buffer.from(bytes));
+    const tablas = Object.values(font.directory.tables);
+    const expanded = tablas.reduce((n,t) => n + Math.max(t.length || 0,t.transformLength || 0), 0);
+    if (!Number.isFinite(expanded) || expanded > 8*1024*1024) throw new Error("tablas demasiado grandes");
+    if (!font.numGlyphs || font.numGlyphs > 20000 || !font.familyName || !font.characterSet.length) throw new Error("tablas");
+    // Fuerza la lectura de contornos de un glifo renderizable, no solo del nombre.
+    font.glyphForCodePoint(font.characterSet[0]).path.toSVG();
+  } catch (_) { return { error: "El archivo no parece una fuente " + m[1] + " válida." }; }
+  return { formato: m[1] };
+}
+/* Nombre visible: solo letras, números, espacio, punto, guion y guion bajo; máximo 40. */
+function wNombreFuente(v){
+  return String(v == null ? "" : v).replace(/[^\p{L}\p{N} .\-_]/gu, "").replace(/\s+/g, " ").trim().slice(0, 40).trim();
+}
+function wIdFuente(v){ return /^f_[a-z0-9]{8}$/.test(String(v || "")) ? String(v) : ""; }
+/* Id nuevo "f_" + 8 caracteres [a-z0-9]. rnd(n) devuelve n bytes aleatorios (crypto en el worker).
+   Se descartan los bytes >= 252 para que cada letra salga con la misma probabilidad. */
+function generarIdFuente(rnd){
+  let s = "";
+  while (s.length < 8){
+    for (const b of rnd(16)){
+      if (b < 252 && s.length < 8) s += FUENTE_ID_CHARS[b % 36];
+    }
+  }
+  return "f_" + s;
+}
+/* Lista guardada (string JSON o array) limpia: solo entradas válidas, sin repetir, máximo FUENTES_MAX. */
+function wFuentesGuardadas(raw){
+  let lista = raw;
+  if (typeof raw === "string"){ try { lista = JSON.parse(raw || "[]"); } catch (e) { lista = []; } }
+  if (!Array.isArray(lista)) return [];
+  const out = [];
+  for (const f of lista){
+    const id = wIdFuente(f && f.id);
+    const formato = FUENTES_FORMATOS.indexOf(f && f.formato) >= 0 ? f.formato : "";
+    const nombre = wNombreFuente(f && f.nombre);
+    if (id && formato && nombre && !f.estado && out.length < FUENTES_MAX && !out.some(function (x){ return x.id === id; })){
+      out.push({ id: id, nombre: nombre, formato: formato });
+    }
+  }
+  return out;
+}
+/* Comparar y escribir en UNA sentencia SQLite: válido entre isolates y peticiones.
+   Ambas versiones protegen publicar/borrar; las reservas cuentan para el máximo de 8.
+   No hay mutex de memoria, ni TTL que pueda expirar durante una subida. */
+function inventarioFuentes(cfg){
+  try { const a = JSON.parse(cfg.web_fuentes || "[]"); return Array.isArray(a) ? a : []; }
+  catch (_) { return []; }
+}
+async function configWebCAS(env, cfg, clave, valor){
+  const r = await env.DB.prepare(
+    "INSERT INTO config (clave,valor) SELECT ?1,?2 WHERE " +
+    "COALESCE((SELECT valor FROM config WHERE clave='web_fuentes'),'')=?3 AND " +
+    "COALESCE((SELECT valor FROM config WHERE clave='web_json'),'')=?4 " +
+    "ON CONFLICT(clave) DO UPDATE SET valor=excluded.valor"
+  ).bind(clave, valor, cfg.web_fuentes || "", cfg.web_json || "").run();
+  return r.meta.changes === 1;
+}
+async function cambiarInventario(env, transformar){
+  for (let n=0; n<32; n++){
+    const cfg = await loadConfig(env), lista = inventarioFuentes(cfg);
+    const next = transformar(lista, cfg);
+    if (next instanceof Response) return next;
+    if (await configWebCAS(env, cfg, "web_fuentes", JSON.stringify(next))) return null;
+  }
+  throw new Error("El diseño está cambiando. Vuelve a intentar.");
+}
+function listaFuentesDe(cfg){ return wFuentesGuardadas(cfg && cfg.web_fuentes); }
+/* Dónde se usa una fuente subida en el diseño PUBLICADO (web_json). Vacío = se puede borrar. */
+function usosFuente(webJson, id){
+  const ref = "up:" + id, usos = [];
+  let d = null;
+  try { d = JSON.parse(webJson || "null"); } catch (e) { return usos; }
+  const est = d && typeof d === "object" && d.estilo && typeof d.estilo === "object" ? d.estilo : null;
+  if (!est) return usos;
+  for (const k of ["fuente_titulos", "fuente_cuerpo"]) if (est[k] === ref) usos.push(FUENTE_USOS[k]);
+  const tipos = est.tipos && typeof est.tipos === "object" ? est.tipos : {};
+  for (const k of Object.keys(TIPOS_RANGOS)) if (tipos[k] && tipos[k].fuente === ref) usos.push(FUENTE_USOS[k]);
+  return usos;
+}
+/* fuente de una parte del texto: '' (predeterminada), clave de WEB_FUENTES o 'up:<id>' de la lista. */
+function wFuenteTipo(v, subidas){
+  const s = String(v == null ? "" : v);
+  if (WEB_FUENTES.indexOf(s) >= 0) return s;
+  const m = s.match(/^up:(f_[a-z0-9]{8})$/);
+  if (m && subidas.some(function (f){ return f.id === m[1]; })) return s;
+  return "";
+}
+/* tam en px: 0 o vacío = automático (no se guarda); fuera de rango se acota al rango. */
+function wTamTipo(v, rango){
+  if (v === "" || v == null) return undefined;
+  const n = Number(v);
+  if (!isFinite(n) || n === 0) return undefined;
+  return Math.min(rango[1], Math.max(rango[0], Math.round(n)));
+}
+function wInterlineadoTipo(v){
+  if (v === "" || v == null) return undefined;
+  const n = Number(v);
+  if (!isFinite(n) || n === 0) return undefined;
+  return Math.min(3, Math.max(1, Math.round(n * 100) / 100));
+}
+/* estilo.tipos: solo las 5 partes conocidas y solo sus campos; lo demás se descarta. */
+function wTipos(v, subidas){
+  if (!v || typeof v !== "object") return undefined;
+  const out = {};
+  for (const k of Object.keys(TIPOS_RANGOS)){
+    const src = v[k];
+    if (!src || typeof src !== "object") continue;
+    const t = {};
+    const fuente = wFuenteTipo(src.fuente, subidas);
+    if (fuente) t.fuente = fuente;
+    const tam = wTamTipo(src.tam, TIPOS_RANGOS[k]);
+    if (tam !== undefined) t.tam = tam;
+    const tamMovil = wTamTipo(src.tam_movil, TIPOS_RANGOS[k]);
+    if (tamMovil !== undefined) t.tam_movil = tamMovil;
+    if (String(src.peso) === "400" || String(src.peso) === "700") t.peso = String(src.peso);
+    const lh = wInterlineadoTipo(src.interlineado);
+    if (lh !== undefined) t.interlineado = lh;
+    if (Object.keys(t).length) out[k] = t;
+  }
+  return Object.keys(out).length ? out : undefined;
+}
 
 function wTxt(v, max){
   // fuera caracteres de control (el salto de linea si se permite: los parrafos pueden tenerlo)
@@ -352,21 +524,30 @@ function wSeccion(src, forma){
   return Object.keys(out).length ? out : undefined;
 }
 
-function sanearWeb(raw){
+/* fuentesGuardadas: la lista de fuentes subidas tal como está en config (web_fuentes).
+   Solo se aceptan fuentes de esa lista; nombre y formato salen de la lista, no del cliente. */
+function sanearWeb(raw, fuentesGuardadas){
   const d = raw && typeof raw === "object" ? raw : {};
   const out = { v: Number(d.v) >= 2 ? 2 : 1 };
+  const guardadas = wFuentesGuardadas(fuentesGuardadas);
+
+  // El inventario del servidor es autoritativo. Un panel antiguo nunca elimina subidas nuevas.
+  const subidas = guardadas;
 
   out.estilo = wSeccion(d.estilo, {
-    fuente_titulos: function (v){ return WEB_FUENTES.includes(String(v)) ? String(v) : ""; },
-    fuente_cuerpo:  function (v){ return WEB_FUENTES.includes(String(v)) ? String(v) : ""; },
+    fuente_titulos: function (v){ return wFuenteTipo(v, subidas); },
+    fuente_cuerpo:  function (v){ return wFuenteTipo(v, subidas); },
     escala:         function (v){ return wNum(v, 70, 150, 100); },
     escala_titulo:  function (v){ return wNum(v, 70, 200, 100); },
     color_fondo:    wHex,
     color_texto:    wHex,
     color_acento:   wHex,
     ancho:          function (v){ return wNum(v, 620, 1200, 860); },
-    esquinas:       function (v){ return wNum(v, 0, 40, 0); }
-  });
+    esquinas:       function (v){ return wNum(v, 0, 40, 0); },
+    tipos:          function (v){ return wTipos(v, subidas); }
+  }) || {};
+  if (subidas.length) out.estilo.fuentes_subidas = subidas;
+  if (!Object.keys(out.estilo).length) delete out.estilo;
 
   out.marca = wSeccion(d.marca, {
     nombre:  function (v){ return wTxt(v, 80); },
@@ -472,7 +653,7 @@ function sanearWeb(raw){
    había configurado el 23-jul no se pierda. */
 function webDeConfig(cfg){
   if (cfg.web_json){
-    try { return sanearWeb(JSON.parse(cfg.web_json)); } catch (e) { /* JSON corrupto: sigue al legacy */ }
+    try { return sanearWeb(JSON.parse(cfg.web_json), listaFuentesDe(cfg)); } catch (e) { /* JSON corrupto: sigue al legacy */ }
   }
   const legacy = {};
   if (cfg.web_hero_titulo || cfg.web_hero_sub){
@@ -490,7 +671,7 @@ function webDeConfig(cfg){
   if (cfg.apar_acento) est.color_acento = cfg.apar_acento;
   if (cfg.apar_font) est.fuente_titulos = cfg.apar_font;
   if (Object.keys(est).length) legacy.estilo = est;
-  return sanearWeb(legacy);
+  return sanearWeb(legacy, listaFuentesDe(cfg));
 }
 
 async function cuentaDeSesion(env, request){
@@ -3043,7 +3224,7 @@ export default {
   async fetch(request, env, ctx){
     const url = new URL(request.url);
 
-    if (!url.pathname.startsWith("/api/") && !url.pathname.startsWith("/r/")){
+    if (!url.pathname.startsWith("/api/") && !url.pathname.startsWith("/r/") && !url.pathname.startsWith("/fuentes/")){
       return env.ASSETS ? env.ASSETS.fetch(request) : json({ error: "No encontrado" }, 404);
     }
     /* Preflight de la reserva pública: el navegador pregunta antes del POST con JSON. Solo se le
@@ -3073,6 +3254,8 @@ export default {
              ella publicó algo después, lo repinta en el navegador comparando web_version. */
           web: webDeConfig(cfg),
           web_version: cfg.web_version || "",
+          /* Fuentes propias subidas por Nicole (27-oct): la web las carga desde /fuentes/<id>.<formato>. */
+          fuentes_subidas: listaFuentesDe(cfg),
           /* Formato viejo (23-jul, mañana): sigue mientras Vercel sirva HTML construido
              antes del editor — ese HTML lee "apariencia", no "web". */
           apariencia: {
@@ -3220,6 +3403,23 @@ export default {
             "content-type": ct,
             "content-disposition": (obj.httpMetadata && obj.httpMetadata.contentDisposition) || "inline",
             "cache-control": "public, max-age=3600"
+          }
+        });
+      }
+
+      /* ============ FUENTE SUBIDA DE "MI WEB" (pública: nicoleolavarria.com la carga desde aquí) ============ */
+      const mFuente = url.pathname.match(/^\/fuentes\/(f_[a-z0-9]{8})\.(woff2|woff|ttf|otf)$/);
+      if (mFuente && request.method === "GET"){
+        const lista = listaFuentesDe(await loadConfig(env));
+        if (!lista.some(f => f.id === mFuente[1] && f.formato === mFuente[2])) return json({ error: "Fuente no encontrada" }, 404);
+        const obj = await env.RECURSOS_R2.get("fuentes/" + mFuente[1] + "." + mFuente[2]);
+        if (!obj) return json({ error: "Fuente no encontrada" }, 404);
+        return new Response(obj.body, {
+          headers: {
+            "content-type": MIME_FUENTE[mFuente[2]],
+            "access-control-allow-origin": "*",
+            "cache-control": FUENTE_CACHE,
+            "x-content-type-options": "nosniff"
           }
         });
       }
@@ -4928,6 +5128,71 @@ export default {
         return json({ ok: true });
       }
 
+      /* ============ "Mi web": fuentes propias (solo Nicole; el resto del admin va por /api/admin/) ============ */
+      if (url.pathname === "/api/web/fuente" && request.method === "POST"){
+        if (!(await esAdminAuth(env, request))) return json({ error: "No autorizado" }, 401);
+        const form = await request.formData().catch(() => null);
+        if (!form) return json({ error: "Formulario inválido" }, 400);
+        const archivo = form.get("archivo");
+        const esArchivo = archivo && typeof archivo !== "string" && typeof archivo.arrayBuffer === "function";
+        if (!esArchivo) return json({ error: "Elige el archivo de la fuente." }, 400);
+        const nombreRaw = form.get("nombre");
+        const nombre = wNombreFuente(typeof nombreRaw === "string" ? nombreRaw : "");
+        if (!nombre) return json({ error: "Ponle un nombre a la fuente (solo letras, números, espacios, puntos, guiones)." }, 400);
+        if (archivo.size > FUENTES_MAX_BYTES) return json({ error: "La fuente pesa más de 1 MB. Usa una más liviana." }, 413);
+        const bytes = new Uint8Array(await archivo.arrayBuffer());
+        const valida = validarFuente(archivo.name, bytes);
+        if (valida.error) return json({ error: valida.error }, 400);
+        const id = generarIdFuente(n => crypto.getRandomValues(new Uint8Array(n)));
+        const formato = valida.formato, fuente = { id, nombre, formato };
+        const key = "fuentes/" + id + "." + formato;
+        const reserva = await cambiarInventario(env, lista => {
+          if (lista.length >= FUENTES_MAX) return json({ error: "Ya tienes 8 fuentes. Quita una para subir otra." }, 400);
+          if (lista.some(f => f.id === id || String(f.nombre).toLowerCase() === nombre.toLowerCase()))
+            return json({ error: "Ese nombre ya está en uso." }, 409);
+          return lista.concat([{ ...fuente, estado: "subiendo" }]);
+        });
+        if (reserva) return reserva;
+        try {
+          await env.RECURSOS_R2.put(key, bytes, {
+            httpMetadata: { contentType: MIME_FUENTE[formato], cacheControl: FUENTE_CACHE }
+          });
+          await cambiarInventario(env, lista => lista.map(f => f.id === id ? fuente : f));
+        } catch (e) {
+          // Si R2 falla al limpiar, conservar la reserva: nunca perder la referencia al objeto.
+          // DELETE del id permite reintentar la limpieza sin ocupar otra plaza.
+          try {
+            await env.RECURSOS_R2.delete(key);
+            await cambiarInventario(env, lista => lista.filter(f => f.id !== id));
+          } catch (_) { /* reserva persistente y recuperable, no objeto huérfano */ }
+          try { await cambiarInventario(env, lista => lista.map(f => f.id === id ? { ...f, estado: "borrando" } : f)); } catch (_) {}
+          return json({ error: "No se pudo guardar la fuente. Intenta otra vez.", id }, 503);
+        }
+        return json({ ...fuente, url: url.origin + "/fuentes/" + id + "." + formato });
+      }
+
+      const mBorrarFuente = url.pathname.match(/^\/api\/web\/fuente\/(f_[a-z0-9]{8})$/);
+      if (mBorrarFuente && request.method === "DELETE"){
+        if (!(await esAdminAuth(env, request))) return json({ error: "No autorizado" }, 401);
+        const id = mBorrarFuente[1];
+        let fuente;
+        const bloqueo = await cambiarInventario(env, (lista, cfg) => {
+          fuente = lista.find(f => f.id === id);
+          if (!fuente) return json({ error: "Esa fuente ya no existe." }, 404);
+          // Una reserva en subida solo se limpia tras fallo, no durante una subida activa.
+          if (fuente.estado === "subiendo") return json({ error: "La fuente aún se está guardando." }, 409);
+          const usos = usosFuente(cfg.web_json, id);
+          if (usos.length) return json({ error: "Cambia primero la letra en: " + usos.join(", "), usos }, 409);
+          return lista.map(f => f.id === id ? { ...f, estado: "borrando" } : f);
+        });
+        if (bloqueo) return bloqueo;
+        try {
+          await env.RECURSOS_R2.delete("fuentes/" + id + "." + fuente.formato);
+          await cambiarInventario(env, lista => lista.filter(f => f.id !== id));
+        } catch (_) { return json({ error: "No se pudo quitar. Vuelve a intentar.", id }, 503); }
+        return json({ ok: true });
+      }
+
       if (url.pathname.startsWith("/api/admin/")){
         if (!(await esAdminAuth(env, request))){
           return json({ error: "No autorizado" }, 401);
@@ -5391,16 +5656,19 @@ export default {
         if (url.pathname === "/api/admin/web" && request.method === "POST"){
           const b = await request.json().catch(() => null);
           if (!b || typeof b !== "object") return json({ error: "No pude leer los cambios." }, 400);
-          const limpio = sanearWeb(b.web);
-          const texto = JSON.stringify(limpio);
-          if (texto.length > WEB_MAX_BYTES){
-            return json({ error: "Hay demasiado contenido en la página. Recorta algún texto y vuelve a publicar." }, 400);
+          let limpio, version;
+          let guardado = false;
+          for (let n=0; n<32; n++){
+            const cfg = await loadConfig(env);
+            limpio = sanearWeb(b.web, listaFuentesDe(cfg));
+            const texto = JSON.stringify(limpio);
+            if (texto.length > WEB_MAX_BYTES) return json({ error: "Hay demasiado contenido en la página." }, 400);
+            // Publicar también compara inventario: nunca repone una fuente marcada para borrar.
+            if (await configWebCAS(env, cfg, "web_json", texto)) { guardado = true; break; }
           }
-          const version = new Date().toISOString();
-          await env.DB.batch([
-            env.DB.prepare("INSERT INTO config (clave, valor) VALUES ('web_json', ?1) ON CONFLICT(clave) DO UPDATE SET valor = ?1").bind(texto),
-            env.DB.prepare("INSERT INTO config (clave, valor) VALUES ('web_version', ?1) ON CONFLICT(clave) DO UPDATE SET valor = ?1").bind(version)
-          ]);
+          if (!guardado) return json({ error: "El diseño cambió. Vuelve a publicar." }, 409);
+          version = new Date().toISOString() + "-" + crypto.randomUUID().slice(0,8);
+          await env.DB.prepare("INSERT INTO config (clave, valor) VALUES ('web_version', ?1) ON CONFLICT(clave) DO UPDATE SET valor = ?1").bind(version).run();
           const cfgHook = await loadConfig(env);
           let rebuild = false;
           if (/^https:\/\/api\.vercel\.com\//.test(cfgHook.vercel_deploy_hook || "")){

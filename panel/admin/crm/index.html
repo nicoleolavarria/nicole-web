@@ -149,7 +149,6 @@
   .web-prev{position:sticky;top:58px;}
   .web-prevbar{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:8px;}
   .web-prevwrap{border:1px solid var(--line);border-radius:4px;background:#fff;overflow:hidden;}
-  .web-prevwrap.movil{max-width:390px;margin:0 auto;}
   #webPrev{width:100%;height:calc(100vh - 235px);min-height:460px;border:0;display:block;background:#fff;}
   .wgrp{border:1px solid var(--line);border-radius:4px;background:var(--panel);margin-bottom:10px;overflow:hidden;}
   .wgrp>summary{list-style:none;cursor:pointer;padding:11px 13px;font-family:var(--mono);font-size:11.5px;text-transform:uppercase;letter-spacing:.09em;font-weight:700;color:var(--accent);display:flex;justify-content:space-between;align-items:center;gap:8px;}
@@ -183,12 +182,79 @@
   .wfoto-punto{position:absolute;width:16px;height:16px;border:2px solid #fff;border-radius:50%;box-shadow:0 0 0 1px rgba(0,0,0,.6);transform:translate(-50%,-50%);pointer-events:none;}
   .wfoto-acts{flex:1;display:flex;flex-direction:column;gap:6px;}
   .web-danger{margin:18px 0 8px;padding-top:14px;border-top:1px solid var(--line);}
+  /* Letras de la web: partes, selector de fuente con vista previa, tamaños, subida de tipografías */
+  .t44{min-height:44px;}
+  .wlab{display:block;font-family:var(--mono);font-size:10.5px;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin-bottom:5px;}
+  .wf button:focus-visible,.web-acts button:focus-visible,.web-prevbar button:focus-visible,.web-danger button:focus-visible,.wparte button:focus-visible{outline:2px solid var(--accent);outline-offset:2px;}
+  .partes{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin:4px 0 12px;}
+  .parte{min-height:44px;text-align:left;padding:7px 10px;border:1px solid var(--line);background:var(--bg);color:var(--cream);border-radius:3px;cursor:pointer;font-family:var(--mono);font-size:12px;line-height:1.3;}
+  .parte:hover{border-color:var(--muted);}
+  .parte[aria-pressed=true]{border-color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent);font-weight:700;}
+  .parte .pun{display:block;font-size:10px;color:var(--amber);font-weight:400;margin-top:2px;}
+  .wparte{border-top:1px solid var(--line);padding-top:12px;margin-top:4px;}
+  .ptit{font-family:var(--mono);font-size:13px;font-weight:700;margin:0 0 2px;}
+  .seg{display:inline-flex;border:1px solid var(--line);border-radius:3px;overflow:hidden;background:var(--bg);}
+  .segb{min-height:44px;padding:8px 12px;background:transparent;border:0;border-right:1px solid var(--line);color:var(--muted);font-family:var(--mono);font-size:12px;cursor:pointer;}
+  .segb:last-child{border-right:0;}
+  .segb:hover{color:var(--cream);}
+  .segb[aria-pressed=true]{background:var(--accent);color:var(--bg);font-weight:700;}
+  .fbtn{width:100%;min-height:44px;display:flex;align-items:center;gap:10px;background:var(--bg);border:1px solid var(--line);color:var(--cream);padding:8px 10px;border-radius:2px;cursor:pointer;text-align:left;font-size:15px;}
+  .fbtn-nom{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .fbtn-fl{font-size:11px;color:var(--muted);}
+  .flista{margin-top:4px;max-height:300px;overflow-y:auto;border:1px solid var(--line);border-radius:2px;background:var(--panel);}
+  .fopt{display:flex;flex-direction:column;align-items:flex-start;width:100%;min-height:44px;padding:8px 10px;background:transparent;border:0;border-bottom:1px solid var(--line);cursor:pointer;text-align:left;color:var(--cream);}
+  .fopt:hover{background:var(--panel2);}
+  .fopt[aria-selected=true]{background:var(--panel2);}
+  .fopt-n{font-size:16px;}
+  .fopt-m{font-size:13px;color:var(--muted);}
+  .fsep{font-family:var(--mono);font-size:10.5px;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);padding:8px 10px 4px;background:var(--panel2);}
+  .tamctl{display:flex;align-items:center;gap:6px;flex-wrap:wrap;}
+  .tbtn{min-width:44px;min-height:44px;border:1px solid var(--line);background:var(--bg);color:var(--cream);font-size:18px;border-radius:2px;cursor:pointer;}
+  .tbtn:hover{border-color:var(--accent);}
+  .tamctl input[type=range]{flex:1 1 110px;min-height:44px;accent-color:var(--accent);}
+  .tamctl input[type=number]{width:104px;min-height:44px;padding:6px 8px;background:var(--bg);border:1px solid var(--line);color:var(--cream);font-family:var(--mono);font-size:14px;border-radius:2px;}
+  .subida{border:1px dashed var(--line);border-radius:3px;padding:10px;background:var(--bg);margin-bottom:10px;}
+  .barra{height:8px;background:var(--panel2);border-radius:4px;overflow:hidden;margin-top:6px;}
+  .barra>span{display:block;height:100%;background:var(--accent);width:0;transition:width .15s;}
+  .errsub{font-family:var(--mono);font-size:12px;color:var(--red);margin:6px 0 0;}
+  .ulsubidas{list-style:none;padding:0;margin:10px 0 0;}
+  .fsub{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--line);}
+  .fsub-n{font-size:17px;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .fsub .wmini{min-height:44px;padding:0 12px;font-size:12px;}
+  .prev-escala{position:relative;width:100%;overflow:hidden;}
+  .prev-marco{position:absolute;left:0;top:0;transform-origin:0 0;background:#fff;}
+  .prev-marco.movil{background:#111;border-radius:46px;padding:12px;box-sizing:content-box;}
+  .prev-marco iframe{display:block;border:0;background:#fff;}
+  .prev-marco.movil iframe{border-radius:34px;}
+  .web-prevbar .rowact{align-items:center;flex-wrap:wrap;gap:6px;}
+  .web-prevbar .segb{border:1px solid var(--line);border-radius:2px;}
+  @media (max-width:560px){ .partes{grid-template-columns:1fr;} }
   @media (max-width:1000px){
     .web-editor{grid-template-columns:1fr;}
     .web-side{max-height:none;overflow:visible;}
     .web-prev{position:static;}
     #webPrev{height:70vh;}
   }
+  #panel-web button:focus-visible,#panel-web input:focus-visible,#panel-web summary:focus-visible{outline:3px solid var(--accent);outline-offset:2px;}
+  #panel-web button{min-height:44px;}
+  #panel-web input[type=color]{min-width:44px;min-height:44px;}
+  body.editando-web #oiaFab,body.editando-web #oiaPanel{display:none!important;}
+  #panel-web .wgrp>summary{min-height:48px;}
+  #panel-web .tamanos-par{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:10px;}
+  #panel-web .tamanos-par .wf{min-width:0;}
+  #panel-web .tamanos-par .tamctl{display:grid;grid-template-columns:44px minmax(0,1fr) 44px;gap:4px;}
+  #panel-web .tamanos-par input[type=range]{grid-column:1/-1;grid-row:2;width:100%;min-width:0;}
+  #panel-web .tamanos-par input[type=number]{grid-column:2;grid-row:1;min-width:0;width:100%;padding:5px 2px;font-size:16px;}
+  #panel-web .tamanos-par [data-dir="1"]{grid-column:3;grid-row:1;}
+  #panel-web .tamanos-par .tamctl>.mini{display:none;}
+  #panel-web input[type=number]::-webkit-inner-spin-button,#panel-web input[type=number]::-webkit-outer-spin-button{-webkit-appearance:none;margin:0;}
+  #panel-web input[type=number]{appearance:textfield;}
+  #panel-web .wlab{font-size:14px;letter-spacing:0;text-transform:none;}
+  #panel-web .mini,#panel-web .hint{font-size:14px;}
+  #panel-web input,#panel-web select{min-height:44px;}
+  #panel-web .wparte button,#panel-web .parte{min-height:48px;}
+  #panel-web .tamanos-par .tbtn{min-height:44px;}
+  @media(max-width:700px){#panel-web .web-top{position:static;} .web-side,.web-prev{min-width:0;} .web-editor{grid-template-columns:minmax(0,1fr);}}
   .toast{position:fixed;bottom:22px;left:50%;transform:translateX(-50%) translateY(20px);background:var(--accent);color:var(--bg);font-family:var(--mono);font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;padding:11px 18px;border-radius:3px;opacity:0;transition:all .2s;pointer-events:none;z-index:99;}
   .toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
   @media (max-width:560px){ .frow{grid-template-columns:1fr;} .card .num{font-size:28px;} }
@@ -632,7 +698,9 @@
       </div>
       <div class="web-acts">
         <span class="web-estado" id="webEstado">&nbsp;</span>
-        <button class="btn ghost sm" id="btnWebDeshacer" title="Descarta los cambios que no has publicado">Deshacer</button>
+        <button class="btn ghost sm" id="btnWebDeshacer" title="Vuelve atrás el último cambio (Ctrl o Cmd + Z)" disabled>Deshacer</button>
+        <button class="btn ghost sm" id="btnWebRehacer" title="Vuelve a poner el cambio que deshiciste (Ctrl o Cmd + Y)" disabled>Rehacer</button>
+        <button class="btn ghost sm" id="btnWebDescartar" title="Descarta los cambios que no has publicado">Descartar cambios</button>
         <button class="btn" id="btnWebPublicar">Publicar cambios</button>
       </div>
     </div>
@@ -650,13 +718,20 @@
         <div class="web-prevbar">
           <span class="mini" id="webPrevTit">Vista previa</span>
           <div class="rowact">
-            <button class="btn ghost sm webdev active" data-dev="desktop">Computadora</button>
-            <button class="btn ghost sm webdev" data-dev="movil">Celular</button>
+            <span class="mini">Ver en:</span>
+            <div class="seg" role="group" aria-label="Ver la web en computador o en celular">
+              <button type="button" class="segb webdev" data-dev="desktop" aria-pressed="true">Computador</button>
+              <button type="button" class="segb webdev" data-dev="movil" aria-pressed="false">Celular</button>
+            </div>
             <a class="btn ghost sm" id="webAbrir" href="https://nicoleolavarria.com" target="_blank" rel="noopener">Ver mi web</a>
           </div>
         </div>
         <div class="web-prevwrap" id="webPrevWrap">
-          <iframe id="webPrev" title="Vista previa de tu web"></iframe>
+          <div class="prev-escala" id="prevEscala">
+            <div class="prev-marco" id="prevMarco">
+              <iframe id="webPrev" title="Vista previa de tu web"></iframe>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -1688,7 +1763,9 @@ document.querySelectorAll(".tab").forEach(function(t){
     if(el("topTitle")) el("topTitle").textContent="// "+ti;
     if(t.dataset.tab==="agenda") cargarAgenda();
     if(t.dataset.tab==="perfil") renderPerfil();
+    document.body.classList.toggle("editando-web",t.dataset.tab==="web");
     if(t.dataset.tab==="web") abrirEditorWeb();
+    document.querySelectorAll(".footnote").forEach(function(n){n.hidden=t.dataset.tab==="web";});
     cerrarDrawer();
   });
 });
@@ -2939,6 +3016,13 @@ window.mvtInit = mvtInit;
   var PG = "inicio";     // página abierta en el editor
   var listo = false;     // el iframe ya cargó el render
   var pintarT = null;
+  var PARTE = "menu";        // parte de letra elegida en el editor
+  var PAG_VISTA = "inicio";  // página que se ve en la vista previa mientras estás en "Diseño"
+  var PICK = "";             // selector de fuente abierto (ruta)
+  var SUBIDA = null;         // subida de tipografía en curso
+  var DISPO = "desktop";     // vista previa: desktop | movil
+  var INVENTARIO = null;
+  var HIST = { undo: [], redo: [], pend: null };  // deshacer / rehacer
 
   function W(){ return window.WebRender; }
   function frame(){ return document.getElementById("webPrev"); }
@@ -2977,10 +3061,31 @@ window.mvtInit = mvtInit;
        una maqueta, no la web de verdad. El iframe es srcdoc del mismo origen que el
        CRM, así que se llama directo a la función del padre (postMessage no sirve: en
        srcdoc el origin es 'null' y el navegador descarta el envío). */
+    /* Parte de letra que hay bajo el clic (menú, Hola, texto bajo el Hola, títulos, texto). */
+    "function parteDe(n){",
+    "  var ed = n && n.getAttribute ? (n.getAttribute('data-ed') || '') : '';",
+    "  if (ed === 'inicio.titulo') return 'titulo_inicio';",
+    "  if (ed === 'inicio.sub') return 'subtitulo_inicio';",
+    "  if (ed === 'marca.nombre') return 'nombre_sitio';",
+    "  if (/^nav[.]/.test(ed)) return 'menu';",
+    "  if (!n || !n.closest) return '';",
+    "  if (n.closest('footer')) return 'pie';",
+    "  if (n.closest('.sesion-card h3')) return 'tarjetas';",
+    "  if (n.closest('header')) return 'menu';",
+    "  if (n.closest('h1,h2,h3')) return 'titulos';",
+    "  if (n.closest('p,span,.footer-copy,.footer-thanks,.footer-blog,.contact-value,.contact-label')) return 'texto';",
+    "  return '';",
+    "}",
+    /* Resalta en la vista previa las partes que se están editando. */
+    "window.marcarParte = function(p){",
+    "  document.querySelectorAll('.parte-marca').forEach(function(x){ x.classList.remove('parte-marca'); });",
+    "  var sel = { menu: 'header', titulo_inicio: '.home-top h1', subtitulo_inicio: '.home-sub', titulos: 'main h1, main h2, main h3', texto: 'main p', pie: 'footer', tarjetas: '.sesion-card h3', nombre_sitio: '.site-name' }[p];",
+    "  if (sel) document.querySelectorAll(sel).forEach(function(x){ x.classList.add('parte-marca'); });",
+    "};",
     "document.addEventListener('click', function(e){",
     "  e.preventDefault(); e.stopPropagation();",
     "  var n = e.target.closest('[data-ed]');",
-    "  try { if (parent && parent.edPreviewClick) parent.edPreviewClick(n ? n.getAttribute('data-ed') : ''); } catch(_){}",
+    "  try { if (parent && parent.edPreviewClick) parent.edPreviewClick(n ? n.getAttribute('data-ed') : '', parteDe(n || e.target)); } catch(_){}",
     "}, true);"
   ].join("\n");
 
@@ -2993,7 +3098,7 @@ window.mvtInit = mvtInit;
       "<link id=\"fuentesEd\" rel=\"stylesheet\" />" +
       "<link rel=\"stylesheet\" href=\"/web/global.css\" />" +
       "<style id=\"estiloEd\"></style>" +
-      "<style>[data-ed]{transition:outline .1s}[data-ed]:hover{outline:2px dashed rgba(10,10,10,.45);outline-offset:3px;cursor:pointer}</style>" +
+      "<style>[data-ed]{transition:outline .1s}[data-ed]:hover{outline:2px dashed rgba(10,10,10,.45);outline-offset:3px;cursor:pointer}.parte-marca{outline:2px solid rgba(10,10,10,.7) !important;outline-offset:4px}</style>" +
       "<scr" + "ipt src=\"/web/web-render.js\"></scr" + "ipt>" +
       "<scr" + "ipt>" + HOOKS + "</scr" + "ipt>" +
       "</head><body></body></html>";
@@ -3002,17 +3107,26 @@ window.mvtInit = mvtInit;
   function pintar(){
     var fr = frame();
     if (!fr || !listo || !WEB) return;
-    try { fr.contentWindow.aplicar(WEB, PG === "estilo" ? "inicio" : PG); } catch(e){}
+    try {
+      if (INVENTARIO) WEB.estilo.fuentes_subidas = INVENTARIO;
+      fr.contentWindow.aplicar(WEB, PG === "estilo" ? PAG_VISTA : PG);
+      prepararFrame(fr.contentDocument);
+      if (fr.contentWindow.marcarParte) fr.contentWindow.marcarParte(PG === "estilo" ? PARTE : "");
+    } catch(e){}
     marcarEstado();
   }
   function pintarPronto(){ clearTimeout(pintarT); pintarT = setTimeout(pintar, 160); }
 
   function marcarEstado(){
     var e = document.getElementById("webEstado");
-    if (!e) return;
-    var hay = firma(WEB) !== GUARDADO;
-    e.textContent = hay ? "· cambios sin publicar" : "· todo publicado";
-    e.className = "web-estado" + (hay ? " sin" : "");
+    if (e){
+      var hay = firma(WEB) !== GUARDADO;
+      e.textContent = hay ? "· cambios sin publicar" : "· todo publicado";
+      e.className = "web-estado" + (hay ? " sin" : "");
+    }
+    var bu = document.getElementById("btnWebDeshacer"), br = document.getElementById("btnWebRehacer");
+    if (bu) bu.disabled = !HIST.undo.length;
+    if (br) br.disabled = !HIST.redo.length;
   }
 
   /* ---------- piezas de formulario ---------- */
@@ -3021,8 +3135,8 @@ window.mvtInit = mvtInit;
     var v = getR(WEB, ruta);
     v = v == null ? "" : String(v);
     var input = opt.area
-      ? '<textarea data-w="' + ruta + '" rows="' + (opt.rows || 3) + '" placeholder="' + esc(opt.ph || "") + '">' + esc(v) + "</textarea>"
-      : '<input type="text" data-w="' + ruta + '" value="' + esc(v) + '" placeholder="' + esc(opt.ph || "") + '" />';
+      ? '<textarea aria-label="' + esc(etiqueta || 'Texto de esta parte') + '" data-w="' + ruta + '" rows="' + (opt.rows || 3) + '" placeholder="' + esc(opt.ph || "") + '">' + esc(v) + "</textarea>"
+      : '<input type="text" aria-label="' + esc(etiqueta || 'Texto de esta parte') + '" data-w="' + ruta + '" value="' + esc(v) + '" placeholder="' + esc(opt.ph || "") + '" />';
     return '<div class="wf" data-wf="' + ruta + '"><label>' + esc(etiqueta) + "</label>" + input +
       (opt.hint ? '<div class="mini" style="margin-top:4px">' + opt.hint + "</div>" : "") + "</div>";
   }
@@ -3030,23 +3144,206 @@ window.mvtInit = mvtInit;
     var v = Number(getR(WEB, ruta));
     if (!isFinite(v)) v = min;
     return '<div class="wf" data-wf="' + ruta + '"><label>' + esc(etiqueta) + '</label><div class="wrange">' +
-      '<input type="range" data-w="' + ruta + '" data-num="1" min="' + min + '" max="' + max + '" step="' + (paso || 1) + '" value="' + v + '" />' +
+      '<input type="range" aria-label="' + esc(etiqueta) + '" data-w="' + ruta + '" data-num="1" min="' + min + '" max="' + max + '" step="' + (paso || 1) + '" value="' + v + '" />' +
       '<span class="val">' + v + (sufijo || "") + "</span></div></div>";
   }
   function color(ruta, etiqueta, def){
     var v = getR(WEB, ruta) || "";
     return '<div class="wf" data-wf="' + ruta + '"><label>' + esc(etiqueta) + '</label><div class="wcolor">' +
-      '<input type="color" data-w="' + ruta + '" data-color="1" value="' + esc(v || def) + '" />' +
+      '<input type="color" aria-label="' + esc(etiqueta) + '" data-w="' + ruta + '" data-color="1" value="' + esc(v || def) + '" />' +
       '<button class="wmini" type="button" data-wact="reset" data-w="' + ruta + '">Volver al original</button>' +
       (v ? "" : '<span class="mini">el original</span>') + "</div></div>";
   }
-  function selectFuente(ruta, etiqueta){
-    var v = getR(WEB, ruta) || "";
-    var ops = ['<option value="">DM Mono (la original)</option>'];
-    Object.keys(W().FUENTES).forEach(function(f){
-      ops.push('<option value="' + esc(f) + '"' + (v === f ? " selected" : "") + ">" + esc(f) + "</option>");
+  /* ---------- letras: partes de la web, fuentes y tamaños ----------
+     Todo lo nuevo vive en estilo.tipos y estilo.fuentes_subidas (ver CONTRATO-PANEL.md).
+     Si el worker todavía no responde, el panel avisa con un mensaje amable. */
+  var ORIGEN_FUENTES = /^(localhost|127\.0\.0\.1)$/.test(location.hostname) ? location.origin : "https://nicole-crm-worker.nicoleolavarria.workers.dev";
+  var MAX_FUENTES = 8, MAX_BYTES = 1048576, MAX_HIST = 50;
+  var FORMATOS = { woff2: "woff2", woff: "woff", ttf: "truetype", otf: "opentype" };
+  var PARTES = [
+    { k: "menu", nombre: "Menú de arriba", ayuda: "Los enlaces de arriba.", min: 12, max: 60 },
+    { k: "titulo_inicio", nombre: "«Hola» de la portada", ayuda: "El título grande de la primera página.", min: 24, max: 200 },
+    { k: "subtitulo_inicio", nombre: "Texto bajo el «Hola»", ayuda: "La línea chica que va debajo del título de la portada.", min: 10, max: 48 },
+    { k: "titulos", nombre: "Títulos de las páginas", ayuda: "Los títulos de Acerca de, Sesiones, Contacto y las demás páginas.", min: 14, max: 100 },
+    { k: "texto", nombre: "Texto de las páginas", ayuda: "Los párrafos de las páginas.", min: 10, max: 36 },
+    { k: "pie", nombre: "Pie de página", ayuda: "El agradecimiento, enlace y firma al final.", min: 10, max: 36 },
+    { k: "tarjetas", nombre: "Títulos de las sesiones", ayuda: "El nombre de cada sesión en sus tarjetas.", min: 14, max: 100 },
+    { k: "nombre_sitio", nombre: "Nombre del sitio", ayuda: "Tu nombre en las páginas interiores. En la portada está oculto.", min: 12, max: 60 }
+  ];
+  function originalTipo(k, movil){
+    var e = WEB.estilo, esc = (Number(e.escala) || 100) / 100, tit = (Number(e.escala_titulo) || 100) / 100;
+    // Vistas reales: computador 1440x900 y celular 390x844. Sin heredar el tamaño PC.
+    var base = movil ? {menu:16,titulo_inicio:58.5,subtitulo_inicio:13.5,titulos:26,texto:15,pie:12,tarjetas:22,nombre_sitio:22}
+      : {menu:28.08,titulo_inicio:94.032,subtitulo_inicio:23.328,titulos:40,texto:15,pie:18,tarjetas:22,nombre_sitio:22};
+    return Math.round(base[k] * esc * ((k === "titulo_inicio" || k === "titulos") ? tit : 1) * 100) / 100;
+  }
+  function parteInfo(k){ for (var i = 0; i < PARTES.length; i++) if (PARTES[i].k === k) return PARTES[i]; return null; }
+  function tipos(){ return (WEB && WEB.estilo && WEB.estilo.tipos) || {}; }
+  function valorTipo(parte, campo){ var p = tipos()[parte]; return p ? p[campo] : undefined; }
+  function listaSubidas(){ if (INVENTARIO) return INVENTARIO; return (WEB && WEB.estilo && Array.isArray(WEB.estilo.fuentes_subidas)) ? WEB.estilo.fuentes_subidas : []; }
+  function hayCambio(k){
+    var p = tipos()[k];
+    return !!p && ["fuente", "tam", "tam_movil", "peso", "interlineado"].some(function(c){ return p[c] !== undefined && p[c] !== "" && p[c] !== null; });
+  }
+  function familiaDe(v){ return /^up:/.test(v || "") ? "nicole-up-" + String(v).slice(3).replace(/[^a-z0-9_]/gi, "") : (v || ""); }
+  function nombreDe(v, predet){
+    if (!v) return predet;
+    if (/^up:/.test(v)){
+      var id = v.slice(3), f = listaSubidas().filter(function(x){ return x.id === id; })[0];
+      return f ? f.nombre : "Mi tipografía";
+    }
+    return v;
+  }
+  function cssFuentesSubidas(){
+    return listaSubidas().filter(function(f){ return f && /^[a-z0-9_]+$/.test(f.id) && FORMATOS[f.formato]; }).map(function(f){
+      return "@font-face{font-family:'nicole-up-" + f.id + "';src:url('" + ORIGEN_FUENTES + "/fuentes/" + f.id + "." + f.formato +
+        "') format('" + FORMATOS[f.formato] + "');font-display:swap;}";
+    }).join("");
+  }
+  /* Las letras de Google para mostrar cada nombre con su tipografía en el selector. */
+  function cargarFuentesPanel(){
+    var F = W() && W().FUENTES;
+    if (!F || document.getElementById("fuentesPanel")) return;
+    var l = document.createElement("link");
+    l.id = "fuentesPanel"; l.rel = "stylesheet";
+    l.href = "https://fonts.googleapis.com/css2?" + Object.keys(F).map(function(k){ return F[k]; }).join("&") + "&display=swap";
+    document.head.appendChild(l);
+  }
+  function pintarCssSubidas(){
+    var s = document.getElementById("fuentesSubidasPanel");
+    if (!s){ s = document.createElement("style"); s.id = "fuentesSubidasPanel"; document.head.appendChild(s); }
+    s.textContent = cssFuentesSubidas();
+  }
+  /* Vista previa: deja cargar las letras que usa la web y las subidas por Nicole. */
+  function prepararFrame(d){
+    if (!d || !d.head || !W()) return;
+    var s = d.getElementById("fuentesSubidasEd");
+    if (!s){ s = d.createElement("style"); s.id = "fuentesSubidasEd"; d.head.appendChild(s); }
+    s.textContent = cssFuentesSubidas();
+    var F = W().FUENTES, usadas = [];
+    var nombres = Object.keys(tipos()).map(function(k){ return tipos()[k] && tipos()[k].fuente; })
+      .concat([WEB.estilo.fuente_titulos, WEB.estilo.fuente_cuerpo]);
+    nombres.forEach(function(f){ if (f && F[f] && usadas.indexOf(F[f]) === -1) usadas.push(F[f]); });
+    var l = d.getElementById("fuentesTiposEd");
+    if (!usadas.length){ if (l) l.remove(); return; }
+    var href = "https://fonts.googleapis.com/css2?" + usadas.join("&") + "&display=swap";
+    if (!l){ l = d.createElement("link"); l.id = "fuentesTiposEd"; l.rel = "stylesheet"; d.head.appendChild(l); }
+    if (l.getAttribute("href") !== href) l.setAttribute("href", href);
+  }
+  /* Pone cada nombre en su propia tipografía (data-fam). */
+  function aplicarFamilias(){
+    document.querySelectorAll("#webControles [data-fam]").forEach(function(n){
+      var f = n.getAttribute("data-fam");
+      n.style.fontFamily = f ? "'" + f + "', ui-monospace, monospace" : "";
     });
-    return '<div class="wf" data-wf="' + ruta + '"><label>' + esc(etiqueta) + '</label><select data-w="' + ruta + '">' + ops.join("") + "</select></div>";
+  }
+  function nombrarArchivo(archivo){
+    var base = String(archivo).replace(/\.[^.]+$/, "").replace(/[^\p{L}\p{N} .\-_]+/gu, " ").replace(/\s+/g, " ").trim().slice(0, 40);
+    return base || "Mi tipografía";
+  }
+
+  /* Lista de partes (Canva-like). */
+  function listaPartes(){
+    return '<div class="partes" role="group" aria-label="Partes de tu web">' + PARTES.map(function(p){
+      var sel = p.k === PARTE;
+      return '<button type="button" class="parte' + (sel ? " sel" : "") + '" data-est="parte" data-v="' + p.k + '" aria-pressed="' + sel +
+        '" data-foco="parte|' + p.k + '">' + esc(p.nombre) + (hayCambio(p.k) ? '<span class="pun">cambiada</span>' : "") + "</button>";
+    }).join("") + "</div>";
+  }
+  function opcionFuente(ruta, valor, o){
+    var sel = o.v === valor;
+    return '<button type="button" role="option" aria-selected="' + sel + '" class="fopt' + (sel ? " sel" : "") +
+      '" data-est="pick-opt" data-ruta="' + esc(ruta) + '" data-v="' + esc(o.v) + '">' +
+      '<span class="fopt-n" data-fam="' + esc(o.f) + '">' + esc(o.n) + "</span>" +
+      '<span class="fopt-m" data-fam="' + esc(o.f) + '">Así se ve el texto de tu web</span></button>';
+  }
+  /* Selector de letra: cada nombre sale con su propia tipografía. */
+  function selectorFuente(ruta, valor, etiqueta, predet){
+    valor = valor || "";
+    var abierto = PICK === ruta, id = "fp" + ruta.replace(/[^a-z0-9]/gi, "_");
+    var h = '<div class="wf"><div class="wlab" id="' + id + '_t">' + esc(etiqueta) + "</div>" +
+      '<button type="button" class="fbtn t44" data-est="pick" data-ruta="' + esc(ruta) + '" data-foco="pick|' + esc(ruta) +
+      '" aria-haspopup="listbox" aria-controls="' + id + '_lista" aria-expanded="' + abierto + '" aria-labelledby="' + id + "_t " + id + '_n">' +
+      '<span class="fbtn-nom" id="' + id + '_n" data-fam="' + esc(familiaDe(valor)) + '">' + esc(nombreDe(valor, predet)) + "</span>" +
+      '<span class="fbtn-fl" aria-hidden="true">' + (abierto ? "▲" : "▼") + "</span></button>";
+    if (abierto){
+      var ops = [{ v: "", n: predet, f: "" }];
+      Object.keys(W().FUENTES).forEach(function(n){ ops.push({ v: n, n: n, f: n }); });
+      var lista = ops.map(function(o){ return opcionFuente(ruta, valor, o); }).join("");
+      var subidas = listaSubidas().filter(function(f){ return f && /^[a-z0-9_]+$/.test(f.id); });
+      if (subidas.length){
+        lista += '<div class="fsep">Mis tipografías</div>' + subidas.map(function(f){
+          return opcionFuente(ruta, valor, { v: "up:" + f.id, n: f.nombre, f: "nicole-up-" + f.id });
+        }).join("");
+      }
+      h += '<div class="flista" id="' + id + '_lista" role="listbox" aria-labelledby="' + id + '_t">' + lista + "</div>";
+    }
+    return h + "</div>";
+  }
+  /* Tamaño, interlineado: control deslizante + número + botones − y + de uno en uno. */
+  function ctrlNum(parte, campo, etiqueta, min, max, paso, dec, def){
+    var v = Number(valorTipo(parte, campo)), tiene = isFinite(v) && v > 0;
+    var deslizar = dec ? 0.05 : 1;
+    return '<div class="wf"><div class="wlab">' + esc(etiqueta) + "</div>" +
+      '<div class="tamctl" data-parte="' + parte + '" data-campo="' + campo + '" data-min="' + min + '" data-max="' + max +
+      '" data-paso="' + paso + '" data-dec="' + dec + '" data-def="' + def + '">' +
+        '<button type="button" class="tbtn t44" data-est="paso" data-dir="-1" aria-label="Bajar ' + esc(etiqueta) + '">&minus;</button>' +
+        '<input type="range" data-est="rango" min="' + min + '" max="' + max + '" step="' + deslizar + '" value="' + (tiene ? v : def) +
+          '" aria-label="' + esc(etiqueta) + '" />' +
+        '<button type="button" class="tbtn t44" data-est="paso" data-dir="1" aria-label="Subir ' + esc(etiqueta) + '">+</button>' +
+        '<input type="number" data-est="num" min="' + min + '" max="' + max + '" step="' + deslizar + '" value="' + (tiene ? v : def) +
+          '" placeholder="Original" aria-label="' + esc(etiqueta) + ' con número" />' +
+        '<span class="mini">' + (dec ? "" : "px") + "</span></div>" +
+      '<div class="mini">' + (tiene ? "" : "Original: " + def + (dec ? "" : " px")) + "</div></div>";
+  }
+  function ctrlPeso(parte){
+    var v = String(valorTipo(parte, "peso") || "");
+    var ops = [["", "Original"], ["400", "Normal"], ["700", "Negrita"]];
+    return '<div class="wf"><div class="wlab">Grosor de la letra</div><div class="seg" role="group" aria-label="Grosor de la letra">' +
+      ops.map(function(o){
+        return '<button type="button" class="segb" data-est="peso" data-v="' + o[0] + '" aria-pressed="' + (v === o[0]) + '">' + o[1] + "</button>";
+      }).join("") + "</div></div>";
+  }
+  /* Editor de la parte elegida. */
+  function editorParte(){
+    var P = parteInfo(PARTE);
+    if (!P) return "";
+    return '<div class="wparte"><p class="ptit">' + esc(P.nombre) + '</p><p class="mini">' + esc(P.ayuda) + "</p>" +
+      selectorFuente("estilo.tipos." + P.k + ".fuente", valorTipo(P.k, "fuente") || "", "Letra", "Predeterminada") +
+      '<div class="tamanos-par">' + ctrlNum(P.k, "tam", "Computador", P.min, P.max, 1, 0, originalTipo(P.k, false)) +
+      ctrlNum(P.k, "tam_movil", "Celular", P.min, P.max, 1, 0, originalTipo(P.k, true)) + "</div>" +
+      ctrlPeso(P.k) +
+      ctrlNum(P.k, "interlineado", "Espacio entre renglones", 1, 3, 0.1, 2, 1.7) +
+      '<button type="button" class="btn ghost sm t44" data-est="parte-reset" data-v="' + P.k + '" data-foco="parte-reset">Volver al original de esta parte</button></div>';
+  }
+  /* Subida de tipografías. */
+  function formSubida(){
+    var s = SUBIDA;
+    if (s.estado === "subiendo"){
+      return '<div class="subida"><div class="mini">Subiendo "' + esc(s.nombre) + '"... <span id="subidaPct">' + s.pct + '%</span></div>' +
+        '<div class="barra"><span id="subidaBarra" style="width:' + s.pct + '%"></span></div></div>';
+    }
+    return '<div class="subida"><div class="wf"><label class="wlab" for="subidaNombre">Nombre que verás en la lista</label>' +
+      '<input type="text" id="subidaNombre" maxlength="40" value="' + esc(s.nombre) + '" /></div>' +
+      '<p class="mini">Archivo: ' + esc(s.archivo.name) + " (" + Math.round(s.archivo.size / 1024) + " KB)</p>" +
+      (s.error ? '<p class="errsub" role="alert">' + esc(s.error) + "</p>" : "") +
+      '<div class="rowact"><button type="button" class="btn sm t44" data-est="subir-ok" data-foco="subir-ok">Subir</button>' +
+      '<button type="button" class="btn ghost sm t44" data-est="subir-no">Cancelar</button></div></div>';
+  }
+  function grupoSubidas(){
+    var L = listaSubidas().filter(function(f){ return f && /^[a-z0-9_]+$/.test(f.id); });
+    var h = '<p class="hint">Puedes usar tus propias letras: archivos .woff2, .woff, .ttf o .otf de hasta 1 MB. Puedes tener hasta ' + MAX_FUENTES + ".</p>" +
+      '<p class="mini">Sube solo fuentes que tengas permiso de usar.</p>';
+    if (SUBIDA) h += formSubida();
+    else h += '<div class="rowact"><button type="button" class="btn ghost sm t44" data-est="subir" data-foco="subir">Subir mi tipografía</button>' +
+      '<span class="mini">' + L.length + " de " + MAX_FUENTES + "</span></div>";
+    if (L.length){
+      h += '<ul class="ulsubidas">' + L.map(function(f){
+        return '<li class="fsub"><span class="fsub-n" data-fam="nicole-up-' + f.id + '">' + esc(f.nombre) + "</span>" +
+          '<button type="button" class="wmini del t44" data-est="quitar" data-v="' + f.id + '" data-foco="quitar|' + f.id + '">Quitar</button></li>';
+      }).join("") + "</ul>";
+    }
+    return h;
   }
   function foto(ruta, etiqueta, opt){
     opt = opt || {};
@@ -3075,7 +3372,7 @@ window.mvtInit = mvtInit;
   function agregar(ruta, texto){
     return '<button class="btn ghost sm" type="button" data-wact="add" data-w="' + ruta + '">+ ' + esc(texto) + "</button>";
   }
-  var AYUDA_TEXTO = 'Para poner algo en <em>cursiva</em> escríbelo entre asteriscos: *así*. Para <strong>negrita</strong>, dos: **así**.';
+  var AYUDA_TEXTO = 'Para negrita, escribe dos asteriscos a cada lado: **así**.';
 
   /* ---------- controles por página ---------- */
   function controles(){
@@ -3170,15 +3467,21 @@ window.mvtInit = mvtInit;
     }
 
     if (PG === "estilo"){
-      h += grupo("Tipografía", selectFuente("estilo.fuente_titulos", "Fuente de los títulos") +
-        selectFuente("estilo.fuente_cuerpo", "Fuente de los textos") +
+      h += grupo("Letras de tu web",
+        '<p class="hint">1. Elige una parte y cambia sus letras. 2. Mira cómo queda en Computador y Celular. 3. Pulsa Publicar cambios cuando estés lista.</p>' +
+        listaPartes() + editorParte() +
+        '<button type="button" class="btn ghost sm t44" data-est="todo-reset" data-foco="todo-reset">Volver al original (todas las partes)</button>', true);
+      h += grupo("Letras generales",
+        selectorFuente("estilo.fuente_titulos", WEB.estilo.fuente_titulos, "Letra de los títulos", "Original de la web") +
+        selectorFuente("estilo.fuente_cuerpo", WEB.estilo.fuente_cuerpo, "Letra de los textos", "Original de la web") +
         rango("estilo.escala", "Tamaño de letra general", 70, 150, 1, "%") +
-        rango("estilo.escala_titulo", "Tamaño de los títulos", 70, 200, 1, "%"), true);
+        rango("estilo.escala_titulo", "Tamaño de los títulos", 70, 200, 1, "%"), false);
+      h += grupo("Mis tipografías", grupoSubidas(), true);
       h += grupo("Colores", color("estilo.color_fondo", "Fondo de la web", "#fafaf8") +
         color("estilo.color_texto", "Color del texto", "#0a0a0a") +
         color("estilo.color_acento", "Color de acento", "#0a0a0a") +
         '<div class="wf"><label>Fondo de tus paneles (CRM y portal)</label><div class="wcolor">' +
-          '<input type="color" id="webPanelBg" value="' + esc((db.config && db.config.apar_bg_panel) || "#fafaf8") + '" />' +
+          '<input type="color" aria-label="Fondo de tus paneles" id="webPanelBg" value="' + esc((db.config && db.config.apar_bg_panel) || "#fafaf8") + '" />' +
           '<button class="wmini" type="button" id="webPanelBgReset">Volver al original</button>' +
           '<span class="mini">se guarda al publicar</span></div></div>', true);
       h += grupo("Espacio y formas", rango("estilo.ancho", "Ancho de las páginas", 620, 1200, 10, "px") +
@@ -3200,9 +3503,23 @@ window.mvtInit = mvtInit;
   function render(){
     var c = document.getElementById("webControles");
     if (!c || !WEB) return;
+    /* Al repintar se recuerdan los grupos abiertos y el control que tenía el foco. */
+    var abiertos = {};
+    c.querySelectorAll("details.wgrp").forEach(function(d){ var s = d.querySelector("summary"); if (s) abiertos[s.textContent] = d.open; });
+    var foco = (document.activeElement && document.activeElement.dataset) ? document.activeElement.dataset.foco : "";
     c.innerHTML = controles();
+    c.querySelectorAll("details.wgrp").forEach(function(d){
+      var s = d.querySelector("summary");
+      if (s && Object.prototype.hasOwnProperty.call(abiertos, s.textContent)) d.open = abiertos[s.textContent];
+    });
+    if (foco) c.querySelectorAll("[data-foco]").forEach(function(n){ if (n.dataset.foco === foco && !n.disabled) n.focus({ preventScroll: true }); });
+    aplicarFamilias();
+    pintarCssSubidas();
     var t = document.getElementById("webPrevTit");
-    if (t) t.textContent = PG === "estilo" ? "Vista previa (portada)" : "Vista previa";
+    if (t){
+      var pg = document.querySelector('.webpg[data-pg="' + PAG_VISTA + '"]');
+      t.textContent = PG === "estilo" ? "Vista previa: " + (pg ? pg.textContent : "Inicio") : "Vista previa";
+    }
     marcarEstado();
   }
 
@@ -3267,6 +3584,280 @@ window.mvtInit = mvtInit;
     }
     if (acc === "up" && i > 0){ lista2.splice(i-1, 0, lista2.splice(i, 1)[0]); render(); pintar(); return; }
     if (acc === "down" && i < lista2.length-1){ lista2.splice(i+1, 0, lista2.splice(i, 1)[0]); render(); pintar(); return; }
+  });
+
+  /* ---------- letras: deshacer / rehacer ---------- */
+  function cambiarHist(fn){
+    var antes = firma(WEB);
+    fn();
+    HIST.pend = null;
+    if (firma(WEB) !== antes) guardarPaso(antes);
+  }
+  function guardarPaso(antes){
+    HIST.undo.push(antes);
+    if (HIST.undo.length > MAX_HIST) HIST.undo.shift();
+    HIST.redo = [];
+  }
+  /* Para deslizadores y textos: el paso se guarda al soltar (change), no en cada movimiento. */
+  function cerrarCambio(){
+    if (HIST.pend && firma(WEB) !== HIST.pend) guardarPaso(HIST.pend);
+    HIST.pend = null;
+  }
+  function deshacer(){
+    if (!HIST.undo.length){ toast("No hay nada que deshacer"); return; }
+    HIST.redo.push(firma(WEB));
+    WEB = JSON.parse(HIST.undo.pop());
+    HIST.pend = null;
+    render(); pintar();
+  }
+  function rehacer(){
+    if (!HIST.redo.length){ toast("No hay nada que rehacer"); return; }
+    HIST.undo.push(firma(WEB));
+    WEB = JSON.parse(HIST.redo.pop());
+    HIST.pend = null;
+    render(); pintar();
+  }
+
+  /* ---------- letras: tamaños (deslizador + número + − y +) ---------- */
+  function fijarNumero(ctl, val, sincNum){
+    var min = +ctl.dataset.min, max = +ctl.dataset.max, dec = +ctl.dataset.dec || 0, def = +ctl.dataset.def;
+    var v = "";
+    if (val !== "" && val != null && isFinite(Number(val))){
+      v = Math.min(max, Math.max(min, Number(val)));
+      v = Number(v.toFixed(dec));
+    }
+    setR(WEB, "estilo.tipos." + ctl.dataset.parte + "." + ctl.dataset.campo, v);
+    var rango = ctl.querySelector('[data-est="rango"]'), num = ctl.querySelector('[data-est="num"]');
+    if (rango) rango.value = v === "" ? def : v;
+    if (num && sincNum !== false) num.value = v === "" ? def : v;
+    var pista = ctl.nextElementSibling;
+    if (pista) pista.textContent = v === "" ? "Original: " + def + (dec ? "" : " px") : "";
+  }
+  function dar_paso(ctl, dir){
+    var def = +ctl.dataset.def, dec = +ctl.dataset.dec || 0, paso = +ctl.dataset.paso;
+    var c = Number(valorTipo(ctl.dataset.parte, ctl.dataset.campo));
+    var actual = (isFinite(c) && c > 0) ? c : def;
+    fijarNumero(ctl, Number((actual + dir * paso).toFixed(dec)), true);
+  }
+
+  /* ---------- letras: subir y quitar tipografías ---------- */
+  function nombreValido(n){ return /^[\p{L}\p{N} .\-_]{1,40}$/u.test(n); }
+  function mensajeSubida(st){
+    if (st === 409) return "Ese nombre ya está en uso. Ponle otro nombre y vuelve a intentar.";
+    if (st === 413) return "Esa tipografía pesa más de 1 MB. Usa una versión más liviana.";
+    if (st === 415) return "Ese tipo de archivo no sirve. Usa .woff2, .woff, .ttf u .otf.";
+    if (st === 400) return "No pudimos usar ese archivo. Revisa que sea una fuente válida.";
+    if (st === 401 || st === 403) return "Tu sesión venció. Vuelve a entrar al panel y prueba de nuevo.";
+    return "Subir tipografías todavía no está disponible. Intenta de nuevo más tarde.";
+  }
+  function elegirArchivoFuente(){
+    if (listaSubidas().length >= MAX_FUENTES){ toast("Ya tienes " + MAX_FUENTES + " tipografías. Quita una para subir otra."); return; }
+    var inp = document.createElement("input");
+    inp.type = "file"; inp.accept = ".woff2,.woff,.ttf,.otf";
+    inp.onchange = function(){
+      var f = inp.files && inp.files[0];
+      if (!f) return;
+      var m = /\.(woff2|woff|ttf|otf)$/i.exec(f.name);
+      if (!m){ toast("Ese tipo de archivo no sirve. Usa .woff2, .woff, .ttf u .otf."); return; }
+      if (f.size > MAX_BYTES){ toast("Esa tipografía pesa más de 1 MB. Usa una versión más liviana."); return; }
+      SUBIDA = { archivo: f, formato: m[1].toLowerCase(), nombre: nombrarArchivo(f.name), estado: "lista", pct: 0, error: "" };
+      render();
+    };
+    inp.click();
+  }
+  function subirFuente(){
+    var s = SUBIDA;
+    if (!s) return;
+    var nombre = String(s.nombre || "").trim(), err = "";
+    if (!nombreValido(nombre)) err = "Pon un nombre de hasta 40 letras o números. Puedes usar espacios, puntos, guiones y guiones bajos.";
+    else if (listaSubidas().length >= MAX_FUENTES) err = "Ya tienes " + MAX_FUENTES + " tipografías. Quita una para subir otra.";
+    else if (listaSubidas().some(function(x){ return String(x.nombre).toLowerCase() === nombre.toLowerCase(); })) err = "Ya tienes una tipografía con ese nombre. Ponle otro.";
+    if (err){ s.error = err; render(); return; }
+    s.nombre = nombre; s.estado = "subiendo"; s.pct = 0; s.error = "";
+    render();
+    function fallar(st){
+      s.estado = "lista"; s.error = mensajeSubida(st);
+      if (SUBIDA === s) render();
+    }
+    var fd = new FormData();
+    fd.append("archivo", s.archivo, s.archivo.name);
+    fd.append("nombre", nombre);
+    var xhr = new XMLHttpRequest();
+    xhr.open("POST", "/api/web/fuente");
+    xhr.setRequestHeader("authorization", "Bearer " + token);
+    xhr.upload.onprogress = function(e){
+      if (!e.lengthComputable) return;
+      s.pct = Math.round(e.loaded / e.total * 100);
+      var b = document.getElementById("subidaBarra"), p = document.getElementById("subidaPct");
+      if (b) b.style.width = s.pct + "%";
+      if (p) p.textContent = s.pct + "%";
+    };
+    xhr.onerror = function(){ fallar(0); };
+    xhr.onload = function(){
+      var d = null;
+      try { d = JSON.parse(xhr.responseText); } catch(_){}
+      var ok = xhr.status >= 200 && xhr.status < 300 && d && /^[a-z0-9_]+$/.test(String(d.id || "")) && FORMATOS[d.formato || s.formato];
+      if (!ok){ fallar(xhr.status); return; }
+      var f = { id: String(d.id), nombre: String(d.nombre || nombre), formato: String(d.formato || s.formato) };
+      INVENTARIO = listaSubidas().concat([f]);
+      setR(WEB, "estilo.fuentes_subidas", INVENTARIO);
+      SUBIDA = null;
+      pintarCssSubidas(); render(); pintar();
+      toast("Tu tipografía ya está guardada. Elígela y publica para usarla en tu web.", 5000);
+    };
+    xhr.send(fd);
+  }
+  function quitarLocal(id){
+    var up = "up:" + id;
+    INVENTARIO = listaSubidas().filter(function(x){ return x.id !== id; });
+    setR(WEB, "estilo.fuentes_subidas", INVENTARIO);
+    ["fuente_titulos", "fuente_cuerpo"].forEach(function(k){ if (WEB.estilo[k] === up) WEB.estilo[k] = ""; });
+    Object.keys(tipos()).forEach(function(p){ if (tipos()[p] && tipos()[p].fuente === up) setR(WEB, "estilo.tipos." + p + ".fuente", ""); });
+    pintarCssSubidas(); render(); pintar();
+  }
+  function quitarFuente(id){
+    var f = listaSubidas().filter(function(x){ return x.id === id; })[0];
+    if (!f) return;
+    if (!confirm('¿Quitar la tipografía "' + f.nombre + '"? Dejará de verse en tu web.')) return;
+    fetch("/api/web/fuente/" + encodeURIComponent(id), { method: "DELETE", headers: { authorization: "Bearer " + token } })
+      .then(function(r){
+        return r.json().catch(function(){ return {}; }).then(function(d){ return { st: r.status, d: d }; });
+      })
+      .then(function(x){
+        if (x.st === 409){
+          var usos = (x.d && (x.d.usos || x.d.en_uso)) || [];
+          var nombres = usos.map(function(u){ return typeof u === "string" ? u : ((u && (u.etiqueta || u.donde)) || ""); }).filter(Boolean);
+          toast(nombres.length ? "Está en uso en: " + nombres.join(", ") + ". Cambia esa letra primero." : "Esa tipografía está en uso. Cambia la letra donde la usas.", 6000);
+          return;
+        }
+        if (x.st !== 404 && (x.st < 200 || x.st >= 300)) throw new Error("no disponible");
+        quitarLocal(id);
+        toast("Tipografía quitada.");
+      })
+      .catch(function(){ toast("Quitar tipografías todavía no está disponible. Intenta más tarde."); });
+  }
+
+  /* Un clic en un control de letras (botones) o un cambio de texto/deslizador. */
+  panelWeb().addEventListener("focusin", function(e){
+    if (/^(INPUT|SELECT|TEXTAREA)$/.test(e.target.tagName) && !HIST.pend) HIST.pend = firma(WEB);
+  });
+  panelWeb().addEventListener("pointerdown", function(e){
+    if (e.target.tagName === "INPUT" && !HIST.pend) HIST.pend = firma(WEB);
+  });
+  panelWeb().addEventListener("focusout", function(){ HIST.pend = null; });
+  panelWeb().addEventListener("input", function(e){
+    var t = e.target;
+    if (t.id === "subidaNombre" && SUBIDA){ SUBIDA.nombre = t.value; return; }
+    if (!t.dataset || !t.dataset.est) return;
+    var ctl = t.closest(".tamctl");
+    if (!ctl) return;
+    if (t.dataset.est === "rango"){ fijarNumero(ctl, t.value, true); pintarPronto(); }
+    if (t.dataset.est === "num" && t.value !== ""){
+      var n = Number(t.value);
+      if (isFinite(n) && n >= +ctl.dataset.min && n <= +ctl.dataset.max){ fijarNumero(ctl, n, false); pintarPronto(); }
+    }
+  });
+  panelWeb().addEventListener("change", function(e){
+    var t = e.target;
+    if (t.dataset && (t.dataset.est === "num" || t.dataset.est === "rango")){
+      var ctl = t.closest(".tamctl");
+      if (ctl){ fijarNumero(ctl, t.value, true); pintarPronto(); }
+    }
+    cerrarCambio();
+  });
+  panelWeb().addEventListener("click", function(e){
+    var b = e.target.closest("[data-est]");
+    if (!b) return;
+    var acc = b.dataset.est, v = b.dataset.v;
+    if (acc === "parte"){ if (v === "tarjetas" || v === "nombre_sitio") PAG_VISTA = "sesiones"; PARTE = v; render(); pintar(); return; }
+    if (acc === "paso"){
+      var ctl = b.closest(".tamctl");
+      if (ctl) cambiarHist(function(){ dar_paso(ctl, Number(b.dataset.dir)); });
+      pintar(); return;
+    }
+    if (acc === "peso"){ cambiarHist(function(){ setR(WEB, "estilo.tipos." + PARTE + ".peso", v); }); render(); pintar(); return; }
+    if (acc === "parte-reset"){
+      cambiarHist(function(){ setR(WEB, "estilo.tipos." + v, {}); });
+      toast("Listo. Esa parte vuelve al original. Dale Publicar si te quedas así.");
+      render(); pintar(); return;
+    }
+    if (acc === "todo-reset"){
+      if (!confirm("¿Volver todas las partes al original? Se aplica cuando publiques.")) return;
+      cambiarHist(function(){ setR(WEB, "estilo.tipos", {}); });
+      render(); pintar(); toast("Listo. Dale Publicar si te quedas con el original."); return;
+    }
+    if (acc === "pick"){ PICK = PICK === b.dataset.ruta ? "" : b.dataset.ruta; render(); return; }
+    if (acc === "pick-opt"){
+      var ruta = b.dataset.ruta;
+      cambiarHist(function(){ setR(WEB, ruta, v); });
+      PICK = ""; render(); pintar();
+      var trigger = panelWeb().querySelector('[data-est="pick"][data-ruta="' + ruta + '"]');
+      if (trigger) trigger.focus({preventScroll:true});
+      return;
+    }
+    if (acc === "subir"){ elegirArchivoFuente(); return; }
+    if (acc === "subir-ok"){ subirFuente(); return; }
+    if (acc === "subir-no"){ SUBIDA = null; render(); return; }
+    if (acc === "quitar"){ quitarFuente(v); return; }
+  });
+
+  panelWeb().addEventListener("keydown", function(e){
+    var lista = e.target.closest(".flista");
+    if (!lista) return;
+    var botones = Array.from(lista.querySelectorAll('[role="option"]')), i = botones.indexOf(e.target);
+    if (e.key === "Escape") {
+      e.preventDefault(); var ruta = PICK; PICK = ""; render();
+      var boton = panelWeb().querySelector('[data-est="pick"][data-ruta="' + ruta + '"]');
+      if (boton) boton.focus(); return;
+    }
+    var j = e.key === "Home" ? 0 : e.key === "End" ? botones.length-1 : e.key === "ArrowDown" ? (i+1)%botones.length : e.key === "ArrowUp" ? (i-1+botones.length)%botones.length : -1;
+    if (j >= 0) { e.preventDefault(); botones[j].focus(); }
+  });
+
+  /* ---------- vista previa: computador o celular ---------- */
+  function ajustarVista(){
+    var wrap = document.getElementById("webPrevWrap"), esc1 = document.getElementById("prevEscala");
+    var marco = document.getElementById("prevMarco"), fr = frame();
+    if (!wrap || !esc1 || !marco || !fr) return;
+    var movil = DISPO === "movil";
+    var w = movil ? 390 : 1440, h = movil ? 844 : 900, pad = movil ? 12 : 0;
+    marco.classList.toggle("movil", movil);
+    fr.style.width = w + "px";
+    fr.style.height = h + "px";
+    var bw = w + 2 * pad, bh = h + 2 * pad;
+    var disp = Math.max(260, wrap.clientWidth);
+    var s = Math.min(1, disp / bw);
+    if (movil) s = Math.min(s, Math.max(0.4, (window.innerHeight - 260) / bh));
+    marco.style.transform = "scale(" + s + ")";
+    marco.style.left = (movil ? Math.max(0, (disp - bw * s) / 2) : 0) + "px";
+    esc1.style.height = (bh * s) + "px";
+  }
+  document.querySelectorAll(".webdev").forEach(function(b){
+    b.addEventListener("click", function(){
+      DISPO = b.dataset.dev === "movil" ? "movil" : "desktop";
+      document.querySelectorAll(".webdev").forEach(function(x){
+        var on = x === b;
+        x.classList.toggle("active", on);
+        x.setAttribute("aria-pressed", on ? "true" : "false");
+      });
+      ajustarVista();
+    });
+  });
+  window.addEventListener("resize", ajustarVista);
+  if (window.ResizeObserver){ try { new ResizeObserver(ajustarVista).observe(document.getElementById("webPrevWrap")); } catch(_){} }
+
+  /* Cmd/Ctrl + Z deshace, Cmd/Ctrl + Y o Cmd/Ctrl + Shift + Z rehace. En cajas de texto
+     se deja el comportamiento normal del navegador. */
+  document.addEventListener("keydown", function(e){
+    if (!(e.ctrlKey || e.metaKey) || e.altKey) return;
+    var k = String(e.key || "").toLowerCase();
+    if (k !== "z" && k !== "y") return;
+    var t = e.target;
+    if (t && (t.isContentEditable || t.tagName === "TEXTAREA" || (t.tagName === "INPUT" && t.type !== "range"))) return;
+    var p = panelWeb();
+    if (!p || !p.offsetParent) return;
+    e.preventDefault();
+    if (k === "y" || e.shiftKey) rehacer(); else deshacer();
   });
 
   /* ---------- fotos: subir (con reducción previa) y encuadrar ---------- */
@@ -3344,7 +3935,16 @@ window.mvtInit = mvtInit;
   /* ---------- clic en la vista previa -> abre su control ----------
      La llama el iframe directamente (mismo origen). Salta a la página de esa parte
      y resalta su control. */
-  window.edPreviewClick = function(ed){
+  window.edPreviewClick = function(ed, parte){
+    /* En "Diseño", clic en una parte de la vista previa = elegir esa parte de letra. */
+    if (PG === "estilo" && parte && parteInfo(parte)){
+      PARTE = parte; render(); pintar();
+      setTimeout(function(){
+        var b = document.querySelector('#webControles [data-foco="parte|' + parte + '"]');
+        if (b) b.scrollIntoView({ block: "nearest", behavior: "smooth" });
+      }, 30);
+      return;
+    }
     if (!ed) return;
     var raiz = ed.split(".")[0];
     var destino = { marca: "estilo", nav: "estilo", pie: "estilo" }[raiz] || raiz;
@@ -3368,19 +3968,13 @@ window.mvtInit = mvtInit;
 
   function irA(pg){
     PG = pg;
+    if (pg !== "estilo") PAG_VISTA = pg;
     document.querySelectorAll(".webpg").forEach(function(b){ b.classList.toggle("active", b.dataset.pg === pg); });
     render(); pintar();
   }
   document.getElementById("webPages").addEventListener("click", function(e){
     var b = e.target.closest(".webpg");
     if (b) irA(b.dataset.pg);
-  });
-  document.querySelectorAll(".webdev").forEach(function(b){
-    b.addEventListener("click", function(){
-      document.querySelectorAll(".webdev").forEach(function(x){ x.classList.remove("active"); });
-      b.classList.add("active");
-      document.getElementById("webPrevWrap").classList.toggle("movil", b.dataset.dev === "movil");
-    });
   });
 
   /* ---------- publicar / deshacer / volver al original ---------- */
@@ -3399,7 +3993,7 @@ window.mvtInit = mvtInit;
     Promise.all(tareas).then(function(res){
       var d = res[0];
       if (!d || d.error) throw new Error(d && d.error || "No se pudo publicar");
-      if (d.web) WEB = W().mezclar(d.web);
+      if (d.web) { WEB = W().mezclar(d.web); INVENTARIO = WEB.estilo.fuentes_subidas; }
       GUARDADO = firma(WEB);
       render(); pintar();
       toast(d.rebuild ? "Publicado. Tu web se está actualizando." : "¡Publicado! Tu web ya muestra los cambios.", 4000);
@@ -3410,7 +4004,9 @@ window.mvtInit = mvtInit;
     });
   });
 
-  document.getElementById("btnWebDeshacer").addEventListener("click", function(){
+  document.getElementById("btnWebDeshacer").addEventListener("click", function(){ deshacer(); });
+  document.getElementById("btnWebRehacer").addEventListener("click", function(){ rehacer(); });
+  document.getElementById("btnWebDescartar").addEventListener("click", function(){
     if (firma(WEB) === GUARDADO){ toast("No hay cambios sin publicar"); return; }
     if (!confirm("¿Descartar los cambios que no publicaste?")) return;
     cargar(true);
@@ -3418,7 +4014,7 @@ window.mvtInit = mvtInit;
 
   document.getElementById("btnWebOriginal").addEventListener("click", function(){
     if (!confirm("Esto devuelve tu web al diseño original (textos, fotos y colores de fábrica). Se aplica cuando publiques. ¿Seguir?")) return;
-    WEB = W().mezclar({});
+    cambiarHist(function(){ WEB = W().mezclar({}); if(INVENTARIO) WEB.estilo.fuentes_subidas = INVENTARIO; });
     render(); pintar();
     toast("Listo. Dale Publicar si te quedas con el original.");
   });
@@ -3429,7 +4025,10 @@ window.mvtInit = mvtInit;
   function cargar(forzar){
     return fetch("/api/publico").then(function(r){ return r.json(); }).then(function(d){
       WEB = W().mezclar((d && d.web) || {});
+      INVENTARIO = (d && d.fuentes_subidas) || WEB.estilo.fuentes_subidas;
+      WEB.estilo.fuentes_subidas = INVENTARIO;
       GUARDADO = firma(WEB);
+      HIST.undo = []; HIST.redo = []; HIST.pend = null;
       render(); pintar();
     }).catch(function(){
       if (!WEB){ WEB = W().mezclar({}); render(); pintar(); }
@@ -3439,11 +4038,13 @@ window.mvtInit = mvtInit;
   window.abrirEditorWeb = function(){
     if (!W()){ toast("No cargó el editor; recarga la página"); return; }
     var fr = frame();
+    cargarFuentesPanel();
     if (!listo && fr && !fr.dataset.init){
       fr.dataset.init = "1";
-      fr.addEventListener("load", function(){ listo = true; pintar(); });
+      fr.addEventListener("load", function(){ listo = true; pintar(); ajustarVista(); });
       fr.srcdoc = docPreview();
     }
+    ajustarVista();
     if (!WEB) cargar();
     else { render(); pintar(); }
   };
@@ -3614,11 +4215,12 @@ window.mvtInit = mvtInit;
     }
     pop.style.transform="none";
   }
-  function abrir(){ veil.classList.add("on"); i=0; pos(); }
+  function abrir(){ if(document.getElementById("panel-web").classList.contains("active")) return; veil.classList.add("on"); i=0; pos(); }
   function cerrar(){ veil.classList.remove("on"); try{localStorage.setItem(SEEN,"1");}catch(e){} }
   PASOS.forEach(function(){ var d=document.createElement("span"); d.className="tour-dot"; elDots.appendChild(d); });
   btnNext.addEventListener("click",function(){ if(i<PASOS.length-1){ i++; pos(); return; } cerrar(); });
   btnSkip.addEventListener("click",cerrar);
+  document.querySelector('[data-tab="web"]').addEventListener("click",function(){veil.classList.remove("on");});
   window.addEventListener("resize",function(){ if(veil.classList.contains("on")) pos(); });
   window.lanzarTour=function(force){ if(force){ abrir(); return; } try{ if(localStorage.getItem(SEEN)) return; }catch(e){} setTimeout(abrir,1400); };
   // Auto-lanzar cuando el panel ya cargo (db lista y sin marca de visto).

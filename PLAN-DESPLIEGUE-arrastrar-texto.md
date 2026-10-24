@@ -58,3 +58,14 @@ wrangler dev --local --config <wrangler.local.toml> --persist-to <estado-nuevo> 
 E2E_TOKEN=<token-local-aleatorio> node tests/e2e/mi-web-arrastrar.e2e.mjs
 ```
 `wrangler.local.toml`: nombre `nicole-local-qa`, `main` = `worker/index.js`, `[assets] directory=./panel`, `run_worker_first=["/api/*","/r/*"]`, D1 `DB` y R2 `RECURSOS_R2` locales con ids de relleno. La prueba rechaza cualquier `BASE` que no sea 127.0.0.1/localhost.
+
+---
+## Añadido el 24-oct-2026 (pedido de Andrés para mañana): header parejo y favicon
+
+### Header con el mismo espaciado
+Causa: cada enlace del menú de la portada llevaba un margen puesto a mano (`nth-child(2..5)`, uno incluso negativo) y el nombre del sitio quedaba en la otra punta. Se quitaron y ahora **todo** el header (nombre del sitio y enlaces) usa una sola variable `--hgap` (`clamp(22px, 4.6·u, 76px)`; en celular 16–24px), igual en horizontal y vertical cuando los enlaces pasan a otro renglón. Solo CSS (`public/styles/global.css` + su copia generada). Medido con navegador en 1440/1024/768/390 px, en inicio, acerca, sesiones y contacto: separación idéntica entre cada par (66 px a 1440), sin desborde. Prueba: `node tests/e2e/header-espaciado.e2e.mjs`.
+Rollback: revertir ese CSS; no toca datos.
+
+### Favicon (BORRADOR, falta la referencia de AMAIA)
+No pude ver el favicon de AMAIA (no encontré su sitio oficial desde aquí). Quedó un borrador: **«N» en Homemade Apple** (la tipografía de los títulos de nicoleolavarria.com) convertida a curva, sobre el rosa actual. `node scripts/build-favicon.mjs` regenera `public/favicon.svg`, `favicon-32.png`, `apple-touch-icon.png` e `icon-512.png`; acepta `FONDO`, `TINTA` y `LETRA` para ajustar colores/forma en cuanto Andrés pase la referencia (captura o link). Pendiente confirmar: color de fondo y de la letra, si va con fondo cuadrado o redondo, y el margen de la letra.
+Despliegue: viaja con la web (Vercel). Los navegadores cachean favicons: puede tardar en verse; `og-nicole-olavarria.png` no se tocó.

@@ -453,15 +453,9 @@ main .wrap h2, main .wrap h3, main .wrap-narrow h2, main .wrap-narrow h3, main .
 main .wrap p, main .wrap-narrow p, main .contact-value, main .sesion-card p { font-size: calc(17px * var(--esc)); line-height: 1.65; }
 
 /* Tipografía pedida por Nicole (21-oct-2026): menú, títulos y el "hola :)" en Homemade Apple; el resto del texto en Space Mono. */
-header nav { gap: 8px clamp(24px, calc(5.75 * var(--u)), 90px); }
 body[data-pagina="inicio"] header { padding-top: clamp(24px, calc(7.7 * var(--u)), 140px); }
-body[data-pagina="inicio"] header nav { margin-right: calc(1.4 * var(--u)); }
 @media (min-width: 701px) {
   body[data-pagina="inicio"] .home { padding: calc(14.6 * var(--u)) calc(2.5 * var(--u)) 120px 24px; }
-  body[data-pagina="inicio"] header nav a:nth-child(2) { margin-left: calc(.97 * var(--u)); }
-  body[data-pagina="inicio"] header nav a:nth-child(3) { margin-left: calc(-2 * var(--u)); }
-  body[data-pagina="inicio"] header nav a:nth-child(4) { margin-left: calc(.83 * var(--u)); }
-  body[data-pagina="inicio"] header nav a:nth-child(5) { margin-left: calc(.2 * var(--u)); }
 }
 header nav a { font-family: var(--t-menu-fuente, var(--g-titulos, 'Homemade Apple')), cursive; text-transform: none; letter-spacing: 0; display: inline-block; line-height: var(--t-menu-lh, 1.8); font-weight: var(--t-menu-peso, 400); font-size: var(--t-menu-tam, calc(clamp(15px, calc(1.95 * var(--u)), 33px) * var(--esc))); }
 header nav a::first-letter { text-transform: uppercase; }
@@ -551,4 +545,17 @@ footer .footer-thanks, footer .footer-blog, footer .footer-copy {
 .home .nl-b { margin-left: auto; margin-right: auto; }
 @media (max-width: 700px) {
   .nl-b { width: var(--wm, auto); min-height: var(--hm, 0); }
+}
+
+/* Espaciado del encabezado (24-oct-2026, pedido de Nicole): todo lo que hay en el header
+   (nombre del sitio y cada enlace) queda a la MISMA distancia, a lo ancho y a lo alto cuando
+   los enlaces se acomodan en dos renglones. Antes cada enlace de la portada llevaba un margen
+   a mano distinto (unos casi pegados, otros lejos) y el nombre del sitio quedaba en la otra
+   punta. Una sola variable manda: cambiarla mueve todo parejo. */
+:root { --hgap: clamp(22px, calc(4.6 * var(--u)), 76px); }
+header { justify-content: center; flex-wrap: wrap; gap: var(--hgap); }
+header nav { gap: var(--hgap); justify-content: center; margin: 0; }
+header nav a { margin: 0; }
+@media (max-width: 700px) {
+  :root { --hgap: clamp(16px, 5vw, 24px); }
 }

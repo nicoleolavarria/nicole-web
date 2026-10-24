@@ -543,3 +543,12 @@ footer .footer-thanks, footer .footer-blog, footer .footer-copy {
     white-space:normal;overflow-wrap:anywhere;max-width:100%;
   }
 }
+
+/* ---- bloques con tamaño propio (24-oct-2026): Mi web > arrastrar y estirar ----
+   Solo aplica a los que Nicole estiró (clase nl-b). Sin ese tamaño nada cambia. */
+.nl-b { width: var(--w, auto); min-height: var(--h, 0); max-width: 100%; overflow-wrap: anywhere; }
+.nl-bw { max-width: none !important; }
+.home .nl-b { margin-left: auto; margin-right: auto; }
+@media (max-width: 700px) {
+  .nl-b { width: var(--wm, auto); min-height: var(--hm, 0); }
+}

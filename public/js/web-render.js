@@ -445,90 +445,248 @@ function subPortada(sub){
   }).join("<br />");
 }
 
-/* ---------- páginas ---------- */
-function paginaInicio(d){
-  var h = d.inicio;
-  return '<section class="home" aria-labelledby="portada-titulo">' +
-    '<div class="home-top">' +
-      '<h1 id="portada-titulo" data-ed="inicio.titulo">' + esc(h.titulo) + "</h1>" +
-      (h.sub ? '<p class="home-sub" data-ed="inicio.sub">' + subPortada(h.sub) + "</p>" : "") +
-    "</div></section>";
+/* ---------- bloques que se pueden mover y estirar (24-oct-2026) ----------
+   Pedido de Nicole: poder arrastrar un texto a otro lugar y controlar el tamaño de un párrafo.
+   Un BLOQUE es un título, un párrafo, una tarjeta o un dato de contacto; su id es su `data-ed`
+   (por ejemplo "acerca.bloques.2"). Cada página tiene CONTENEDORES (columnas de bloques) y la
+   dueña puede reordenar los bloques o pasarlos de un contenedor a otro DE LA MISMA PÁGINA.
+   Se guarda en `web.layout.<pagina> = { secs: {contenedor: [ids]}, tam: {id: {w,h,wm,hm}} }`:
+   w/h = ancho (% del contenedor) y alto mínimo (px) en computador; wm/hm = lo mismo en celular.
+   SIN `layout` el HTML sale idéntico, byte por byte, al de siempre (lo prueban los tests). */
+var LAYOUT_CONTENEDORES = {
+  inicio: ["top"], acerca: ["intro", "bloques"], trayectoria: ["intro", "bloques"], formacion: ["intro", "bloques"],
+  sesiones: ["hero", "cards"], contacto: ["top", "items"]
+};
+var LAYOUT_ID = {
+  inicio: /^inicio\.(titulo|sub)$/,
+  acerca: /^acerca\.(titulo|sub|intro\.\d{1,2}|bloques\.\d{1,2})$/,
+  trayectoria: /^trayectoria\.(titulo|sub|bloques\.\d{1,2})$/,
+  formacion: /^formacion\.(titulo|sub|bloques\.\d{1,2})$/,
+  sesiones: /^sesiones\.(titulo|nota|titulo_modalidades|intro\.\d{1,2}|modalidades\.\d{1,2})$/,
+  contacto: /^contacto\.(titulo|items\.\d{1,2})$/
+};
+var LAYOUT_ANCHO_MIN = 15, LAYOUT_ALTO_MAX = 800;
+
+/* Layout validado. También se llama al RENDERIZAR: lo guardado nunca se da por bueno. */
+function layoutLimpio(raw){
+  var out = {};
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return out;
+  Object.keys(LAYOUT_CONTENEDORES).forEach(function (pg){
+    var l = Object.prototype.hasOwnProperty.call(raw, pg) ? raw[pg] : null;
+    if (!l || typeof l !== "object") return;
+    var r = {};
+    if (l.secs && typeof l.secs === "object"){
+      var vistos = {}, secs = {};
+      LAYOUT_CONTENEDORES[pg].forEach(function (c){
+        var arr = Object.prototype.hasOwnProperty.call(l.secs, c) ? l.secs[c] : null;
+        if (!Array.isArray(arr)) return;
+        var lista = [];
+        arr.slice(0, 80).forEach(function (id){
+          if (id === "@cta"){ if (pg === "sesiones" && c === "hero" && lista.indexOf(id) < 0) lista.push(id); return; }
+          if (typeof id !== "string" || !LAYOUT_ID[pg].test(id) || vistos[id]) return;
+          vistos[id] = 1; lista.push(id);
+        });
+        secs[c] = lista;
+      });
+      if (Object.keys(secs).length) r.secs = secs;
+    }
+    if (l.tam && typeof l.tam === "object"){
+      var tam = {};
+      Object.keys(l.tam).slice(0, 200).forEach(function (id){
+        if (!LAYOUT_ID[pg].test(id)) return;
+        var b = l.tam[id], t = {};
+        if (!b || typeof b !== "object") return;
+        [["w", LAYOUT_ANCHO_MIN, 100], ["wm", LAYOUT_ANCHO_MIN, 100], ["h", 0, LAYOUT_ALTO_MAX], ["hm", 0, LAYOUT_ALTO_MAX]].forEach(function (c){
+          var n = Math.round(Number(b[c[0]]));
+          if (isFinite(n) && n > 0) t[c[0]] = Math.min(c[2], Math.max(c[1], n));
+        });
+        if (Object.keys(t).length) tam[id] = t;
+      });
+      if (Object.keys(tam).length) r.tam = tam;
+    }
+    if (Object.keys(r).length) out[pg] = r;
+  });
+  return out;
 }
 
-function paginaAcerca(d){
-  var a = d.acerca;
-  var intro = (a.intro || []).map(function (p, i){
-    return '<p data-ed="acerca.intro.' + i + '">' + texto(p) + "</p>";
-  }).join("");
-  var bloques = (a.bloques || []).map(function (b, i){
-    var ed = ' data-ed="acerca.bloques.' + i + '"';
-    if (b && b.tipo === "titulo") return "<h2" + ed + ' id="' + String(b.texto || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") + '"' + (i ? ' style="margin-top:40px;scroll-margin-top:24px"' : "") + ">" + esc(b.texto) + "</h2>";
-    if (b && b.tipo === "foto") return '<div' + ed + ' style="margin:0 0 18px">' + fotoImg(b, "about-photo", "") + "</div>";
-    return "<p" + ed + ">" + texto(b && b.texto) + "</p>";
-  }).join("");
+/* Listas por defecto de cada contenedor: lo que hay hoy en la página, en su orden de siempre. */
+function listasDefecto(pagina, d){
+  var L = {};
+  function n(a){ return Array.isArray(a) ? a.length : 0; }
+  function rango(pre, cant){ var o = []; for (var i = 0; i < cant; i++) o.push(pre + "." + i); return o; }
+  if (pagina === "inicio"){
+    L.top = ["inicio.titulo"].concat(d.inicio.sub ? ["inicio.sub"] : []);
+  } else if (pagina === "acerca"){
+    var a = d.acerca;
+    L.intro = ["acerca.titulo"].concat(a.sub ? ["acerca.sub"] : [], rango("acerca.intro", n(a.intro)));
+    L.bloques = rango("acerca.bloques", n(a.bloques));
+  } else if (pagina === "trayectoria" || pagina === "formacion"){
+    var b = d[pagina] || {};
+    L.intro = [pagina + ".titulo"].concat(b.sub ? [pagina + ".sub"] : []);
+    L.bloques = rango(pagina + ".bloques", n(b.bloques));
+  } else if (pagina === "sesiones"){
+    var s = d.sesiones;
+    L.hero = ["sesiones.titulo"].concat(rango("sesiones.intro", n(s.intro)), s.nota ? ["sesiones.nota"] : [], s.cta && s.cta.texto ? ["@cta"] : []);
+    L.cards = (s.titulo_modalidades ? ["sesiones.titulo_modalidades"] : []).concat(rango("sesiones.modalidades", n(s.modalidades)));
+  } else if (pagina === "contacto"){
+    L.top = ["contacto.titulo"];
+    L.items = rango("contacto.items", n(d.contacto.items));
+  }
+  return L;
+}
+
+/* Qué bloque va en qué contenedor y en qué orden (por defecto + lo que movió la dueña). */
+function planPagina(pagina, d, lay){
+  var def = listasDefecto(pagina, d), plan = {};
+  var existe = {}; Object.keys(def).forEach(function (c){ def[c].forEach(function (id){ existe[id] = c; }); });
+  var secs = lay && lay.secs ? lay.secs : null, colocados = {};
+  if (secs) Object.keys(secs).forEach(function (c){ secs[c].forEach(function (id){ if (existe[id] && id !== "@cta") colocados[id] = c; }); });
+  Object.keys(def).forEach(function (c){
+    if (secs && secs[c]){
+      var lista = secs[c].filter(function (id){ return id === "@cta" ? def[c].indexOf("@cta") >= 0 : !!existe[id]; });
+      def[c].forEach(function (id){ if ((id === "@cta" || !colocados[id]) && lista.indexOf(id) < 0) lista.push(id); });
+      plan[c] = lista;
+    } else {
+      plan[c] = def[c].filter(function (id){ return id === "@cta" || !colocados[id]; });
+    }
+  });
+  return plan;
+}
+
+/* Mete clase, estilo y atributos en la etiqueta de apertura de un bloque (sin envolverlo). */
+function conMarcas(html, clases, estilo, attrs){
+  var m = /^<([a-zA-Z0-9]+)((?:\s[^>]*)?)>/.exec(html);
+  if (!m) return html;
+  var at = m[2] || "";
+  if (clases){
+    if (/\sclass="/.test(at)) at = at.replace(/\sclass="([^"]*)"/, function (x, c){ return ' class="' + c + " " + clases + '"'; });
+    else at += ' class="' + clases + '"';
+  }
+  if (estilo){
+    if (/\sstyle="/.test(at)) at = at.replace(/\sstyle="([^"]*)"/, function (x, c){ return ' style="' + c + (/;\s*$/.test(c) || !c ? "" : ";") + estilo + '"'; });
+    else at += ' style="' + estilo + '"';
+  }
+  return "<" + m[1] + at + (attrs || "") + ">" + html.slice(m[0].length);
+}
+function bloqueHtml(id, html, st){
+  if (!html) return "";
+  var t = st.lay && st.lay.tam && st.lay.tam[id];
+  var ed = st.editable ? ' data-b="' + id + '"' : "";
+  if (!t && !ed) return html;
+  var vars = [];
+  if (t){
+    if (t.w) vars.push("--w:" + t.w + "%");
+    if (t.h) vars.push("--h:" + t.h + "px");
+    if (t.wm) vars.push("--wm:" + t.wm + "%");
+    if (t.hm) vars.push("--hm:" + t.hm + "px");
+  }
+  return conMarcas(html, t ? "nl-b" + (t.w || t.wm ? " nl-bw" : "") : "", vars.join(";"), ed);
+}
+function contMarca(st, nombre){ return st.editable ? ' data-s="' + nombre + '"' : ""; }
+function estadoLayout(pagina, d, opciones){
+  var lay = layoutLimpio(d.layout)[pagina] || null;
+  return { lay: lay, editable: !!(opciones && opciones.editable), plan: planPagina(pagina, d, lay), pagina: pagina };
+}
+function lista(st, cont, htmlDe){
+  return (st.plan[cont] || []).map(function (id){ return bloqueHtml(id, htmlDe(id), st); }).join("");
+}
+
+/* ---------- páginas ---------- */
+function paginaInicio(d, op){
+  var h = d.inicio, st = estadoLayout("inicio", d, op);
+  var de = function (id){
+    if (id === "inicio.titulo") return '<h1 id="portada-titulo" data-ed="inicio.titulo">' + esc(h.titulo) + "</h1>";
+    if (id === "inicio.sub") return h.sub ? '<p class="home-sub" data-ed="inicio.sub">' + subPortada(h.sub) + "</p>" : "";
+    return "";
+  };
+  return '<section class="home" aria-labelledby="portada-titulo">' +
+    '<div class="home-top"' + contMarca(st, "top") + ">" + lista(st, "top", de) + "</div></section>";
+}
+
+function paginaAcerca(d, op){
+  var a = d.acerca, st = estadoLayout("acerca", d, op);
+  var de = function (id){
+    var m = /^acerca\.(intro|bloques)\.(\d+)$/.exec(id);
+    if (id === "acerca.titulo") return '<h1 data-ed="acerca.titulo">' + esc(a.titulo) + "</h1>";
+    if (id === "acerca.sub") return a.sub ? '<p class="role" data-ed="acerca.sub">' + esc(a.sub) + "</p>" : "";
+    if (m && m[1] === "intro") return '<p data-ed="' + id + '">' + texto((a.intro || [])[Number(m[2])]) + "</p>";
+    if (m){
+      var b = (a.bloques || [])[Number(m[2])], ed = ' data-ed="' + id + '"';
+      if (b && b.tipo === "titulo") return "<h2" + ed + ' id="' + String(b.texto || "").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") +
+        '"' + (Number(m[2]) ? ' style="margin-top:40px;scroll-margin-top:24px"' : "") + ">" + esc(b.texto) + "</h2>";
+      if (b && b.tipo === "foto") return '<div' + ed + ' style="margin:0 0 18px">' + fotoImg(b, "about-photo", "") + "</div>";
+      return "<p" + ed + ">" + texto(b && b.texto) + "</p>";
+    }
+    return "";
+  };
   var galeria = (a.galeria || []).map(function (g, i){
     return fotoImg(g, "", "", "acerca.galeria." + i);
   }).join("");
 
   return '<div class="wrap">' +
-    '<div class="about-intro">' +
-      '<h1 data-ed="acerca.titulo">' + esc(a.titulo) + "</h1>" +
-      (a.sub ? '<p class="role" data-ed="acerca.sub">' + esc(a.sub) + "</p>" : "") +
-      intro +
-    "</div>" +
+    '<div class="about-intro"' + contMarca(st, "intro") + ">" + lista(st, "intro", de) + "</div>" +
     '<div class="about-grid">' +
       "<div>" + (a.foto && a.foto.url ? fotoImg(a.foto, "about-photo", "", "acerca.foto") : "") + "</div>" +
-      "<div>" + bloques + "</div>" +
+      "<div" + contMarca(st, "bloques") + ">" + lista(st, "bloques", de) + "</div>" +
     "</div>" +
     (galeria ? '<div class="about-photos-strip">' + galeria + "</div>" : "") +
     "</div>";
 }
 
-function paginaSesiones(d){
-  var s = d.sesiones;
-  var intro = (s.intro || []).map(function (p, i){
-    return '<p data-ed="sesiones.intro.' + i + '">' + texto(p) + "</p>";
-  }).join("");
-  var cards = (s.modalidades || []).map(function (m, i){
-    return '<div class="sesion-card" data-ed="sesiones.modalidades.' + i + '">' +
-      "<h3>" + esc(m.nombre) + "</h3>" + (m.desc ? "<p>" + texto(m.desc) + "</p>" : "") + "</div>";
-  }).join("");
-  var metas = (s.metas || []).map(function (m, i){
-    return '<span data-ed="sesiones.metas.' + i + '">' + esc(m) + "</span>";
-  }).join("");
+function paginaSesiones(d, op){
+  var s = d.sesiones, st = estadoLayout("sesiones", d, op);
   var cta = s.cta && s.cta.texto
     ? '<a href="' + urlSegura(s.cta.url) + '" class="btn-agenda" target="_blank" rel="noopener" data-ed="sesiones.cta">' + esc(s.cta.texto) + "</a>"
     : "";
+  var de = function (id){
+    var m = /^sesiones\.(intro|modalidades)\.(\d+)$/.exec(id);
+    if (id === "sesiones.titulo") return '<h1 data-ed="sesiones.titulo">' + esc(s.titulo) + "</h1>";
+    if (id === "sesiones.nota") return s.nota ? '<p class="muted small" data-ed="sesiones.nota">' + esc(s.nota) + "</p>" : "";
+    if (id === "sesiones.titulo_modalidades") return s.titulo_modalidades ? '<h2 data-ed="sesiones.titulo_modalidades">' + esc(s.titulo_modalidades) + "</h2>" : "";
+    if (id === "@cta") return st.editable && cta ? conMarcas(cta, "", "", ' data-m="cta"') : cta;
+    if (m && m[1] === "intro") return '<p data-ed="' + id + '">' + texto((s.intro || [])[Number(m[2])]) + "</p>";
+    if (m){
+      var mo = (s.modalidades || [])[Number(m[2])] || {};
+      return '<div class="sesion-card" data-ed="' + id + '">' + "<h3>" + esc(mo.nombre) + "</h3>" + (mo.desc ? "<p>" + texto(mo.desc) + "</p>" : "") + "</div>";
+    }
+    return "";
+  };
+  var metas = (s.metas || []).map(function (m, i){
+    return '<span data-ed="sesiones.metas.' + i + '">' + esc(m) + "</span>";
+  }).join("");
+  var tarjetas = lista(st, "cards", de);
 
   return '<div class="wrap">' +
     '<div class="sesiones-hero">' +
-      "<div>" +
-        '<h1 data-ed="sesiones.titulo">' + esc(s.titulo) + "</h1>" + intro +
-        (s.nota ? '<p class="muted small" data-ed="sesiones.nota">' + esc(s.nota) + "</p>" : "") +
-        cta +
-      "</div>" +
+      "<div" + contMarca(st, "hero") + ">" + lista(st, "hero", de) + "</div>" +
       "<div>" + (s.foto && s.foto.url ? fotoImg(s.foto, "", "width:100%;object-fit:cover;", "sesiones.foto") : "") + "</div>" +
     "</div>" +
-    (s.titulo_modalidades ? '<h2 data-ed="sesiones.titulo_modalidades">' + esc(s.titulo_modalidades) + "</h2>" : "") +
-    cards +
+    (st.editable ? '<div data-s="cards">' + tarjetas + "</div>" : tarjetas) +
     (metas ? '<div class="sesiones-meta">' + metas + "</div>" : "") +
     cta +
     "</div>";
 }
 
-function paginaContacto(d){
-  var c = d.contacto;
-  var items = (c.items || []).map(function (it, i){
-    var val = it.url
-      ? '<a href="' + urlSegura(it.url) + '"' + (/^https?:/i.test(it.url) ? ' target="_blank" rel="noopener"' : "") + ">" + esc(it.valor) + "</a>"
-      : '<span class="muted">' + esc(it.valor) + "</span>";
-    return '<div class="contact-item" data-ed="contacto.items.' + i + '">' +
-      '<div class="contact-label">' + esc(it.label) + "</div>" +
-      '<div class="contact-value">' + val + "</div></div>";
-  }).join("");
+function paginaContacto(d, op){
+  var c = d.contacto, st = estadoLayout("contacto", d, op);
+  var de = function (id){
+    var m = /^contacto\.items\.(\d+)$/.exec(id);
+    if (id === "contacto.titulo") return '<h1 data-ed="contacto.titulo">' + esc(c.titulo) + "</h1>";
+    if (m){
+      var it = (c.items || [])[Number(m[1])] || {};
+      var val = it.url
+        ? '<a href="' + urlSegura(it.url) + '"' + (/^https?:/i.test(it.url) ? ' target="_blank" rel="noopener"' : "") + ">" + esc(it.valor) + "</a>"
+        : '<span class="muted">' + esc(it.valor) + "</span>";
+      return '<div class="contact-item" data-ed="' + id + '">' +
+        '<div class="contact-label">' + esc(it.label) + "</div>" +
+        '<div class="contact-value">' + val + "</div></div>";
+    }
+    return "";
+  };
+  var top = lista(st, "top", de);
   return '<div class="wrap-narrow">' +
-    '<h1 data-ed="contacto.titulo">' + esc(c.titulo) + "</h1>" +
-    '<div style="margin-top:48px">' + items + "</div>" +
+    (st.editable ? '<div data-s="top">' + top + "</div>" : top) +
+    '<div style="margin-top:48px"' + contMarca(st, "items") + ">" + lista(st, "items", de) + "</div>" +
     "</div>";
 }
 
@@ -539,33 +697,37 @@ function slug(t){
 
 /* Página propia de bloques (Trayectoria, Formación): título + bloques, y foto al costado
    solo si Nicole puso una. Mismo marcado y clases que "Acerca de" para heredar su diseño. */
-function paginaBloques(d, clave){
-  var a = d[clave] || {};
-  var bloques = (a.bloques || []).map(function (b, i){
-    var ed = ' data-ed="' + clave + '.bloques.' + i + '"';
-    if (b && b.tipo === "titulo") return "<h2" + ed + ' id="' + slug(b.texto) + '"' + (i ? ' style="margin-top:40px;scroll-margin-top:24px"' : "") + ">" + esc(b.texto) + "</h2>";
-    if (b && b.tipo === "foto") return '<div' + ed + ' style="margin:0 0 18px">' + fotoImg(b, "about-photo", "") + "</div>";
-    return "<p" + ed + ">" + texto(b && b.texto) + "</p>";
-  }).join("");
+function paginaBloques(d, clave, op){
+  var a = d[clave] || {}, st = estadoLayout(clave, d, op);
+  var de = function (id){
+    var m = /^[a-z]+\.bloques\.(\d+)$/.exec(id);
+    if (id === clave + ".titulo") return '<h1 data-ed="' + clave + '.titulo">' + esc(a.titulo) + "</h1>";
+    if (id === clave + ".sub") return a.sub ? '<p class="role" data-ed="' + clave + '.sub">' + esc(a.sub) + "</p>" : "";
+    if (m){
+      var i = Number(m[1]), b = (a.bloques || [])[i], ed = ' data-ed="' + id + '"';
+      if (b && b.tipo === "titulo") return "<h2" + ed + ' id="' + slug(b.texto) + '"' + (i ? ' style="margin-top:40px;scroll-margin-top:24px"' : "") + ">" + esc(b.texto) + "</h2>";
+      if (b && b.tipo === "foto") return '<div' + ed + ' style="margin:0 0 18px">' + fotoImg(b, "about-photo", "") + "</div>";
+      return "<p" + ed + ">" + texto(b && b.texto) + "</p>";
+    }
+    return "";
+  };
+  var bloques = lista(st, "bloques", de);
   var conFoto = a.foto && a.foto.url;
   return '<div class="wrap">' +
-    '<div class="about-intro">' +
-      '<h1 data-ed="' + clave + '.titulo">' + esc(a.titulo) + "</h1>" +
-      (a.sub ? '<p class="role" data-ed="' + clave + '.sub">' + esc(a.sub) + "</p>" : "") +
-    "</div>" +
+    '<div class="about-intro"' + contMarca(st, "intro") + ">" + lista(st, "intro", de) + "</div>" +
     (conFoto
-      ? '<div class="about-grid"><div>' + fotoImg(a.foto, "about-photo", "", clave + ".foto") + "</div><div>" + bloques + "</div></div>"
-      : "<div>" + bloques + "</div>") +
+      ? '<div class="about-grid"><div>' + fotoImg(a.foto, "about-photo", "", clave + ".foto") + "</div><div" + contMarca(st, "bloques") + ">" + bloques + "</div></div>"
+      : "<div" + contMarca(st, "bloques") + ">" + bloques + "</div>") +
     "</div>";
 }
 
-function htmlPagina(pagina, data){
+function htmlPagina(pagina, data, opciones){
   var d = mezclar(data);
-  if (pagina === "acerca") return paginaAcerca(d);
-  if (pagina === "trayectoria" || pagina === "formacion") return paginaBloques(d, pagina);
-  if (pagina === "sesiones") return paginaSesiones(d);
-  if (pagina === "contacto") return paginaContacto(d);
-  return paginaInicio(d);
+  if (pagina === "acerca") return paginaAcerca(d, opciones);
+  if (pagina === "trayectoria" || pagina === "formacion") return paginaBloques(d, pagina, opciones);
+  if (pagina === "sesiones") return paginaSesiones(d, opciones);
+  if (pagina === "contacto") return paginaContacto(d, opciones);
+  return paginaInicio(d, opciones);
 }
 
 /* Documento completo — lo usa la vista previa del editor (iframe). */
@@ -589,5 +751,5 @@ function htmlDocumento(pagina, data, opciones){
     "</body></html>";
 }
 
-  g.WebRender = { DEFAULTS, FUENTES, esc, texto, urlSegura, mezclar, estiloCss, fontFacesCss, fuentesHref, ALT_FOTOS, ALT_GENERICO, altFoto, anuncioHtml, headerHtml, pieHtml, htmlPagina, htmlDocumento };
+  g.WebRender = { DEFAULTS, FUENTES, esc, texto, urlSegura, mezclar, estiloCss, fontFacesCss, fuentesHref, ALT_FOTOS, ALT_GENERICO, altFoto, anuncioHtml, headerHtml, pieHtml, layoutLimpio, htmlPagina, htmlDocumento };
 })(typeof window !== "undefined" ? window : globalThis);

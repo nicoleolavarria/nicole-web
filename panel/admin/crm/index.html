@@ -708,8 +708,10 @@
     <div class="web-editor">
       <div class="web-side">
         <p class="hint" id="webAyuda">Haz clic en cualquier parte de la vista previa para editar esa parte. Los cambios se ven al instante aquí; tu web pública recién cambia cuando le das <b>Publicar</b>.</p>
+        <p class="hint" id="webAyudaMover"><b>Mover y estirar:</b> toca un título, párrafo o dato en la vista previa. Con <b>«⠿ Mover»</b> lo arrastras a otro lugar de la misma página (con el mouse o con el dedo). Con el cuadrito de la esquina cambias su ancho y alto. En la vista «Celular» el tamaño vale solo para el celular. «Deshacer» te deja volver atrás.</p>
         <div id="webControles"></div>
         <div class="web-danger">
+          <button class="btn ghost sm" id="btnWebPosiciones" title="Quita todo lo que moviste o estiraste; tus textos no cambian">Volver a como estaba (lugares y tamaños)</button>
           <button class="btn ghost sm" id="btnWebOriginal">Volver al diseño original</button>
         </div>
       </div>
@@ -3044,9 +3046,135 @@ window.mvtInit = mvtInit;
     o[p[p.length-1]] = val;
   }
 
+
+/* ---------- mover y estirar textos en la vista previa (24-oct-2026) ----------
+   Corre DENTRO del iframe de la vista previa (nunca en la web pública). Con pointer events: sirve
+   igual con mouse que con el dedo. No dibuja nada por su cuenta: calcula el orden nuevo o el
+   tamaño, se lo manda al panel (parent.edLayout) y el panel vuelve a pintar con el mismo render
+   de la web. Así lo que ves es lo que se publica. */
+function edBloquesMain(){
+  var sel = null, grip = null, hdl = null, linea = null, accion = null;
+  function pagina(){ return document.body.dataset.pagina || ""; }
+  function dev(){ return window.matchMedia("(max-width:700px)").matches ? "movil" : "desktop"; }
+  function ui(css, txt, tit){
+    var n = document.createElement("div");
+    n.className = "nl-ui"; n.style.cssText = "position:absolute;z-index:99999;touch-action:none;user-select:none;-webkit-user-select:none;" + css;
+    if (txt) n.textContent = txt; if (tit) n.title = tit;
+    var inv = 1; try { inv = Math.min(2, Math.max(1, innerWidth / window.frameElement.getBoundingClientRect().width)); } catch (_) {}
+    if (inv > 1.05){ n.style.transform = "scale(" + inv + ")"; n.style.transformOrigin = txt ? "0 100%" : "50% 50%"; }
+    document.body.appendChild(n); return n;
+  }
+  function rectDoc(el){ var r = el.getBoundingClientRect(); return { x: r.left + scrollX, y: r.top + scrollY, w: r.width, h: r.height }; }
+  function limpiarUi(){ [grip, hdl].forEach(function (n){ if (n && n.parentNode) n.parentNode.removeChild(n); }); grip = hdl = null; }
+  function colocar(){
+    if (!sel || !grip) return;
+    var r = rectDoc(sel);
+    grip.style.left = Math.max(2, r.x - 4) + "px"; grip.style.top = Math.max(2, r.y - 36) + "px";
+    if (hdl){ hdl.style.left = (r.x + r.w - 14) + "px"; hdl.style.top = (r.y + r.h - 14) + "px"; }
+  }
+  function enviar(m){ m.pagina = pagina(); try { if (parent && parent.edLayout) parent.edLayout(m); } catch (_) {} }
+  window.edSeleccionar = function (b){
+    if (sel) sel.classList.remove("nl-sel");
+    limpiarUi(); sel = b;
+    try { parent.edSelId = b ? b.getAttribute("data-b") : ""; } catch (_) {}
+    if (!b) return;
+    b.classList.add("nl-sel");
+    grip = ui("background:#0a0a0a;color:#fafaf8;font:600 14px/1 system-ui,sans-serif;padding:0 14px;min-height:44px;display:flex;align-items:center;border-radius:8px;cursor:grab;box-shadow:0 2px 8px rgba(0,0,0,.35);", "⠿ Mover", "Arrastra para mover este texto");
+    grip.setAttribute("data-bt", "grip");
+    grip.addEventListener("pointerdown", empezarMover);
+    if (!b.matches("a,img") && !b.hasAttribute("data-m")){
+      hdl = ui("width:28px;height:28px;background:#0a0a0a;border:2px solid #fafaf8;border-radius:6px;cursor:nwse-resize;box-shadow:0 2px 8px rgba(0,0,0,.35);", "", "Arrastra para cambiar el ancho y el alto");
+      hdl.setAttribute("data-bt", "handle");
+      hdl.addEventListener("pointerdown", empezarTam);
+    }
+    colocar();
+  };
+  window.edReseleccionar = function (){
+    try { var id = parent.edSelId; var b = id ? document.querySelector('[data-b="' + id + '"]') : null; if (b) window.edSeleccionar(b); else limpiarUi(); } catch (_) {}
+  };
+
+  function idDe(n){ return n.hasAttribute("data-m") ? "@" + n.getAttribute("data-m") : n.getAttribute("data-b"); }
+  function items(sec){ return [].slice.call(sec.querySelectorAll("[data-b],[data-m]")).map(idDe); }
+  function listas(){ var o = {}; [].forEach.call(document.querySelectorAll("[data-s]"), function (s){ o[s.getAttribute("data-s")] = items(s); }); return o; }
+
+  function destino(x, y, id){
+    var cand = [].slice.call(document.querySelectorAll("[data-b],[data-m]")).filter(function (n){ return idDe(n) !== id; });
+    var mejor = null, dmin = 1e9;
+    cand.forEach(function (n){
+      var r = n.getBoundingClientRect();
+      var dx = x < r.left ? r.left - x : (x > r.right ? x - r.right : 0);
+      var dy = y < r.top ? r.top - y : (y > r.bottom ? y - r.bottom : 0);
+      var d = dy * 3 + dx;
+      if (d < dmin){ dmin = d; mejor = { n: n, r: r }; }
+    });
+    if (mejor && dmin < 160){
+      var despues = y > mejor.r.top + mejor.r.height / 2;
+      return { sec: mejor.n.closest("[data-s]").getAttribute("data-s"), ref: idDe(mejor.n), despues: despues, y: despues ? mejor.r.bottom : mejor.r.top, x: mejor.r.left, w: mejor.r.width };
+    }
+    var secs = [].slice.call(document.querySelectorAll("[data-s]")).filter(function (s){ var r = s.getBoundingClientRect(); return y >= r.top && y <= r.bottom && x >= r.left && x <= r.right; });
+    if (secs.length){ var s = secs[secs.length - 1], f = s.getBoundingClientRect(); return { sec: s.getAttribute("data-s"), ref: null, despues: true, y: f.bottom, x: f.left, w: f.width }; }
+    return null;
+  }
+  function empezarMover(e){
+    if (!sel) return; e.preventDefault(); e.stopPropagation();
+    accion = { tipo: "mover", id: sel.getAttribute("data-b"), dest: null, antes: listas() };
+    grip.setPointerCapture(e.pointerId); grip.style.cursor = "grabbing";
+    linea = ui("height:4px;background:#0a0a0a;border-radius:2px;pointer-events:none;display:none;");
+    sel.style.opacity = ".45";
+    grip.addEventListener("pointermove", moverPuntero); grip.addEventListener("pointerup", soltarMover); grip.addEventListener("pointercancel", soltarMover);
+  }
+  function moverPuntero(e){
+    if (!accion || accion.tipo !== "mover") return;
+    var d = destino(e.clientX, e.clientY, accion.id); accion.dest = d;
+    if (!d){ linea.style.display = "none"; return; }
+    linea.style.display = "block"; linea.style.left = (d.x + scrollX) + "px"; linea.style.top = (d.y + scrollY - 2) + "px"; linea.style.width = d.w + "px";
+    if (e.clientY < 50) scrollBy(0, -14); else if (e.clientY > innerHeight - 50) scrollBy(0, 14);
+  }
+  function soltarMover(e){
+    var a = accion; accion = null;
+    if (grip){ grip.removeEventListener("pointermove", moverPuntero); grip.removeEventListener("pointerup", soltarMover); grip.removeEventListener("pointercancel", soltarMover); grip.style.cursor = "grab"; }
+    if (linea && linea.parentNode) linea.parentNode.removeChild(linea); linea = null;
+    if (sel) sel.style.opacity = "";
+    if (!a || !a.dest || e.type === "pointercancel") return;
+    var nuevo = {}; Object.keys(a.antes).forEach(function (k){ nuevo[k] = a.antes[k].filter(function (x){ return x !== a.id; }); });
+    var l = nuevo[a.dest.sec]; if (!l) return;
+    var i = a.dest.ref ? l.indexOf(a.dest.ref) : -1;
+    if (i < 0) l.push(a.id); else l.splice(a.dest.despues ? i + 1 : i, 0, a.id);
+    var cambios = {};
+    Object.keys(nuevo).forEach(function (k){ if (nuevo[k].join("|") !== a.antes[k].join("|")) cambios[k] = nuevo[k]; });
+    if (Object.keys(cambios).length) enviar({ op: "orden", secs: cambios, id: a.id });
+  }
+
+  function empezarTam(e){
+    if (!sel) return; e.preventDefault(); e.stopPropagation();
+    var r = sel.getBoundingClientRect(), pr = sel.parentElement.getBoundingClientRect(), cs = getComputedStyle(sel.parentElement);
+    var ancho = pr.width - parseFloat(cs.paddingLeft || 0) - parseFloat(cs.paddingRight || 0);
+    accion = { tipo: "tam", id: sel.getAttribute("data-b"), x0: e.clientX, y0: e.clientY, w0: r.width, h0: r.height, ancho: Math.max(60, ancho), w: null, h: null, dev: dev() };
+    hdl.setPointerCapture(e.pointerId);
+    hdl.addEventListener("pointermove", moverTam); hdl.addEventListener("pointerup", soltarTam); hdl.addEventListener("pointercancel", soltarTam);
+  }
+  function moverTam(e){
+    var a = accion; if (!a || a.tipo !== "tam") return;
+    var w = Math.round((a.w0 + e.clientX - a.x0) / a.ancho * 100); w = Math.max(15, Math.min(100, w));
+    var h = Math.max(0, Math.round(a.h0 + e.clientY - a.y0));
+    a.w = w; a.h = h;
+    sel.style.width = w + "%"; sel.style.maxWidth = "none"; sel.style.minHeight = h + "px"; sel.style.overflowWrap = "anywhere";
+    colocar();
+  }
+  function soltarTam(e){
+    var a = accion; accion = null;
+    if (hdl){ hdl.removeEventListener("pointermove", moverTam); hdl.removeEventListener("pointerup", soltarTam); hdl.removeEventListener("pointercancel", soltarTam); }
+    if (!a || a.w === null || e.type === "pointercancel") return;
+    enviar({ op: "tam", id: a.id, dev: a.dev, w: a.w, h: (a.h > a.h0 + 6 ? a.h : 0) });
+  }
+  addEventListener("resize", colocar);
+  setInterval(colocar, 600);
+}
+
   /* ---------- vista previa ---------- */
   var HOOKS = [
     "var R = window.WebRender;",
+    "(" + edBloquesMain.toString() + ")();",
     "window.aplicar = function(data, pagina){",
     "  var d = R.mezclar(data);",
     "  document.getElementById('estiloEd').textContent = R.estiloCss(d);",
@@ -3054,8 +3182,9 @@ window.mvtInit = mvtInit;
     "  if (h) lf.href = h; else lf.removeAttribute('href');",
     "  document.body.dataset.pagina = pagina;",
     "  document.body.innerHTML = R.headerHtml(d) +",
-    "    '<main>' + R.htmlPagina(pagina, d) + '</main>' + R.pieHtml(d);",
+    "    '<main>' + R.htmlPagina(pagina, d, { editable: true }) + '</main>' + R.pieHtml(d);",
     "  var an = R.anuncioHtml(d); if (an) document.body.insertAdjacentHTML('afterbegin', an);",
+    "  if (window.edReseleccionar) window.edReseleccionar();",
     "};",
     /* Clic en cualquier parte = editar esa parte. Se cancela la navegación: esto es
        una maqueta, no la web de verdad. El iframe es srcdoc del mismo origen que el
@@ -3084,6 +3213,8 @@ window.mvtInit = mvtInit;
     "};",
     "document.addEventListener('click', function(e){",
     "  e.preventDefault(); e.stopPropagation();",
+    "  if (e.target.closest && e.target.closest('.nl-ui')) return;",
+    "  if (window.edSeleccionar) window.edSeleccionar(e.target.closest ? e.target.closest('[data-b]') : null);",
     "  var n = e.target.closest('[data-ed]');",
     "  try { if (parent && parent.edPreviewClick) parent.edPreviewClick(n ? n.getAttribute('data-ed') : '', parteDe(n || e.target)); } catch(_){}",
     "}, true);"
@@ -3098,7 +3229,7 @@ window.mvtInit = mvtInit;
       "<link id=\"fuentesEd\" rel=\"stylesheet\" />" +
       "<link rel=\"stylesheet\" href=\"/web/global.css\" />" +
       "<style id=\"estiloEd\"></style>" +
-      "<style>[data-ed]{transition:outline .1s}[data-ed]:hover{outline:2px dashed rgba(10,10,10,.45);outline-offset:3px;cursor:pointer}.parte-marca{outline:2px solid rgba(10,10,10,.7) !important;outline-offset:4px}</style>" +
+      "<style>[data-ed]{transition:outline .1s}[data-ed]:hover{outline:2px dashed rgba(10,10,10,.45);outline-offset:3px;cursor:pointer}.nl-sel{outline:2px solid rgba(10,10,10,.85);outline-offset:3px}.parte-marca{outline:2px solid rgba(10,10,10,.7) !important;outline-offset:4px}</style>" +
       "<scr" + "ipt src=\"/web/web-render.js\"></scr" + "ipt>" +
       "<scr" + "ipt>" + HOOKS + "</scr" + "ipt>" +
       "</head><body></body></html>";
@@ -3580,10 +3711,10 @@ window.mvtInit = mvtInit;
 
     if (acc === "del"){
       if (!confirm("¿Borrar esto de tu web?")) return;
-      lista2.splice(i, 1); render(); pintar(); return;
+      lista2.splice(i, 1); remapLayout(m[1], "del", i); render(); pintar(); return;
     }
-    if (acc === "up" && i > 0){ lista2.splice(i-1, 0, lista2.splice(i, 1)[0]); render(); pintar(); return; }
-    if (acc === "down" && i < lista2.length-1){ lista2.splice(i+1, 0, lista2.splice(i, 1)[0]); render(); pintar(); return; }
+    if (acc === "up" && i > 0){ lista2.splice(i-1, 0, lista2.splice(i, 1)[0]); remapLayout(m[1], "up", i); render(); pintar(); return; }
+    if (acc === "down" && i < lista2.length-1){ lista2.splice(i+1, 0, lista2.splice(i, 1)[0]); remapLayout(m[1], "down", i); render(); pintar(); return; }
   });
 
   /* ---------- letras: deshacer / rehacer ---------- */
@@ -3931,6 +4062,50 @@ window.mvtInit = mvtInit;
     document.addEventListener("mouseup", function(){ arrastrando = null; });
     document.addEventListener("touchend", function(){ arrastrando = null; });
   })();
+
+  /* ---------- mover y estirar textos (24-oct-2026) ----------
+     La vista previa calcula el movimiento y llama a edLayout. Entra al mismo historial que el resto
+     (Deshacer / Rehacer / Descartar cambios) y se publica con «Publicar cambios». */
+  window.edLayout = function(m){
+    if (!m || !WEB || !m.pagina) return;
+    cambiarHist(function(){
+      WEB.layout = (WEB.layout && typeof WEB.layout === "object") ? WEB.layout : {};
+      var L = WEB.layout[m.pagina] = WEB.layout[m.pagina] || {};
+      if (m.op === "orden" && m.secs){
+        L.secs = Object.assign(L.secs || {}, m.secs);
+      } else if (m.op === "tam" && m.id){
+        L.tam = L.tam || {};
+        var t = L.tam[m.id] = L.tam[m.id] || {}, mv = m.dev === "movil";
+        t[mv ? "wm" : "w"] = Math.max(15, Math.min(100, Math.round(Number(m.w) || 100)));
+        if (m.h > 0) t[mv ? "hm" : "h"] = Math.min(800, Math.round(m.h)); else delete t[mv ? "hm" : "h"];
+      }
+    });
+    pintar(); marcarEstado();
+  };
+  /* Si Nicole sube, baja o borra un texto con los botones de la lista, los lugares y tamaños que
+     tenían guardados deben seguir al texto (los ids llevan el número de su posición). */
+  function remapLayout(ruta, acc, i){
+    var pg = ruta.split(".")[0], L = WEB.layout && WEB.layout[pg];
+    if (!L) return;
+    var pre = ruta + ".", rx = new RegExp("^" + pre.replace(/[.]/g, "[.]") + "(\\d+)$");
+    function mapa(id){
+      var m = rx.exec(id); if (!m) return id;
+      var n = Number(m[1]);
+      if (acc === "del"){ if (n === i) return null; return n > i ? pre + (n - 1) : id; }
+      if (acc === "up"){ if (n === i) return pre + (i - 1); if (n === i - 1) return pre + i; return id; }
+      if (acc === "down"){ if (n === i) return pre + (i + 1); if (n === i + 1) return pre + i; return id; }
+      return id;
+    }
+    if (L.secs) Object.keys(L.secs).forEach(function(c){ L.secs[c] = L.secs[c].map(mapa).filter(function(x){ return x !== null; }); });
+    if (L.tam){ var nt = {}; Object.keys(L.tam).forEach(function(id){ var k = mapa(id); if (k !== null) nt[k] = L.tam[id]; }); L.tam = nt; }
+  }
+  document.getElementById("btnWebPosiciones").addEventListener("click", function(){
+    if (!WEB || !WEB.layout || !Object.keys(WEB.layout).length){ toast("No has movido ni estirado nada"); return; }
+    if (!confirm("Esto devuelve cada texto a su lugar y tamaño de antes. Tus textos no cambian y puedes usar «Deshacer» si te arrepientes. ¿Seguir?")) return;
+    cambiarHist(function(){ delete WEB.layout; });
+    render(); pintar();
+    toast("Listo. Se aplica cuando publiques.");
+  });
 
   /* ---------- clic en la vista previa -> abre su control ----------
      La llama el iframe directamente (mismo origen). Salta a la página de esa parte

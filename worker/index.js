@@ -524,6 +524,62 @@ function wSeccion(src, forma){
   return Object.keys(out).length ? out : undefined;
 }
 
+/* Posición y tamaño de los bloques de texto (24-oct-2026, "Mi web": arrastrar y estirar).
+   Mismas reglas que layoutLimpio() de src/lib/web-render.mjs: el worker es el que decide qué
+   se guarda, el render vuelve a validar al dibujar. */
+const W_LAYOUT_CONT = {
+  inicio: ["top"], acerca: ["intro", "bloques"], trayectoria: ["intro", "bloques"], formacion: ["intro", "bloques"],
+  sesiones: ["hero", "cards"], contacto: ["top", "items"]
+};
+const W_LAYOUT_ID = {
+  inicio: /^inicio\.(titulo|sub)$/,
+  acerca: /^acerca\.(titulo|sub|intro\.\d{1,2}|bloques\.\d{1,2})$/,
+  trayectoria: /^trayectoria\.(titulo|sub|bloques\.\d{1,2})$/,
+  formacion: /^formacion\.(titulo|sub|bloques\.\d{1,2})$/,
+  sesiones: /^sesiones\.(titulo|nota|titulo_modalidades|intro\.\d{1,2}|modalidades\.\d{1,2})$/,
+  contacto: /^contacto\.(titulo|items\.\d{1,2})$/
+};
+function wLayout(raw){
+  const out = {};
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return undefined;
+  for (const pg of Object.keys(W_LAYOUT_CONT)){
+    const l = Object.prototype.hasOwnProperty.call(raw, pg) ? raw[pg] : null;
+    if (!l || typeof l !== "object") continue;
+    const r = {};
+    if (l.secs && typeof l.secs === "object"){
+      const vistos = {}, secs = {};
+      for (const c of W_LAYOUT_CONT[pg]){
+        const arr = Object.prototype.hasOwnProperty.call(l.secs, c) ? l.secs[c] : null;
+        if (!Array.isArray(arr)) continue;
+        const lista = [];
+        for (const id of arr.slice(0, 80)){
+          if (id === "@cta"){ if (pg === "sesiones" && c === "hero" && !lista.includes(id)) lista.push(id); continue; }
+          if (typeof id !== "string" || !W_LAYOUT_ID[pg].test(id) || vistos[id]) continue;
+          vistos[id] = 1; lista.push(id);
+        }
+        secs[c] = lista;
+      }
+      if (Object.keys(secs).length) r.secs = secs;
+    }
+    if (l.tam && typeof l.tam === "object"){
+      const tam = {};
+      for (const id of Object.keys(l.tam).slice(0, 200)){
+        const b = l.tam[id];
+        if (!W_LAYOUT_ID[pg].test(id) || !b || typeof b !== "object") continue;
+        const t = {};
+        for (const [k, min, max] of [["w", 15, 100], ["wm", 15, 100], ["h", 0, 800], ["hm", 0, 800]]){
+          const n = Math.round(Number(b[k]));
+          if (isFinite(n) && n > 0) t[k] = Math.min(max, Math.max(min, n));
+        }
+        if (Object.keys(t).length) tam[id] = t;
+      }
+      if (Object.keys(tam).length) r.tam = tam;
+    }
+    if (Object.keys(r).length) out[pg] = r;
+  }
+  return Object.keys(out).length ? out : undefined;
+}
+
 /* fuentesGuardadas: la lista de fuentes subidas tal como está en config (web_fuentes).
    Solo se aceptan fuentes de esa lista; nombre y formato salen de la lista, no del cliente. */
 function sanearWeb(raw, fuentesGuardadas){
@@ -643,6 +699,8 @@ function sanearWeb(raw, fuentesGuardadas){
     blog_url:   wUrl,
     copy:       function (v){ return wTxt(v, 80); }
   });
+
+  out.layout = wLayout(d.layout);
 
   for (const k in out) if (out[k] === undefined) delete out[k];
   return out;

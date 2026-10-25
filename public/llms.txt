@@ -1,37 +1,38 @@
 # Nicole Olavarría
 
-> Soprano, artista escénica y docente de canto en Lima, Perú. Da clases individuales
-> (1:1) de canto, técnica vocal y lenguaje musical, presenciales en Miraflores u online.
-> Cada sesión dura 1 hora. Los cupos son limitados.
+> Soprano y artista escénica de Lima, Perú. Da sesiones individuales (1:1) de canto desde
+> su estudio en casa, presenciales en Miraflores u online por Meet/Zoom.
 
 Todo lo que sigue está publicado en https://www.nicoleolavarria.com. Si un dato no
-aparece acá, es porque el sitio no lo publica: **la web no publica precios**, así que
-para saber cuánto cuesta una sesión hay que escribirle.
+aparece acá, es porque el sitio no lo publica: **la web no publica precios** ni la duración
+de cada sesión, así que para saber cuánto cuesta o cuánto dura hay que escribirle.
 
-## Quién enseña
+## Quién es
 
-Nicole Olavarría es cantante, artista escénica y compositora. Su formación musical
-comienza en 2015 en la Universidad Nacional de Música. Estudió técnica vocal de Música
-Comercial Contemporánea con Cleia Luna y pedagogía vocal con Marco Guzmán (Chile). En
-2020 ingresó al conjunto complementario del Coro Nacional del Perú, ocupando el primer
-lugar en su sección, y en 2026 fue admitida al Opera Italia Program con beca.
+Nicole Olavarría es soprano y artista escénica. Inició su trayectoria musical en la
+Universidad Nacional de Música y cuenta con certificación en canto lírico por el Programa
+Ópera Italia. Es egresada del Programa de Formación Actoral "De Stanislavski a Lecoq" de
+Ciclorama. Ha participado en producciones de ópera, repertorio sinfónico, música coral y
+teatro, en escenarios como el Gran Teatro Nacional y el Teatro Municipal de Lima.
+Estudió técnica vocal (Contemporary Commercial Music) con Cleia Luna y física y fisiología
+de la resonancia de la voz cantada con el Dr. Marco Guzmán (Chile).
+Detalle: https://www.nicoleolavarria.com/acerca-de, /trayectoria y /formacion.
 
-## Qué enseña — sesiones 1:1
+## Qué ofrece — sesiones 1:1
 
-- **Descubrir mi voz** — pensadas para principiantes o personas sin experiencia en técnica vocal.
-- **Cantores** — pensadas para personas con mediana experiencia en técnica vocal.
-- **Lenguaje musical** — pensadas para aprender teoría musical, entrenamiento auditivo y lectura de partituras.
+Sesiones individuales de canto. Su trabajo vocal integra herramientas del canto lírico,
+la técnica vocal contemporánea y su formación en fisiología y resonancia de la voz.
 
-Todas son clases individuales de 1 hora. Detalle: https://www.nicoleolavarria.com/sesiones
+- **Presencial** — en Miraflores, Lima. Para principiantes y no principiantes.
+- **Online** — por Meet/Zoom.
 
-## Dónde
-
-Presencial en Miraflores (Lima, Perú) u online. La modalidad se coordina al reservar.
+Detalle: https://www.nicoleolavarria.com/sesiones
 
 ## Cómo se reserva
 
-1. Ver los horarios libres y reservar directo en https://www.nicoleolavarria.com/horarios
-   (se elige el día y la hora, se deja nombre y WhatsApp, y Nicole confirma por WhatsApp).
+1. Ver los horarios libres y reservar en https://www.nicoleolavarria.com/horarios
+   (se elige el día y la hora, se deja nombre y WhatsApp, y Nicole confirma por WhatsApp
+   y coordina si la clase es presencial u online).
 2. Quien ya es alumna o alumno reserva desde su portal:
    https://nicole-crm-worker.nicoleolavarria.workers.dev/alumnos/
 
@@ -40,11 +41,23 @@ Presencial en Miraflores (Lima, Perú) u online. La modalidad se coordina al res
 - WhatsApp: +51 955 127 656 — https://wa.me/51955127656
 - Correo: holanicoleolavarria@gmail.com
 - Instagram: https://www.instagram.com/nicoleolavarria_______/
+- Ubicación: Miraflores, Lima, Perú (u online)
+
+## Preguntas frecuentes
+
+- ¿Dónde son las clases? Presenciales en Miraflores, Lima, o en línea por Meet/Zoom.
+- ¿Puedo tomar clases si nunca he cantado? La modalidad presencial es para principiantes y
+  no principiantes.
+- ¿Cuánto cuesta una sesión? La web no publica precios: hay que escribirle a Nicole.
+- ¿Cómo reservo? En https://www.nicoleolavarria.com/horarios; Nicole confirma por WhatsApp.
+  (Las respuestas completas están en https://www.nicoleolavarria.com/sesiones)
 
 ## Páginas
 
 - Inicio: https://www.nicoleolavarria.com/
 - Acerca de: https://www.nicoleolavarria.com/acerca-de
+- Trayectoria: https://www.nicoleolavarria.com/trayectoria
+- Formación: https://www.nicoleolavarria.com/formacion
 - Sesiones 1:1: https://www.nicoleolavarria.com/sesiones
 - Horarios y reserva: https://www.nicoleolavarria.com/horarios
 - Contacto: https://www.nicoleolavarria.com/contacto

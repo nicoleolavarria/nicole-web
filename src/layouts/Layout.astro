@@ -8,7 +8,7 @@
    deploy de Vercel — así ve su cambio al instante, sin esperar un rebuild. */
 import { obtenerWeb, ORIGEN } from '../lib/web-data.mjs';
 import { htmlPagina, headerHtml, pieHtml, anuncioHtml, estiloCss, fontFacesCss, fuentesHref, mezclar } from '../lib/web-render.mjs';
-import { CANONICO, jsonLd, canonicalDe } from '../lib/seo.mjs';
+import { CANONICO, jsonLd, canonicalDe, faqHtml } from '../lib/seo.mjs';
 
 interface Props {
   pagina: 'inicio' | 'acerca' | 'trayectoria' | 'formacion' | 'sesiones' | 'contacto';
@@ -79,6 +79,8 @@ const datosEstructurados = jsonLd(pagina, data, canonicalURL);
   <main>
     <Fragment set:html={htmlPagina(pagina, data)} />
   </main>
+
+  {pagina === 'sesiones' && <Fragment set:html={faqHtml(data)} />}
 
   <Fragment set:html={pieHtml(data)} />
 

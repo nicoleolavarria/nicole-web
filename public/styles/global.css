@@ -559,3 +559,15 @@ header nav a { margin: 0; }
 @media (max-width: 700px) {
   :root { --hgap: clamp(16px, 5vw, 24px); }
 }
+
+/* ---------- Preguntas frecuentes de /sesiones (SEO/AEO, 24-oct-2026) ----------
+   Va FUERA de <main> (el script de puesta al día repinta solo <main>), así que repite la
+   tipografía que main da a .wrap: mismas variables de la web, sin diseño nuevo. */
+.faq { padding-top: 0; }
+.faq h2 { font-family: var(--t-titulos-fuente, var(--g-titulos, 'Homemade Apple')), cursive; font-weight: var(--t-titulos-peso, 400); font-size: var(--t-titulos-tam, calc(20px * var(--esc))); line-height: var(--t-titulos-lh, 1.5); text-transform: none; letter-spacing: 0; margin: 0 0 24px; }
+.faq .sesion-card h3 { font-family: var(--t-tarjetas-fuente, var(--t-titulos-fuente, var(--g-titulos, 'Homemade Apple'))), cursive; font-size: var(--t-tarjetas-tam, calc(22px * var(--esc))); font-weight: var(--t-tarjetas-peso, var(--t-titulos-peso, 400)); line-height: var(--t-tarjetas-lh, var(--t-titulos-lh, 1.5)); text-transform: none; letter-spacing: 0; }
+.faq .sesion-card p { font-family: var(--t-texto-fuente, var(--g-cuerpo, 'Space Mono')), ui-monospace, monospace; font-size: var(--t-texto-tam, calc(15px * var(--esc))); line-height: var(--t-texto-lh, 1.8); font-weight: var(--t-texto-peso, 400); }
+.faq .sesion-card a { color: inherit; text-decoration: underline; text-underline-offset: 3px; }
+@media (max-width: 700px) {
+  .faq .sesion-card p { font-size: var(--t-texto-tam-m, calc(15px * var(--esc))); }
+}

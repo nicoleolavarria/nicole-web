@@ -3069,7 +3069,7 @@ function edBloquesMain(){
   function colocar(){
     if (!sel || !grip) return;
     var r = rectDoc(sel);
-    grip.style.left = Math.max(2, r.x - 4) + "px"; grip.style.top = Math.max(2, r.y - 36) + "px";
+    grip.style.left = Math.max(2, r.x - 4) + "px"; grip.style.top = Math.max(2, (r.y - scrollY < 44 ? r.y + 4 : r.y - 36)) + "px";   /* si el texto está pegado al borde de arriba, «Mover» se pone encima de él para no quedar fuera de la vista */
     if (hdl){ hdl.style.left = (r.x + r.w - 14) + "px"; hdl.style.top = (r.y + r.h - 14) + "px"; }
   }
   function enviar(m){ m.pagina = pagina(); try { if (parent && parent.edLayout) parent.edLayout(m); } catch (_) {} }
@@ -3079,10 +3079,10 @@ function edBloquesMain(){
     try { parent.edSelId = b ? b.getAttribute("data-b") : ""; } catch (_) {}
     if (!b) return;
     b.classList.add("nl-sel");
-    grip = ui("background:#0a0a0a;color:#fafaf8;font:600 14px/1 system-ui,sans-serif;padding:0 14px;min-height:44px;display:flex;align-items:center;border-radius:8px;cursor:grab;box-shadow:0 2px 8px rgba(0,0,0,.35);", "⠿ Mover", "Arrastra para mover este texto");
+    grip = ui("background:#0a0a0a;color:#fafaf8;font:600 14px/1 system-ui,sans-serif;padding:0 14px;min-height:44px;display:flex;align-items:center;border-radius:8px;cursor:grab;box-shadow:0 2px 8px rgba(0,0,0,.35);", "⠿ Mover", "Arrastra para mover (texto o foto)");
     grip.setAttribute("data-bt", "grip");
     grip.addEventListener("pointerdown", empezarMover);
-    if (!b.matches("a,img") && !b.hasAttribute("data-m")){
+    if (!b.matches("a") && !b.hasAttribute("data-m")){
       hdl = ui("width:28px;height:28px;background:#0a0a0a;border:2px solid #fafaf8;border-radius:6px;cursor:nwse-resize;box-shadow:0 2px 8px rgba(0,0,0,.35);", "", "Arrastra para cambiar el ancho y el alto");
       hdl.setAttribute("data-bt", "handle");
       hdl.addEventListener("pointerdown", empezarTam);
@@ -3149,7 +3149,7 @@ function edBloquesMain(){
     if (!sel) return; e.preventDefault(); e.stopPropagation();
     var r = sel.getBoundingClientRect(), pr = sel.parentElement.getBoundingClientRect(), cs = getComputedStyle(sel.parentElement);
     var ancho = pr.width - parseFloat(cs.paddingLeft || 0) - parseFloat(cs.paddingRight || 0);
-    accion = { tipo: "tam", id: sel.getAttribute("data-b"), x0: e.clientX, y0: e.clientY, w0: r.width, h0: r.height, ancho: Math.max(60, ancho), w: null, h: null, dev: dev() };
+    accion = { tipo: "tam", id: sel.getAttribute("data-b"), x0: e.clientX, y0: e.clientY, w0: r.width, h0: r.height, ancho: Math.max(60, ancho), w: null, h: null, dev: dev(), foto: sel.matches("img") || !!sel.querySelector(":scope > img") };
     hdl.setPointerCapture(e.pointerId);
     hdl.addEventListener("pointermove", moverTam); hdl.addEventListener("pointerup", soltarTam); hdl.addEventListener("pointercancel", soltarTam);
   }
@@ -3158,14 +3158,15 @@ function edBloquesMain(){
     var w = Math.round((a.w0 + e.clientX - a.x0) / a.ancho * 100); w = Math.max(15, Math.min(100, w));
     var h = Math.max(0, Math.round(a.h0 + e.clientY - a.y0));
     a.w = w; a.h = h;
-    sel.style.width = w + "%"; sel.style.maxWidth = "none"; sel.style.minHeight = h + "px"; sel.style.overflowWrap = "anywhere";
+    if (a.foto){ var im = sel.matches("img") ? sel : sel.querySelector(":scope > img"); sel.style.setProperty("width", w + "%", "important"); sel.style.maxWidth = "none"; im.style.height = h + "px"; if (im !== sel) sel.style.minHeight = "0"; }
+    else { sel.style.width = w + "%"; sel.style.maxWidth = "none"; sel.style.minHeight = h + "px"; sel.style.overflowWrap = "anywhere"; }
     colocar();
   }
   function soltarTam(e){
     var a = accion; accion = null;
     if (hdl){ hdl.removeEventListener("pointermove", moverTam); hdl.removeEventListener("pointerup", soltarTam); hdl.removeEventListener("pointercancel", soltarTam); }
     if (!a || a.w === null || e.type === "pointercancel") return;
-    enviar({ op: "tam", id: a.id, dev: a.dev, w: a.w, h: (a.h > a.h0 + 6 ? a.h : 0) });
+    enviar({ op: "tam", id: a.id, dev: a.dev, w: a.w, h: (a.foto ? (Math.abs(a.h - a.h0) > 6 ? a.h : 0) : (a.h > a.h0 + 6 ? a.h : 0)) });
   }
   addEventListener("resize", colocar);
   setInterval(colocar, 600);

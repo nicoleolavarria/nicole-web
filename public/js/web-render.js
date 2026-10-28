@@ -454,15 +454,17 @@ function subPortada(sub){
    w/h = ancho (% del contenedor) y alto mínimo (px) en computador; wm/hm = lo mismo en celular.
    SIN `layout` el HTML sale idéntico, byte por byte, al de siempre (lo prueban los tests). */
 var LAYOUT_CONTENEDORES = {
-  inicio: ["top"], acerca: ["intro", "bloques"], trayectoria: ["intro", "bloques"], formacion: ["intro", "bloques"],
-  sesiones: ["hero", "cards"], contacto: ["top", "items"]
+  inicio: ["top"], acerca: ["intro", "bloques", "lado", "galeria"], trayectoria: ["intro", "bloques", "lado"], formacion: ["intro", "bloques", "lado"],
+  sesiones: ["hero", "cards", "lado"], contacto: ["top", "items"]
 };
+/* Las FOTOS también son bloques (25-oct-2026): se mueven y se estiran como los textos.
+   `lado` = la columna de la foto principal; `galeria` = la tira de fotos de Acerca de. */
 var LAYOUT_ID = {
   inicio: /^inicio\.(titulo|sub)$/,
-  acerca: /^acerca\.(titulo|sub|intro\.\d{1,2}|bloques\.\d{1,2})$/,
-  trayectoria: /^trayectoria\.(titulo|sub|bloques\.\d{1,2})$/,
-  formacion: /^formacion\.(titulo|sub|bloques\.\d{1,2})$/,
-  sesiones: /^sesiones\.(titulo|nota|titulo_modalidades|intro\.\d{1,2}|modalidades\.\d{1,2})$/,
+  acerca: /^acerca\.(titulo|sub|foto|intro\.\d{1,2}|bloques\.\d{1,2}|galeria\.\d{1,2})$/,
+  trayectoria: /^trayectoria\.(titulo|sub|foto|bloques\.\d{1,2})$/,
+  formacion: /^formacion\.(titulo|sub|foto|bloques\.\d{1,2})$/,
+  sesiones: /^sesiones\.(titulo|nota|foto|titulo_modalidades|intro\.\d{1,2}|modalidades\.\d{1,2})$/,
   contacto: /^contacto\.(titulo|items\.\d{1,2})$/
 };
 var LAYOUT_ANCHO_MIN = 15, LAYOUT_ALTO_MAX = 800;
@@ -520,14 +522,18 @@ function listasDefecto(pagina, d){
     var a = d.acerca;
     L.intro = ["acerca.titulo"].concat(a.sub ? ["acerca.sub"] : [], rango("acerca.intro", n(a.intro)));
     L.bloques = rango("acerca.bloques", n(a.bloques));
+    L.lado = a.foto && a.foto.url ? ["acerca.foto"] : [];
+    L.galeria = rango("acerca.galeria", n(a.galeria));
   } else if (pagina === "trayectoria" || pagina === "formacion"){
     var b = d[pagina] || {};
     L.intro = [pagina + ".titulo"].concat(b.sub ? [pagina + ".sub"] : []);
     L.bloques = rango(pagina + ".bloques", n(b.bloques));
+    L.lado = b.foto && b.foto.url ? [pagina + ".foto"] : [];
   } else if (pagina === "sesiones"){
     var s = d.sesiones;
     L.hero = ["sesiones.titulo"].concat(rango("sesiones.intro", n(s.intro)), s.nota ? ["sesiones.nota"] : [], s.cta && s.cta.texto ? ["@cta"] : []);
     L.cards = (s.titulo_modalidades ? ["sesiones.titulo_modalidades"] : []).concat(rango("sesiones.modalidades", n(s.modalidades)));
+    L.lado = s.foto && s.foto.url ? ["sesiones.foto"] : [];
   } else if (pagina === "contacto"){
     L.top = ["contacto.titulo"];
     L.items = rango("contacto.items", n(d.contacto.items));
@@ -557,7 +563,8 @@ function planPagina(pagina, d, lay){
 function conMarcas(html, clases, estilo, attrs){
   var m = /^<([a-zA-Z0-9]+)((?:\s[^>]*)?)>/.exec(html);
   if (!m) return html;
-  var at = m[2] || "";
+  var at = m[2] || "", cierre = "";
+  if (/\s*\/$/.test(at)){ at = at.replace(/\s*\/$/, ""); cierre = " /"; }   /* <img ... /> */
   if (clases){
     if (/\sclass="/.test(at)) at = at.replace(/\sclass="([^"]*)"/, function (x, c){ return ' class="' + c + " " + clases + '"'; });
     else at += ' class="' + clases + '"';
@@ -566,7 +573,7 @@ function conMarcas(html, clases, estilo, attrs){
     if (/\sstyle="/.test(at)) at = at.replace(/\sstyle="([^"]*)"/, function (x, c){ return ' style="' + c + (/;\s*$/.test(c) || !c ? "" : ";") + estilo + '"'; });
     else at += ' style="' + estilo + '"';
   }
-  return "<" + m[1] + at + (attrs || "") + ">" + html.slice(m[0].length);
+  return "<" + m[1] + at + (attrs || "") + cierre + ">" + html.slice(m[0].length);
 }
 function bloqueHtml(id, html, st){
   if (!html) return "";
@@ -588,7 +595,7 @@ function estadoLayout(pagina, d, opciones){
   return { lay: lay, editable: !!(opciones && opciones.editable), plan: planPagina(pagina, d, lay), pagina: pagina };
 }
 function lista(st, cont, htmlDe){
-  return (st.plan[cont] || []).map(function (id){ return bloqueHtml(id, htmlDe(id), st); }).join("");
+  return (st.plan[cont] || []).map(function (id){ return bloqueHtml(id, htmlDe(id, cont), st); }).join("");
 }
 
 /* ---------- páginas ---------- */
@@ -605,8 +612,10 @@ function paginaInicio(d, op){
 
 function paginaAcerca(d, op){
   var a = d.acerca, st = estadoLayout("acerca", d, op);
-  var de = function (id){
-    var m = /^acerca\.(intro|bloques)\.(\d+)$/.exec(id);
+  var de = function (id, cont){
+    var m = /^acerca\.(intro|bloques)\.(\d+)$/.exec(id), g = /^acerca\.galeria\.(\d+)$/.exec(id);
+    if (id === "acerca.foto") return a.foto && a.foto.url ? fotoImg(a.foto, "about-photo", "", "acerca.foto") : "";
+    if (g) return fotoImg((a.galeria || [])[Number(g[1])], cont === "galeria" ? "" : "about-photo", "", id);
     if (id === "acerca.titulo") return '<h1 data-ed="acerca.titulo">' + esc(a.titulo) + "</h1>";
     if (id === "acerca.sub") return a.sub ? '<p class="role" data-ed="acerca.sub">' + esc(a.sub) + "</p>" : "";
     if (m && m[1] === "intro") return '<p data-ed="' + id + '">' + texto((a.intro || [])[Number(m[2])]) + "</p>";
@@ -619,17 +628,15 @@ function paginaAcerca(d, op){
     }
     return "";
   };
-  var galeria = (a.galeria || []).map(function (g, i){
-    return fotoImg(g, "", "", "acerca.galeria." + i);
-  }).join("");
+  var galeria = lista(st, "galeria", de);
 
   return '<div class="wrap">' +
     '<div class="about-intro"' + contMarca(st, "intro") + ">" + lista(st, "intro", de) + "</div>" +
     '<div class="about-grid">' +
-      "<div>" + (a.foto && a.foto.url ? fotoImg(a.foto, "about-photo", "", "acerca.foto") : "") + "</div>" +
+      "<div" + contMarca(st, "lado") + ">" + lista(st, "lado", de) + "</div>" +
       "<div" + contMarca(st, "bloques") + ">" + lista(st, "bloques", de) + "</div>" +
     "</div>" +
-    (galeria ? '<div class="about-photos-strip">' + galeria + "</div>" : "") +
+    (galeria ? '<div class="about-photos-strip"' + contMarca(st, "galeria") + ">" + galeria + "</div>" : "") +
     "</div>";
 }
 
@@ -640,6 +647,7 @@ function paginaSesiones(d, op){
     : "";
   var de = function (id){
     var m = /^sesiones\.(intro|modalidades)\.(\d+)$/.exec(id);
+    if (id === "sesiones.foto") return s.foto && s.foto.url ? fotoImg(s.foto, "", "width:100%;object-fit:cover;", "sesiones.foto") : "";
     if (id === "sesiones.titulo") return '<h1 data-ed="sesiones.titulo">' + esc(s.titulo) + "</h1>";
     if (id === "sesiones.nota") return s.nota ? '<p class="muted small" data-ed="sesiones.nota">' + esc(s.nota) + "</p>" : "";
     if (id === "sesiones.titulo_modalidades") return s.titulo_modalidades ? '<h2 data-ed="sesiones.titulo_modalidades">' + esc(s.titulo_modalidades) + "</h2>" : "";
@@ -659,7 +667,7 @@ function paginaSesiones(d, op){
   return '<div class="wrap">' +
     '<div class="sesiones-hero">' +
       "<div" + contMarca(st, "hero") + ">" + lista(st, "hero", de) + "</div>" +
-      "<div>" + (s.foto && s.foto.url ? fotoImg(s.foto, "", "width:100%;object-fit:cover;", "sesiones.foto") : "") + "</div>" +
+      "<div" + contMarca(st, "lado") + ">" + lista(st, "lado", de) + "</div>" +
     "</div>" +
     (st.editable ? '<div data-s="cards">' + tarjetas + "</div>" : tarjetas) +
     (metas ? '<div class="sesiones-meta">' + metas + "</div>" : "") +
@@ -701,6 +709,7 @@ function paginaBloques(d, clave, op){
   var a = d[clave] || {}, st = estadoLayout(clave, d, op);
   var de = function (id){
     var m = /^[a-z]+\.bloques\.(\d+)$/.exec(id);
+    if (id === clave + ".foto") return a.foto && a.foto.url ? fotoImg(a.foto, "about-photo", "", clave + ".foto") : "";
     if (id === clave + ".titulo") return '<h1 data-ed="' + clave + '.titulo">' + esc(a.titulo) + "</h1>";
     if (id === clave + ".sub") return a.sub ? '<p class="role" data-ed="' + clave + '.sub">' + esc(a.sub) + "</p>" : "";
     if (m){
@@ -716,7 +725,7 @@ function paginaBloques(d, clave, op){
   return '<div class="wrap">' +
     '<div class="about-intro"' + contMarca(st, "intro") + ">" + lista(st, "intro", de) + "</div>" +
     (conFoto
-      ? '<div class="about-grid"><div>' + fotoImg(a.foto, "about-photo", "", clave + ".foto") + "</div><div" + contMarca(st, "bloques") + ">" + bloques + "</div></div>"
+      ? '<div class="about-grid"><div' + contMarca(st, "lado") + ">" + lista(st, "lado", de) + "</div><div" + contMarca(st, "bloques") + ">" + bloques + "</div></div>"
       : "<div" + contMarca(st, "bloques") + ">" + bloques + "</div>") +
     "</div>";
 }

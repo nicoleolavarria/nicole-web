@@ -546,6 +546,16 @@ footer .footer-thanks, footer .footer-blog, footer .footer-copy {
 @media (max-width: 700px) {
   .nl-b { width: var(--wm, auto); min-height: var(--hm, 0); }
 }
+/* Fotos (25-oct-2026): el alto de una foto es su alto exacto (se puede achicar y agrandar) y la
+   foto se recorta con object-fit en vez de deformarse. Va con !important porque la foto de
+   Sesiones trae su ancho en el atributo style. */
+img.nl-b { width: var(--w, 100%) !important; height: var(--h, auto); min-height: 0; object-fit: cover; }
+div.nl-b > img { height: var(--h, auto); min-height: 0; object-fit: cover; }
+div.nl-b:has(> img) { min-height: 0; }
+@media (max-width: 700px) {
+  img.nl-b { width: var(--wm, 100%) !important; height: var(--hm, auto); }
+  div.nl-b > img { height: var(--hm, auto); }
+}
 
 /* Espaciado del encabezado (24-oct-2026, pedido de Nicole): todo lo que hay en el header
    (nombre del sitio y cada enlace) queda a la MISMA distancia, a lo ancho y a lo alto cuando

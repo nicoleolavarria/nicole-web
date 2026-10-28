@@ -528,15 +528,15 @@ function wSeccion(src, forma){
    Mismas reglas que layoutLimpio() de src/lib/web-render.mjs: el worker es el que decide qué
    se guarda, el render vuelve a validar al dibujar. */
 const W_LAYOUT_CONT = {
-  inicio: ["top"], acerca: ["intro", "bloques"], trayectoria: ["intro", "bloques"], formacion: ["intro", "bloques"],
-  sesiones: ["hero", "cards"], contacto: ["top", "items"]
+  inicio: ["top"], acerca: ["intro", "bloques", "lado", "galeria"], trayectoria: ["intro", "bloques", "lado"], formacion: ["intro", "bloques", "lado"],
+  sesiones: ["hero", "cards", "lado"], contacto: ["top", "items"]
 };
 const W_LAYOUT_ID = {
   inicio: /^inicio\.(titulo|sub)$/,
-  acerca: /^acerca\.(titulo|sub|intro\.\d{1,2}|bloques\.\d{1,2})$/,
-  trayectoria: /^trayectoria\.(titulo|sub|bloques\.\d{1,2})$/,
-  formacion: /^formacion\.(titulo|sub|bloques\.\d{1,2})$/,
-  sesiones: /^sesiones\.(titulo|nota|titulo_modalidades|intro\.\d{1,2}|modalidades\.\d{1,2})$/,
+  acerca: /^acerca\.(titulo|sub|foto|intro\.\d{1,2}|bloques\.\d{1,2}|galeria\.\d{1,2})$/,
+  trayectoria: /^trayectoria\.(titulo|sub|foto|bloques\.\d{1,2})$/,
+  formacion: /^formacion\.(titulo|sub|foto|bloques\.\d{1,2})$/,
+  sesiones: /^sesiones\.(titulo|nota|foto|titulo_modalidades|intro\.\d{1,2}|modalidades\.\d{1,2})$/,
   contacto: /^contacto\.(titulo|items\.\d{1,2})$/
 };
 function wLayout(raw){
